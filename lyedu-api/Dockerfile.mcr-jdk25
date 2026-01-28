@@ -1,0 +1,54 @@
+# 完全避开 docker.io 的 JDK25 方案：
+# - 使用 Microsoft OpenJDK 25（MCR：mcr.microsoft.com）
+# - 构建阶段手动安装 Maven
+#
+# 启动方式（在项目根目录）：
+#   docker-compose build --no-cache api
+#   docker-compose up -d
+
+FROM mcr.microsoft.com/openjdk/jdk:25-ubuntu AS builder
+
+WORKDIR /build
+
+# 安装 Maven（并尽量使用国内 apt 源：使用 Ubuntu 官方源时如果你网络不通，可自行改成国内源）
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends maven ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
+# Maven 国内镜像（默认阿里云；可通过 build-arg MAVEN_MIRROR 覆盖）
+ARG MAVEN_MIRROR=https://maven.aliyun.com/repository/public
+RUN mkdir -p /root/.m2 && \
+    cat > /root/.m2/settings.xml <<'EOF'\n\
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"\n\
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"\n\
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">\n\
+  <mirrors>\n\
+    <mirror>\n\
+      <id>cn-mirror</id>\n\
+      <name>CN Maven Mirror</name>\n\
+      <url>${MAVEN_MIRROR}</url>\n\
+      <mirrorOf>*</mirrorOf>\n\
+    </mirror>\n\
+  </mirrors>\n\
+</settings>\n\
+EOF
+
+COPY pom.xml .
+RUN mvn -s /root/.m2/settings.xml dependency:go-offline -B
+
+COPY src ./src
+RUN mvn -s /root/.m2/settings.xml clean package -DskipTests -B
+
+# 运行阶段：仍然使用 JDK 25（同样来自 MCR）
+FROM mcr.microsoft.com/openjdk/jdk:25-ubuntu
+
+WORKDIR /app
+
+COPY --from=builder /build/target/lyedu-api-*.jar app.jar
+
+EXPOSE 9700
+
+ENV JAVA_OPTS="-Xms512m -Xmx1024m -XX:+UseG1GC"
+
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+

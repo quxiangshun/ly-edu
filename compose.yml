@@ -1,0 +1,113 @@
+services:
+  mysql:
+    image: ${DOCKER_REGISTRY:-}mysql:8.0
+    container_name: lyedu-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: lyedu123456
+      MYSQL_DATABASE: lyedu
+      MYSQL_USER: lyedu
+      MYSQL_PASSWORD: lyedu123456
+      TZ: Asia/Shanghai
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    networks:
+      - lyedu-network
+    restart: unless-stopped
+
+  redis:
+    image: ${DOCKER_REGISTRY:-}redis:7-alpine
+    container_name: lyedu-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - lyedu-network
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: lyedu-api/Dockerfile
+      # 注意：jar 文件需要预先构建并放在 pkg/ 目录
+      # 运行: .\build-api.ps1 或 ./build-api.sh
+    container_name: lyedu-api
+    ports:
+      - "9700:9700"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=lyedu
+      - MYSQL_USERNAME=lyedu
+      - MYSQL_PASSWORD=lyedu123456
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - mysql
+      - redis
+    networks:
+      - lyedu-network
+    restart: unless-stopped
+
+  admin:
+    build:
+      context: ./lyedu-admin
+      dockerfile: Dockerfile
+      args:
+        DOCKER_REGISTRY: ${DOCKER_REGISTRY:-}
+        NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmmirror.com}
+    container_name: lyedu-admin
+    ports:
+      - "9900:80"
+    depends_on:
+      - api
+    networks:
+      - lyedu-network
+    restart: unless-stopped
+
+  pc:
+    build:
+      context: ./lyedu-pc
+      dockerfile: Dockerfile
+      args:
+        DOCKER_REGISTRY: ${DOCKER_REGISTRY:-}
+        NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmmirror.com}
+    container_name: lyedu-pc
+    ports:
+      - "9800:80"
+    depends_on:
+      - api
+    networks:
+      - lyedu-network
+    restart: unless-stopped
+
+  h5:
+    build:
+      context: ./lyedu-h5
+      dockerfile: Dockerfile
+      args:
+        DOCKER_REGISTRY: ${DOCKER_REGISTRY:-}
+        NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmmirror.com}
+    container_name: lyedu-h5
+    ports:
+      - "9801:80"
+    depends_on:
+      - api
+    networks:
+      - lyedu-network
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+  redis_data:
+
+networks:
+  lyedu-network:
+    driver: bridge
