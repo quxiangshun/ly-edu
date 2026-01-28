@@ -1,0 +1,36 @@
+# 备选 Dockerfile - 如果 eclipse-temurin 镜像无法下载，使用此文件
+# 使用方法: docker build -f Dockerfile.alternative -t lyedu-api .
+
+# 构建阶段 - 使用 Microsoft OpenJDK 25
+FROM mcr.microsoft.com/openjdk/jdk:25-ubuntu AS builder
+
+# 安装 Maven
+RUN apt-get update && \
+    apt-get install -y maven && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /build
+
+# 复制 pom.xml 并下载依赖
+COPY pom.xml .
+RUN mvn dependency:go-offline -B || true
+
+# 复制源代码并构建
+COPY src ./src
+RUN mvn clean package -DskipTests -B
+
+# 运行阶段 - 使用 Microsoft OpenJDK 25 JRE
+FROM mcr.microsoft.com/openjdk/jdk:25-ubuntu
+
+WORKDIR /app
+
+# 从构建阶段复制 jar 文件
+COPY --from=builder /build/target/lyedu-api-*.jar app.jar
+
+EXPOSE 9700
+
+# 设置 JVM 参数
+ENV JAVA_OPTS="-Xms512m -Xmx1024m -XX:+UseG1GC"
+
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]

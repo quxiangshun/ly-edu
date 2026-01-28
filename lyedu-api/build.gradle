@@ -1,0 +1,81 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '4.0.0-M2'
+}
+
+group = 'com.lyedu'
+version = '1.0.0'
+
+def springBootVersion = '4.0.0-M2'
+def lombokVersion = '1.18.42'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+}
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+repositories {
+    mavenCentral()
+    // 国内镜像源（阿里云）
+    maven {
+        url 'https://maven.aliyun.com/repository/public'
+    }
+    maven {
+        url 'https://maven.aliyun.com/repository/spring'
+    }
+}
+
+dependencies {
+    // Spring Boot
+    implementation "org.springframework.boot:spring-boot-starter-web:${springBootVersion}"
+    implementation "org.springframework.boot:spring-boot-starter-validation:${springBootVersion}"
+    implementation "org.springframework.boot:spring-boot-starter-aop:${springBootVersion}"
+    implementation "org.springframework.boot:spring-boot-starter-data-redis:${springBootVersion}"
+    
+    // MySQL
+    runtimeOnly 'com.mysql:mysql-connector-j:8.4.0'
+    
+    // MyBatis Plus
+    implementation 'com.baomidou:mybatis-plus-boot-starter:3.5.7'
+    
+    // JWT
+    implementation 'io.jsonwebtoken:jjwt-api:0.12.3'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.3'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.3'
+    
+    // Hutool
+    implementation 'cn.hutool:hutool-all:5.8.25'
+    
+    // Lombok
+    compileOnly "org.projectlombok:lombok:${lombokVersion}"
+    annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+    
+    // Test
+    testImplementation "org.springframework.boot:spring-boot-starter-test:${springBootVersion}"
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+// 打包后复制到 pkg 目录
+tasks.named('bootJar') {
+    doLast {
+        def pkgDir = file("${project.rootDir}/../pkg")
+        pkgDir.mkdirs()
+        def jarFile = archiveFile.get().asFile
+        copy {
+            from jarFile
+            into pkgDir
+            rename { "lyedu-api.jar" }
+        }
+        println "JAR 已复制到: ${pkgDir}/lyedu-api.jar"
+    }
+}
