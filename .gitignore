@@ -100,3 +100,13 @@ Thumbs.db
 # 构建产物
 pkg/*.jar
 !pkg/.gitkeep
+
+# 上传的文件（图片、视频等）
+uploads/
+*.mp4
+*.avi
+*.mov
+*.wmv
+*.flv
+*.webm
+*.mkv
