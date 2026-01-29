@@ -1,5 +1,6 @@
 package com.lyedu.service.impl;
 
+import com.lyedu.common.PageResult;
 import com.lyedu.entity.Video;
 import com.lyedu.service.VideoService;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,38 @@ import java.util.List;
 public class VideoServiceImpl implements VideoService {
 
     private final JdbcTemplate jdbcTemplate;
+
+    @Override
+    public PageResult<Video> page(Integer page, Integer size, Long courseId, String keyword) {
+        int offset = (page - 1) * size;
+        
+        StringBuilder whereClause = new StringBuilder("WHERE deleted = 0");
+        List<Object> params = new java.util.ArrayList<>();
+        
+        if (courseId != null) {
+            whereClause.append(" AND course_id = ?");
+            params.add(courseId);
+        }
+        
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            whereClause.append(" AND title LIKE ?");
+            params.add("%" + keyword + "%");
+        }
+        
+        String countSql = "SELECT COUNT(*) FROM ly_video " + whereClause.toString();
+        Integer totalInt = jdbcTemplate.queryForObject(countSql, params.toArray(), Integer.class);
+        Long total = totalInt != null ? totalInt.longValue() : 0L;
+        
+        String querySql = "SELECT id, course_id, chapter_id, title, url, duration, sort, create_time, update_time, deleted " +
+                "FROM ly_video " + whereClause.toString() + " ORDER BY sort ASC, id DESC LIMIT ? OFFSET ?";
+        List<Object> queryParams = new java.util.ArrayList<>(params);
+        queryParams.add(size);
+        queryParams.add(offset);
+        
+        List<Video> list = jdbcTemplate.query(querySql, queryParams.toArray(), new VideoRowMapper());
+        
+        return new PageResult<Video>(list, total, (long) page, (long) size);
+    }
 
     @Override
     public List<Video> listByCourseId(Long courseId) {

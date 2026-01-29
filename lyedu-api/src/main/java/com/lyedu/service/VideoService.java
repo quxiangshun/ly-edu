@@ -1,5 +1,6 @@
 package com.lyedu.service;
 
+import com.lyedu.common.PageResult;
 import com.lyedu.entity.Video;
 
 import java.util.List;
@@ -10,6 +11,17 @@ import java.util.List;
  * @author LyEdu Team
  */
 public interface VideoService {
+
+    /**
+     * 分页查询视频
+     *
+     * @param page 页码（从1开始）
+     * @param size 每页大小
+     * @param courseId 课程ID（可选）
+     * @param keyword 关键词（视频标题）
+     * @return 分页结果
+     */
+    PageResult<Video> page(Integer page, Integer size, Long courseId, String keyword);
 
     /**
      * 根据课程ID获取视频列表
