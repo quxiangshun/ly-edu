@@ -25,6 +25,22 @@ const routes: RouteRecordRaw[] = [
     meta: {
       title: '课程中心'
     }
+  },
+  {
+    path: '/course/:id',
+    name: 'CourseDetail',
+    component: () => import('@/views/CourseDetail.vue'),
+    meta: {
+      title: '课程详情'
+    }
+  },
+  {
+    path: '/video/:id',
+    name: 'VideoPlayer',
+    component: () => import('@/views/VideoPlayer.vue'),
+    meta: {
+      title: '视频播放'
+    }
   }
 ]
 

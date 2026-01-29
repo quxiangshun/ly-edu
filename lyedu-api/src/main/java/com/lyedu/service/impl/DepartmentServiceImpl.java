@@ -25,11 +25,11 @@ public class DepartmentServiceImpl implements DepartmentService {
     private final JdbcTemplate jdbcTemplate;
 
     private static final String SELECT_ALL_SQL =
-            "SELECT id, name, parent_id, sort, status, create_time, update_time, deleted " +
+            "SELECT id, CONVERT(name USING utf8mb4) as name, parent_id, sort, status, create_time, update_time, deleted " +
             "FROM ly_department WHERE deleted = 0 ORDER BY sort ASC, id ASC";
 
     private static final String SELECT_BY_ID_SQL =
-            "SELECT id, name, parent_id, sort, status, create_time, update_time, deleted " +
+            "SELECT id, CONVERT(name USING utf8mb4) as name, parent_id, sort, status, create_time, update_time, deleted " +
             "FROM ly_department WHERE id = ? AND deleted = 0";
 
     private static final String INSERT_SQL =
@@ -98,7 +98,13 @@ public class DepartmentServiceImpl implements DepartmentService {
         public Department mapRow(ResultSet rs, int rowNum) throws SQLException {
             Department dept = new Department();
             dept.setId(rs.getLong("id"));
-            dept.setName(rs.getString("name"));
+            // 使用 getBytes 然后转换为 UTF-8 字符串，确保编码正确
+            byte[] nameBytes = rs.getBytes("name");
+            if (nameBytes != null) {
+                dept.setName(new String(nameBytes, java.nio.charset.StandardCharsets.UTF_8));
+            } else {
+                dept.setName(rs.getString("name"));
+            }
             dept.setParentId(rs.getLong("parent_id"));
             if (rs.wasNull()) {
                 dept.setParentId(0L);

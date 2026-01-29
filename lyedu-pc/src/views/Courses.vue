@@ -21,7 +21,7 @@
         <h2>课程中心</h2>
         <el-row :gutter="20" v-loading="loading">
           <el-col :span="6" v-for="course in courseList" :key="course.id">
-            <el-card class="course-card" shadow="hover">
+            <el-card class="course-card" shadow="hover" @click="router.push(`/course/${course.id}`)">
               <img
                 :src="course.cover || 'https://via.placeholder.com/300x200'"
                 class="course-image"
@@ -30,7 +30,7 @@
               <div class="course-info">
                 <h3>{{ course.title }}</h3>
                 <p>{{ course.description || '暂无描述' }}</p>
-                <el-button type="primary" size="small" @click="handleStartLearn(course)">开始学习</el-button>
+                <el-button type="primary" size="small" @click.stop="handleStartLearn(course)">开始学习</el-button>
               </div>
             </el-card>
           </el-col>
