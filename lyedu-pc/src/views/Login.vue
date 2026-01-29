@@ -17,12 +17,22 @@
         <el-form-item prop="password">
           <el-input
             v-model="loginForm.password"
-            type="password"
+            :type="showPassword ? 'text' : 'password'"
             placeholder="请输入密码"
             size="large"
             prefix-icon="Lock"
             @keyup.enter="handleLogin"
-          />
+          >
+            <template #suffix>
+              <el-icon
+                class="password-icon"
+                @click="showPassword = !showPassword"
+                style="cursor: pointer; color: #909399;"
+              >
+                <component :is="showPassword ? 'View' : 'Hide'" />
+              </el-icon>
+            </template>
+          </el-input>
         </el-form-item>
         <el-form-item>
           <el-button
@@ -45,12 +55,15 @@ import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
+import { View, Hide } from '@element-plus/icons-vue'
+import { login, type LoginParams } from '@/api/user'
 
 const router = useRouter()
 const loginFormRef = ref<FormInstance>()
 const loading = ref(false)
+const showPassword = ref(false)
 
-const loginForm = reactive({
+const loginForm = reactive<LoginParams>({
   username: '',
   password: ''
 })
@@ -66,18 +79,23 @@ const rules: FormRules = {
 
 const handleLogin = async () => {
   if (!loginFormRef.value) return
-  
-  await loginFormRef.value.validate((valid) => {
-    if (valid) {
-      loading.value = true
-      // TODO: 调用登录接口
-      setTimeout(() => {
-        loading.value = false
-        ElMessage.success('登录成功')
-        router.push('/')
-      }, 1000)
-    }
-  })
+
+  try {
+    await loginFormRef.value.validate()
+    loading.value = true
+    const res = await login(loginForm)
+    localStorage.setItem('token', res.token)
+    localStorage.setItem('user', JSON.stringify(res.userInfo ?? {}))
+    ElMessage.success('登录成功')
+    // 强制刷新页面以确保Home组件重新检查登录状态
+    setTimeout(() => {
+      window.location.href = '/'
+    }, 500)
+  } catch (e) {
+    // 校验或请求失败时，错误提示由 axios 拦截器或 UI 负责
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 

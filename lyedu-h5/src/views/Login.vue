@@ -19,12 +19,20 @@
           />
           <van-field
             v-model="loginForm.password"
-            type="password"
+            :type="showPassword ? 'text' : 'password'"
             name="password"
             label="密码"
             placeholder="请输入密码"
             :rules="[{ required: true, message: '请输入密码' }]"
-          />
+          >
+            <template #right-icon>
+              <van-icon
+                :name="showPassword ? 'eye-o' : 'closed-eye'"
+                @click="showPassword = !showPassword"
+                style="cursor: pointer;"
+              />
+            </template>
+          </van-field>
         </van-cell-group>
 
         <div class="login-button">
@@ -40,10 +48,12 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
-import { showToast } from 'vant'
+import { showSuccessToast } from 'vant'
+import request from '@/utils/request'
 
 const router = useRouter()
 const loading = ref(false)
+const showPassword = ref(false)
 
 const loginForm = reactive({
   username: '',
@@ -52,12 +62,17 @@ const loginForm = reactive({
 
 const handleLogin = async () => {
   loading.value = true
-  // TODO: 调用登录接口
-  setTimeout(() => {
-    loading.value = false
-    showToast.success('登录成功')
+  try {
+    const res = await request.post('/auth/login', loginForm)
+    localStorage.setItem('token', res.token)
+    localStorage.setItem('user', JSON.stringify(res.userInfo))
+    showSuccessToast('登录成功')
     router.push('/')
-  }, 1000)
+  } catch (e) {
+    // 错误提示由 axios 拦截器处理
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 
