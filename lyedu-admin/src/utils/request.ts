@@ -27,6 +27,10 @@ service.interceptors.request.use(
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`
     }
+    // 如果是 FormData，不设置 Content-Type，让浏览器自动设置（包含 boundary）
+    if (config.data instanceof FormData && config.headers) {
+      delete config.headers['Content-Type']
+    }
     return config
   },
   (error) => {
