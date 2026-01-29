@@ -21,6 +21,6 @@ COPY pkg/lyedu-api.jar app.jar
 
 EXPOSE 9700
 
-ENV JAVA_OPTS="-Xms512m -Xmx1024m -XX:+UseG1GC"
+ENV JAVA_OPTS="-Xms512m -Xmx1024m -XX:+UseG1GC -Dfile.encoding=UTF-8 -Duser.language=zh -Duser.country=CN"
 
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
