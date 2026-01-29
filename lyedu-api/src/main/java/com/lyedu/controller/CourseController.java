@@ -1,10 +1,13 @@
 package com.lyedu.controller;
 
 import com.lyedu.annotation.NoAuth;
+import com.lyedu.common.CourseDetail;
 import com.lyedu.common.PageResult;
 import com.lyedu.common.Result;
 import com.lyedu.entity.Course;
+import com.lyedu.entity.Video;
 import com.lyedu.service.CourseService;
+import com.lyedu.service.VideoService;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -22,6 +25,7 @@ import java.util.List;
 public class CourseController {
 
     private final CourseService courseService;
+    private final VideoService videoService;
 
     /**
      * 分页查询课程
@@ -37,16 +41,24 @@ public class CourseController {
     }
 
     /**
-     * 获取课程详情
+     * 获取课程详情（包含视频列表）
      */
     @NoAuth
     @GetMapping("/{id}")
-    public Result<Course> getById(@PathVariable Long id) {
+    public Result<CourseDetail> getById(@PathVariable Long id) {
         Course course = courseService.getDetailById(id);
         if (course == null) {
             return Result.error(404, "课程不存在");
         }
-        return Result.success(course);
+        
+        // 获取课程相关的视频列表
+        List<Video> videos = videoService.listByCourseId(id);
+        
+        CourseDetail detail = new CourseDetail();
+        detail.setCourse(course);
+        detail.setVideos(videos);
+        
+        return Result.success(detail);
     }
 
     /**

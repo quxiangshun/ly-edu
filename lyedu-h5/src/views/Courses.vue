@@ -17,7 +17,7 @@
               <van-tag type="primary" v-if="course.status === 1">上架</van-tag>
             </template>
             <template #footer>
-              <van-button size="mini" type="primary">开始学习</van-button>
+              <van-button size="mini" type="primary" @click.stop="handleStartLearn(course)">开始学习</van-button>
             </template>
           </van-card>
           <van-empty v-if="!loading && courseList.length === 0" description="暂无课程" />
@@ -58,6 +58,10 @@ const loadCourses = async () => {
 }
 
 const handleCourseClick = async (course: Course) => {
+  router.push(`/course/${course.id}`)
+}
+
+const handleStartLearn = async (course: Course) => {
   const token = localStorage.getItem('token')
   if (!token) {
     showFailToast('请先登录')
@@ -68,7 +72,7 @@ const handleCourseClick = async (course: Course) => {
   try {
     await joinCourse(course.id)
     showSuccessToast('已加入课程')
-    // TODO: 跳转到课程详情页
+    router.push(`/course/${course.id}`)
   } catch (e) {
     showFailToast('加入课程失败')
   }

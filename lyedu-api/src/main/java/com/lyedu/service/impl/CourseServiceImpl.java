@@ -46,19 +46,20 @@ public class CourseServiceImpl implements CourseService {
         Integer totalInt = jdbcTemplate.queryForObject(countSql, params.toArray(), Integer.class);
         Long total = totalInt != null ? totalInt.longValue() : 0L;
         
-        String querySql = "SELECT id, title, cover, description, category_id, status, sort, create_time, update_time, deleted " +
+        String querySql = "SELECT id, CONVERT(title USING utf8mb4) as title, cover, CONVERT(description USING utf8mb4) as description, category_id, status, sort, create_time, update_time, deleted " +
                 "FROM ly_course " + whereClause + " ORDER BY sort ASC, id DESC LIMIT ? OFFSET ?";
-        params.add(size);
-        params.add(offset);
+        List<Object> queryParams = new java.util.ArrayList<>(params);
+        queryParams.add(size);
+        queryParams.add(offset);
         
-        List<Course> list = jdbcTemplate.query(querySql, params.toArray(), new CourseRowMapper());
+        List<Course> list = jdbcTemplate.query(querySql, queryParams.toArray(), new CourseRowMapper());
         
         return new PageResult<Course>(list, total, (long) page, (long) size);
     }
 
     @Override
     public Course getDetailById(Long id) {
-        String sql = "SELECT id, title, cover, description, category_id, status, sort, create_time, update_time, deleted " +
+        String sql = "SELECT id, CONVERT(title USING utf8mb4) as title, cover, CONVERT(description USING utf8mb4) as description, category_id, status, sort, create_time, update_time, deleted " +
                 "FROM ly_course WHERE id = ? AND deleted = 0";
         List<Course> list = jdbcTemplate.query(sql, new Object[]{id}, new CourseRowMapper());
         return list.isEmpty() ? null : list.get(0);
@@ -97,7 +98,7 @@ public class CourseServiceImpl implements CourseService {
 
     @Override
     public List<Course> listRecommended(Integer limit) {
-        String sql = "SELECT id, title, cover, description, category_id, status, sort, create_time, update_time, deleted " +
+        String sql = "SELECT id, CONVERT(title USING utf8mb4) as title, cover, CONVERT(description USING utf8mb4) as description, category_id, status, sort, create_time, update_time, deleted " +
                 "FROM ly_course WHERE deleted = 0 AND status = 1 ORDER BY sort ASC, id DESC LIMIT ?";
         return jdbcTemplate.query(sql, new Object[]{limit}, new CourseRowMapper());
     }
