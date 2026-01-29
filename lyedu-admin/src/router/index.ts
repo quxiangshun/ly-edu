@@ -53,6 +53,14 @@ const routes: RouteRecordRaw[] = [
         meta: {
           title: '课程管理'
         }
+      },
+      {
+        path: 'video',
+        name: 'Video',
+        component: () => import('@/views/Video.vue'),
+        meta: {
+          title: '视频管理'
+        }
       }
     ]
   }
