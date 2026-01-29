@@ -44,7 +44,7 @@ public class VideoServiceImpl implements VideoService {
         Integer totalInt = jdbcTemplate.queryForObject(countSql, params.toArray(), Integer.class);
         Long total = totalInt != null ? totalInt.longValue() : 0L;
         
-        String querySql = "SELECT id, course_id, chapter_id, title, url, duration, sort, create_time, update_time, deleted " +
+        String querySql = "SELECT id, course_id, chapter_id, CONVERT(title USING utf8mb4) as title, url, duration, sort, create_time, update_time, deleted " +
                 "FROM ly_video " + whereClause.toString() + " ORDER BY sort ASC, id DESC LIMIT ? OFFSET ?";
         List<Object> queryParams = new java.util.ArrayList<>(params);
         queryParams.add(size);
@@ -57,21 +57,21 @@ public class VideoServiceImpl implements VideoService {
 
     @Override
     public List<Video> listByCourseId(Long courseId) {
-        String sql = "SELECT id, course_id, chapter_id, title, url, duration, sort, create_time, update_time, deleted " +
+        String sql = "SELECT id, course_id, chapter_id, CONVERT(title USING utf8mb4) as title, url, duration, sort, create_time, update_time, deleted " +
                 "FROM ly_video WHERE course_id = ? AND deleted = 0 ORDER BY sort ASC, id ASC";
         return jdbcTemplate.query(sql, new Object[]{courseId}, new VideoRowMapper());
     }
 
     @Override
     public List<Video> listByChapterId(Long chapterId) {
-        String sql = "SELECT id, course_id, chapter_id, title, url, duration, sort, create_time, update_time, deleted " +
+        String sql = "SELECT id, course_id, chapter_id, CONVERT(title USING utf8mb4) as title, url, duration, sort, create_time, update_time, deleted " +
                 "FROM ly_video WHERE chapter_id = ? AND deleted = 0 ORDER BY sort ASC, id ASC";
         return jdbcTemplate.query(sql, new Object[]{chapterId}, new VideoRowMapper());
     }
 
     @Override
     public Video getById(Long id) {
-        String sql = "SELECT id, course_id, chapter_id, title, url, duration, sort, create_time, update_time, deleted " +
+        String sql = "SELECT id, course_id, chapter_id, CONVERT(title USING utf8mb4) as title, url, duration, sort, create_time, update_time, deleted " +
                 "FROM ly_video WHERE id = ? AND deleted = 0";
         List<Video> list = jdbcTemplate.query(sql, new Object[]{id}, new VideoRowMapper());
         return list.isEmpty() ? null : list.get(0);
@@ -118,7 +118,13 @@ public class VideoServiceImpl implements VideoService {
             if (!rs.wasNull()) {
                 video.setChapterId(chapterId);
             }
-            video.setTitle(rs.getString("title"));
+            // 使用 getBytes 然后转换为 UTF-8 字符串，确保编码正确
+            byte[] titleBytes = rs.getBytes("title");
+            if (titleBytes != null) {
+                video.setTitle(new String(titleBytes, java.nio.charset.StandardCharsets.UTF_8));
+            } else {
+                video.setTitle(rs.getString("title"));
+            }
             video.setUrl(rs.getString("url"));
             video.setDuration(rs.getInt("duration"));
             video.setSort(rs.getInt("sort"));

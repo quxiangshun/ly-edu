@@ -27,6 +27,22 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/course/:id',
+    name: 'CourseDetail',
+    component: () => import('@/views/CourseDetail.vue'),
+    meta: {
+      title: '课程详情'
+    }
+  },
+  {
+    path: '/video/:id',
+    name: 'VideoPlayer',
+    component: () => import('@/views/VideoPlayer.vue'),
+    meta: {
+      title: '视频播放'
+    }
+  },
+  {
     path: '/my',
     name: 'My',
     component: () => import('@/views/My.vue'),

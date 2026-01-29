@@ -16,7 +16,7 @@ spring:
   # 数据源配置
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:lyedu}?useUnicode=true&characterEncoding=utf8mb4&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&connectionCollation=utf8mb4_unicode_ci&rewriteBatchedStatements=true
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:lyedu}?useUnicode=true&characterEncoding=utf8mb4&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&connectionCollation=utf8mb4_unicode_ci&rewriteBatchedStatements=true&useOldAliasMetadataBehavior=true&useServerPrepStmts=true&cachePrepStmts=true&prepStmtCacheSize=250&prepStmtCacheSqlLimit=2048
     username: ${MYSQL_USERNAME:root}
     password: ${MYSQL_PASSWORD:lyedu123456}
     hikari:
@@ -25,6 +25,7 @@ spring:
       connection-timeout: 30000
       idle-timeout: 600000
       max-lifetime: 1800000
+      connection-init-sql: SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci
 
   flyway:
     enabled: true
