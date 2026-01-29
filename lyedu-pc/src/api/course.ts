@@ -10,6 +10,21 @@ export interface Course {
   sort: number
 }
 
+export interface Video {
+  id: number
+  courseId: number
+  chapterId?: number
+  title: string
+  url: string
+  duration?: number
+  sort: number
+}
+
+export interface CourseDetail {
+  course: Course
+  videos: Video[]
+}
+
 export interface PageResult<T> {
   records: T[]
   total: number
@@ -23,7 +38,7 @@ export const getCoursePage = (params: { page: number; size: number; keyword?: st
 }
 
 export const getCourseById = (id: number) => {
-  return request.get<Course>(`/course/${id}`)
+  return request.get<CourseDetail>(`/course/${id}`)
 }
 
 export const getRecommendedCourses = (limit: number = 6) => {

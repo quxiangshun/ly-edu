@@ -50,6 +50,9 @@ services:
       - JAVA_OPTS=-Dfile.encoding=UTF-8 -Duser.language=zh -Duser.country=CN
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - UPLOAD_PATH=/app/uploads
+    volumes:
+      - ./uploads:/app/uploads
     depends_on:
       - mysql
       - redis
