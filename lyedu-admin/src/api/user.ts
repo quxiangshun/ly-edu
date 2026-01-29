@@ -24,3 +24,55 @@ export const login = (params: LoginParams) => {
 export const getUserInfo = () => {
   return request.get('/user/info')
 }
+
+// 用户管理
+export interface User {
+  id: number
+  username: string
+  realName?: string
+  email?: string
+  mobile?: string
+  avatar?: string
+  departmentId?: number
+  role: string
+  status: number
+}
+
+export interface PageResult<T> {
+  records: T[]
+  total: number
+  current: number
+  size: number
+  pages: number
+}
+
+export const getUserPage = (params: {
+  page: number
+  size: number
+  keyword?: string
+  departmentId?: number
+  role?: string
+  status?: number
+}) => {
+  return request.get<PageResult<User>>('/user/page', { params })
+}
+
+export const getUserById = (id: number) => {
+  return request.get<User>(`/user/${id}`)
+}
+
+export const createUser = (data: Partial<User>) => {
+  return request.post('/user', data)
+}
+
+export const updateUser = (id: number, data: Partial<User>) => {
+  return request.put(`/user/${id}`, data)
+}
+
+export const deleteUser = (id: number) => {
+  return request.delete(`/user/${id}`)
+}
+
+export const resetUserPassword = (id: number, password: string) => {
+  return request.post(`/user/${id}/reset-password`, { password })
+}

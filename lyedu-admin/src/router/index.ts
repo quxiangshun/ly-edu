@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
+import Layout from '@/components/Layout.vue'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -15,13 +16,45 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
-    path: '/dashboard',
-    name: 'Dashboard',
-    component: () => import('@/views/Dashboard.vue'),
+    path: '/',
+    component: Layout,
     meta: {
-      title: '仪表盘',
       requiresAuth: true
-    }
+    },
+    children: [
+      {
+        path: 'dashboard',
+        name: 'Dashboard',
+        component: () => import('@/views/Dashboard.vue'),
+        meta: {
+          title: '仪表盘'
+        }
+      },
+      {
+        path: 'department',
+        name: 'Department',
+        component: () => import('@/views/Department.vue'),
+        meta: {
+          title: '部门管理'
+        }
+      },
+      {
+        path: 'user',
+        name: 'User',
+        component: () => import('@/views/User.vue'),
+        meta: {
+          title: '用户管理'
+        }
+      },
+      {
+        path: 'course',
+        name: 'Course',
+        component: () => import('@/views/Course.vue'),
+        meta: {
+          title: '课程管理'
+        }
+      }
+    ]
   }
 ]
 

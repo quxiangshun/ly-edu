@@ -4,22 +4,23 @@
     
     <van-tabs v-model:active="activeTab" sticky>
       <van-tab title="全部" name="all">
-        <div class="courses-list">
+        <div class="courses-list" v-loading="loading">
           <van-card
-            v-for="i in 10"
-            :key="i"
-            :title="`示例课程 ${i}`"
-            :desc="'这是课程描述信息，包含课程的主要内容介绍'"
-            thumb="https://via.placeholder.com/200x120"
-            @click="handleCourseClick(i)"
+            v-for="course in courseList"
+            :key="course.id"
+            :title="course.title"
+            :desc="course.description || '暂无描述'"
+            :thumb="course.cover || 'https://via.placeholder.com/200x120'"
+            @click="handleCourseClick(course)"
           >
             <template #tags>
-              <van-tag type="primary">热门</van-tag>
+              <van-tag type="primary" v-if="course.status === 1">上架</van-tag>
             </template>
             <template #footer>
               <van-button size="mini" type="primary">开始学习</van-button>
             </template>
           </van-card>
+          <van-empty v-if="!loading && courseList.length === 0" description="暂无课程" />
         </div>
       </van-tab>
       <van-tab title="进行中" name="ongoing">
@@ -33,14 +34,49 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { showSuccessToast, showFailToast } from 'vant'
+import { getCoursePage, type Course } from '@/api/course'
+import { joinCourse } from '@/api/learning'
 
+const router = useRouter()
 const activeTab = ref('all')
+const loading = ref(false)
+const courseList = ref<Course[]>([])
 
-const handleCourseClick = (id: number) => {
-  // TODO: 跳转到课程详情页
-  console.log('点击课程:', id)
+const loadCourses = async () => {
+  loading.value = true
+  try {
+    const res = await getCoursePage({ page: 1, size: 20 })
+    courseList.value = res.records
+  } catch (e) {
+    showFailToast('加载课程失败')
+  } finally {
+    loading.value = false
+  }
 }
+
+const handleCourseClick = async (course: Course) => {
+  const token = localStorage.getItem('token')
+  if (!token) {
+    showFailToast('请先登录')
+    router.push('/login')
+    return
+  }
+  
+  try {
+    await joinCourse(course.id)
+    showSuccessToast('已加入课程')
+    // TODO: 跳转到课程详情页
+  } catch (e) {
+    showFailToast('加入课程失败')
+  }
+}
+
+onMounted(() => {
+  loadCourses()
+})
 </script>
 
 <style scoped lang="scss">
