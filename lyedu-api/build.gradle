@@ -44,6 +44,7 @@ dependencies {
     runtimeOnly 'com.mysql:mysql-connector-j:8.4.0'
     
     // Flyway for MySQL migrations
+    implementation "org.flywaydb:flyway-core:10.18.2"
     implementation "org.flywaydb:flyway-mysql:10.18.2"
 
     // Password encoding for login (BCrypt)
