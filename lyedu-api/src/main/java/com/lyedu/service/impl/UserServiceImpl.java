@@ -26,11 +26,11 @@ public class UserServiceImpl implements UserService {
     private final PasswordEncoder passwordEncoder;
 
     private static final String SELECT_BY_USERNAME_SQL =
-            "SELECT id, username, password, real_name, email, mobile, avatar, department_id, role, status, deleted " +
+            "SELECT id, username, password, CONVERT(real_name USING utf8mb4) as real_name, email, mobile, avatar, department_id, role, status, deleted " +
             "FROM ly_user WHERE username = ? AND deleted = 0 LIMIT 1";
 
     private static final String SELECT_BY_ID_SQL =
-            "SELECT id, username, password, real_name, email, mobile, avatar, department_id, role, status, deleted " +
+            "SELECT id, username, password, CONVERT(real_name USING utf8mb4) as real_name, email, mobile, avatar, department_id, role, status, deleted " +
             "FROM ly_user WHERE id = ? AND deleted = 0";
 
     private static final String INSERT_SQL =
@@ -88,12 +88,13 @@ public class UserServiceImpl implements UserService {
         Integer totalInt = jdbcTemplate.queryForObject(countSql, params.toArray(), Integer.class);
         Long total = totalInt != null ? totalInt.longValue() : 0L;
         
-        String querySql = "SELECT id, username, password, real_name, email, mobile, avatar, department_id, role, status, deleted " +
+        String querySql = "SELECT id, username, password, CONVERT(real_name USING utf8mb4) as real_name, email, mobile, avatar, department_id, role, status, deleted " +
                 "FROM ly_user " + whereClause + " ORDER BY id DESC LIMIT ? OFFSET ?";
-        params.add(size);
-        params.add(offset);
+        List<Object> queryParams = new java.util.ArrayList<>(params);
+        queryParams.add(size);
+        queryParams.add(offset);
         
-        List<User> list = jdbcTemplate.query(querySql, params.toArray(), new UserRowMapper());
+        List<User> list = jdbcTemplate.query(querySql, queryParams.toArray(), new UserRowMapper());
         
         return new PageResult<User>(list, total, (long) page, (long) size);
     }
