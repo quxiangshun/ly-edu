@@ -16,7 +16,25 @@
           <el-menu-item index="my">我的学习</el-menu-item>
         </el-menu>
         <div class="header-right">
-          <el-button type="primary" @click="$router.push('/login')">登录</el-button>
+          <template v-if="!isLoggedIn">
+            <el-button type="primary" @click="$router.push('/login')">登录</el-button>
+          </template>
+          <template v-else>
+            <el-dropdown>
+              <span class="el-dropdown-link" style="cursor: pointer;">
+                <el-icon><User /></el-icon>
+                已登录
+              </span>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item @click="$router.push('/courses')">进入课程中心</el-dropdown-item>
+                  <el-dropdown-item divided @click="handleLogout">
+                    退出登录
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+          </template>
         </div>
       </div>
     </el-header>
@@ -73,15 +91,42 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { VideoCamera, Document, DataAnalysis } from '@element-plus/icons-vue'
+import { ref, computed, onMounted } from 'vue'
+import { VideoCamera, Document, DataAnalysis, User } from '@element-plus/icons-vue'
 
 const activeMenu = ref('home')
+const token = ref<string | null>(null)
+
+// 是否已登录（根据本地 token 判断）
+const isLoggedIn = computed(() => !!token.value)
+
+// 从localStorage读取token并监听变化
+onMounted(() => {
+  token.value = localStorage.getItem('token')
+  // 监听storage事件，当其他页面修改token时也能更新
+  window.addEventListener('storage', () => {
+    token.value = localStorage.getItem('token')
+  })
+  // 定期检查token（处理同页面内修改的情况）
+  setInterval(() => {
+    const currentToken = localStorage.getItem('token')
+    if (currentToken !== token.value) {
+      token.value = currentToken
+    }
+  }, 500)
+})
 
 const handleMenuSelect = (index: string) => {
   if (index === 'courses') {
     window.location.href = '/courses'
   }
+}
+
+const handleLogout = () => {
+  localStorage.removeItem('token')
+  localStorage.removeItem('user')
+  token.value = null
+  window.location.href = '/login'
 }
 </script>
 
