@@ -9,12 +9,12 @@
           <el-dropdown>
             <span class="user-info">
               <el-icon><User /></el-icon>
-              管理员
+              {{ userInfo?.realName || userInfo?.username || '管理员' }}
             </span>
             <template #dropdown>
               <el-dropdown-menu>
                 <el-dropdown-item>个人设置</el-dropdown-item>
-                <el-dropdown-item divided>退出登录</el-dropdown-item>
+                <el-dropdown-item divided @click="handleLogout">退出登录</el-dropdown-item>
               </el-dropdown-menu>
             </template>
           </el-dropdown>
@@ -51,7 +51,40 @@
 </template>
 
 <script setup lang="ts">
+import { computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { User } from '@element-plus/icons-vue'
+
+const router = useRouter()
+
+// 获取用户信息
+const userInfo = computed(() => {
+  const userStr = localStorage.getItem('user')
+  if (userStr) {
+    try {
+      return JSON.parse(userStr)
+    } catch {
+      return null
+    }
+  }
+  return null
+})
+
+const handleLogout = () => {
+  localStorage.removeItem('token')
+  localStorage.removeItem('user')
+  ElMessage.success('已退出登录')
+  router.push('/login')
+}
+
+// 检查登录状态
+onMounted(() => {
+  const token = localStorage.getItem('token')
+  if (!token) {
+    router.push('/login')
+  }
+})
 </script>
 
 <style scoped lang="scss">
