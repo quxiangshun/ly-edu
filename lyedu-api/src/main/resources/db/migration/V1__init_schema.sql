@@ -1,8 +1,4 @@
--- LyEdu 数据库初始化脚本
-
-CREATE DATABASE IF NOT EXISTS `lyedu` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
-USE `lyedu`;
+-- Flyway V1: 初始化基础表结构（不包含 CREATE DATABASE）
 
 -- 用户表
 CREATE TABLE IF NOT EXISTS `ly_user` (
@@ -54,4 +50,3 @@ CREATE TABLE IF NOT EXISTS `ly_course` (
     KEY `idx_category_id` (`category_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='课程表';
 
--- 初始化管理员账号由 Flyway V2__init_admin_user.sql 负责插入，避免重复数据
