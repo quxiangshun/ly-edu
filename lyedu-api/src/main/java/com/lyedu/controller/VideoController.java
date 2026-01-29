@@ -23,6 +23,18 @@ public class VideoController {
     private final VideoService videoService;
 
     /**
+     * 分页查询视频
+     */
+    @GetMapping("/page")
+    public Result<com.lyedu.common.PageResult<Video>> page(
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "10") Integer size,
+            @RequestParam(required = false) Long courseId,
+            @RequestParam(required = false) String keyword) {
+        return Result.success(videoService.page(page, size, courseId, keyword));
+    }
+
+    /**
      * 根据课程ID获取视频列表
      */
     @NoAuth
