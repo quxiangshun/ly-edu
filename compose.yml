@@ -47,6 +47,7 @@ services:
       - MYSQL_DATABASE=lyedu
       - MYSQL_USERNAME=lyedu
       - MYSQL_PASSWORD=lyedu123456
+      - JAVA_OPTS=-Dfile.encoding=UTF-8 -Duser.language=zh -Duser.country=CN
       - REDIS_HOST=redis
       - REDIS_PORT=6379
     depends_on:
