@@ -28,6 +28,10 @@
           <el-icon><Notebook /></el-icon>
           <template #title>课程管理</template>
         </el-menu-item>
+        <el-menu-item index="/video">
+          <el-icon><VideoPlay /></el-icon>
+          <template #title>视频管理</template>
+        </el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>
@@ -70,6 +74,7 @@ import {
   OfficeBuilding,
   User,
   Notebook,
+  VideoPlay,
   Expand,
   Fold,
   ArrowDown

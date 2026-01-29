@@ -50,8 +50,9 @@ spring:
 # 文件上传配置
 spring.servlet.multipart:
   enabled: true
-  max-file-size: 100MB
-  max-request-size: 100MB
+  max-file-size: 10GB
+  max-request-size: 10GB
+  file-size-threshold: 2KB
 
 # 日志配置
 logging:
@@ -73,4 +74,5 @@ lyedu:
     expire: ${JWT_EXPIRE:86400}
   upload:
     path: ${UPLOAD_PATH:./uploads}
-    max-size: ${MAX_FILE_SIZE:104857600}
+    max-size: ${MAX_FILE_SIZE:10737418240}
+    chunk-size: ${CHUNK_SIZE:5242880}
