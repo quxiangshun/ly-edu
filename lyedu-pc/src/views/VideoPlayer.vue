@@ -13,64 +13,70 @@
       </div>
     </el-header>
     <el-main class="main-content" v-loading="loading">
-      <div v-if="video" class="video-content">
-        <el-card class="video-card">
-          <div class="video-wrapper">
-            <video
-              ref="videoPlayer"
-              :src="videoUrl"
-              controls
-              preload="metadata"
-              class="video-element"
-              @loadedmetadata="handleLoadedMetadata"
-              @timeupdate="handleTimeUpdate"
-              @ended="handleVideoEnded"
-            >
-              您的浏览器不支持视频播放
-            </video>
-          </div>
-          <div class="video-info">
-            <h2>{{ video.title }}</h2>
-            <div class="video-meta">
-              <span v-if="video.duration" class="duration">
-                <el-icon><Clock /></el-icon>
-                时长: {{ formatDuration(video.duration) }}
-              </span>
+      <div v-if="video && relatedVideos.length > 0" class="video-layout">
+        <!-- 左侧：固定视频播放器 -->
+        <div class="video-section">
+          <el-card class="video-card">
+            <div class="video-wrapper">
+              <video
+                ref="videoPlayer"
+                :src="videoUrl"
+                controls
+                preload="metadata"
+                class="video-element"
+                @loadedmetadata="handleLoadedMetadata"
+                @timeupdate="handleTimeUpdate"
+                @ended="handleVideoEnded"
+              >
+                您的浏览器不支持视频播放
+              </video>
             </div>
-          </div>
-        </el-card>
+            <div class="video-info">
+              <h2>{{ video.title }}</h2>
+              <div class="video-meta">
+                <span v-if="video.duration" class="duration">
+                  <el-icon><Clock /></el-icon>
+                  时长: {{ formatDuration(video.duration) }}
+                </span>
+              </div>
+            </div>
+          </el-card>
+        </div>
 
-        <!-- 相关视频列表 -->
-        <el-card v-if="relatedVideos && relatedVideos.length > 0" class="related-videos-card">
-          <template #header>
-            <div class="card-header">
-              <span>相关视频</span>
-            </div>
-          </template>
-          <div class="video-list">
-            <div
-              v-for="(relatedVideo, index) in relatedVideos"
-              :key="relatedVideo.id"
-              class="video-item"
-              :class="{ active: relatedVideo.id === video.id }"
-              @click="handlePlayVideo(relatedVideo.id)"
-            >
-              <div class="video-index">{{ index + 1 }}</div>
-              <div class="video-info-item">
-                <h4>{{ relatedVideo.title }}</h4>
-                <div class="video-meta-item">
-                  <span v-if="relatedVideo.duration" class="duration">
-                    <el-icon><Clock /></el-icon>
-                    {{ formatDuration(relatedVideo.duration) }}
-                  </span>
+        <!-- 右侧：可滚动视频列表 -->
+        <div class="video-list-section">
+          <el-card class="video-list-card">
+            <template #header>
+              <div class="card-header">
+                <span>视频列表</span>
+                <span class="video-count">{{ relatedVideos.length }} 个视频</span>
+              </div>
+            </template>
+            <div class="video-list" ref="videoListRef">
+              <div
+                v-for="(relatedVideo, index) in relatedVideos"
+                :key="relatedVideo.id"
+                class="video-item"
+                :class="{ active: relatedVideo.id === video.id }"
+                @click="handlePlayVideo(relatedVideo.id)"
+              >
+                <div class="video-index">{{ index + 1 }}</div>
+                <div class="video-info-item">
+                  <h4>{{ relatedVideo.title }}</h4>
+                  <div class="video-meta-item">
+                    <span v-if="relatedVideo.duration" class="duration">
+                      <el-icon><Clock /></el-icon>
+                      {{ formatDuration(relatedVideo.duration) }}
+                    </span>
+                  </div>
+                </div>
+                <div class="video-action">
+                  <el-icon v-if="relatedVideo.id === video.id"><VideoPlay /></el-icon>
                 </div>
               </div>
-              <div class="video-action">
-                <el-icon><VideoPlay /></el-icon>
-              </div>
             </div>
-          </div>
-        </el-card>
+          </el-card>
+        </div>
       </div>
       <el-empty v-else description="视频不存在" />
     </el-main>
@@ -78,7 +84,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Clock, VideoPlay } from '@element-plus/icons-vue'
@@ -92,6 +98,7 @@ const loading = ref(false)
 const video = ref<Video | null>(null)
 const relatedVideos = ref<Video[]>([])
 const videoPlayer = ref<HTMLVideoElement | null>(null)
+const videoListRef = ref<HTMLElement | null>(null)
 const currentTime = ref(0)
 
 const videoUrl = computed(() => {
@@ -137,12 +144,25 @@ const loadVideo = async () => {
     if (res.courseId) {
       const courseRes = await getCourseById(res.courseId)
       relatedVideos.value = courseRes.videos || []
+      
+      // 等待DOM更新后，滚动到当前视频项
+      await nextTick()
+      scrollToCurrentVideo()
     }
   } catch (e: any) {
     ElMessage.error(e?.response?.data?.message || '加载视频失败')
     router.push('/courses')
   } finally {
     loading.value = false
+  }
+}
+
+const scrollToCurrentVideo = () => {
+  if (!videoListRef.value || !video.value) return
+  
+  const activeItem = videoListRef.value.querySelector('.video-item.active')
+  if (activeItem) {
+    activeItem.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }
 }
 
@@ -158,11 +178,11 @@ const formatDuration = (seconds: number): string => {
 }
 
 const handlePlayVideo = (videoId: number) => {
-  router.push(`/video/${videoId}`)
+  // 使用 replace 而不是 push，避免历史记录过多
+  router.replace(`/video/${videoId}`)
 }
 
 const handleLoadedMetadata = () => {
-  // 视频元数据加载完成
   if (videoPlayer.value) {
     console.log('视频时长:', videoPlayer.value.duration)
   }
@@ -175,9 +195,24 @@ const handleTimeUpdate = () => {
   }
 }
 
-const handleVideoEnded = () => {
-  ElMessage.success('视频播放完成')
-  // TODO: 可以在这里更新学习进度
+const handleVideoEnded = async () => {
+  if (!video.value || !relatedVideos.value.length) return
+  
+  // 找到当前视频在列表中的索引
+  const currentIndex = relatedVideos.value.findIndex(v => v.id === video.value!.id)
+  
+  // 如果还有下一个视频，自动播放
+  if (currentIndex >= 0 && currentIndex < relatedVideos.value.length - 1) {
+    const nextVideo = relatedVideos.value[currentIndex + 1]
+    ElMessage.success('播放完成，即将播放下一集')
+    
+    // 延迟一下再切换，让用户看到提示
+    setTimeout(() => {
+      handlePlayVideo(nextVideo.id)
+    }, 500)
+  } else {
+    ElMessage.success('视频播放完成，已是最后一集')
+  }
 }
 
 // 监听路由参数变化，当视频ID变化时重新加载
@@ -190,9 +225,7 @@ watch(() => route.params.id, (newId, oldId) => {
 // 监听视频URL变化，强制视频元素重新加载
 watch(videoUrl, (newUrl, oldUrl) => {
   if (newUrl && newUrl !== oldUrl && videoPlayer.value) {
-    // 暂停当前播放
     videoPlayer.value.pause()
-    // 重置视频源
     videoPlayer.value.load()
   }
 })
@@ -202,27 +235,40 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  // 清理资源
   if (videoPlayer.value) {
     videoPlayer.value.pause()
+    videoPlayer.value = null
   }
 })
 </script>
 
 <style scoped lang="scss">
 .video-player-container {
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  /* 统一 Chrome/Edge 布局计算，避免偏移 */
+  position: relative;
+  width: 100%;
+
+  // 强制主内容区不出现滚动条（覆盖 Element Plus el-main 默认行为）
+  :deep(.main-content) {
+    overflow: hidden !important;
+    min-height: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
 }
 
 .header {
+  flex-shrink: 0;
   background: #fff;
   border-bottom: 1px solid #e4e7ed;
   padding: 0;
 
   .header-content {
-    max-width: 1200px;
+    max-width: 100%;
     margin: 0 auto;
     width: 100%;
     display: flex;
@@ -248,38 +294,81 @@ onUnmounted(() => {
 
 .main-content {
   flex: 1;
+  min-height: 0;
   background: #f5f7fa;
-  padding: 40px 20px;
+  padding: 20px;
+  overflow: hidden !important;
+  display: flex;
+  flex-direction: column;
+}
 
-  .video-content {
-    max-width: 1200px;
-    margin: 0 auto;
-  }
+.video-layout {
+  display: flex;
+  gap: 20px;
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
+  overflow: hidden;
+}
+
+.video-section {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .video-card {
-  margin-bottom: 20px;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+
+  // el-card 内部 body 参与 flex 收缩，避免撑高整页
+  :deep(.el-card__body) {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
 
   .video-wrapper {
     width: 100%;
+    height: 420px;
+    flex-shrink: 0;
     background: #000;
     border-radius: 8px;
     overflow: hidden;
-    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 
     .video-element {
-      width: 100%;
-      height: auto;
-      max-height: 600px;
+      height: 100%;
+      width: auto;
+      max-width: 100%;
       display: block;
+      object-fit: contain;
     }
   }
 
   .video-info {
+    height: 72px;
+    flex-shrink: 0;
+    padding: 12px 0 0 0;
+    overflow: hidden;
+
     h2 {
       font-size: 24px;
       color: #303133;
-      margin-bottom: 15px;
+      margin-bottom: 8px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .video-meta {
@@ -298,14 +387,53 @@ onUnmounted(() => {
   }
 }
 
-.related-videos-card {
+.video-list-section {
+  width: 380px;
+  flex: 0 0 380px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.video-list-card {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+
+  // el-card 内部：header 固定，body 可滚动
+  :deep(.el-card__body) {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
   .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     font-size: 18px;
     font-weight: 500;
     color: #303133;
+
+    .video-count {
+      font-size: 14px;
+      font-weight: normal;
+      color: #909399;
+    }
   }
 
   .video-list {
+    flex: 1;
+    min-height: 0;
+    /* 始终预留滚动条空间，避免 Chrome 与 Edge 显示偏移 */
+    overflow-y: scroll;
+    scrollbar-gutter: stable;
+    padding: 0;
+    margin: 0;
+
     .video-item {
       display: flex;
       align-items: center;
@@ -328,46 +456,80 @@ onUnmounted(() => {
       }
 
       .video-index {
-        width: 40px;
-        height: 40px;
+        width: 32px;
+        height: 32px;
         display: flex;
         align-items: center;
         justify-content: center;
         background: #f0f0f0;
         border-radius: 50%;
         font-weight: 500;
+        font-size: 14px;
         color: #606266;
-        margin-right: 15px;
+        margin-right: 12px;
+        flex-shrink: 0;
+      }
+
+      &.active .video-index {
+        background: #409eff;
+        color: #fff;
       }
 
       .video-info-item {
         flex: 1;
+        min-width: 0;
 
         h4 {
-          font-size: 16px;
+          font-size: 15px;
           color: #303133;
-          margin-bottom: 8px;
+          margin-bottom: 6px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
 
         .video-meta-item {
           display: flex;
           align-items: center;
-          gap: 15px;
-          font-size: 14px;
+          gap: 10px;
+          font-size: 13px;
           color: #909399;
 
           .duration {
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 4px;
           }
         }
       }
 
       .video-action {
         color: #409eff;
-        font-size: 24px;
+        font-size: 20px;
+        margin-left: 10px;
+        flex-shrink: 0;
       }
+    }
+  }
+}
+
+// 滚动条样式
+.video-list {
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+
+    &:hover {
+      background: #a8a8a8;
     }
   }
 }
