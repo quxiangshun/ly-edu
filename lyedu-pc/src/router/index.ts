@@ -49,4 +49,14 @@ const router = createRouter({
   routes
 })
 
+// 视频播放页：禁止整页滚动，仅右侧列表可滚动
+const VIDEO_PAGE_CLASS = 'lyedu-video-page'
+router.afterEach((to, from) => {
+  if (to.name === 'VideoPlayer') {
+    document.body.classList.add(VIDEO_PAGE_CLASS)
+  } else if (from.name === 'VideoPlayer') {
+    document.body.classList.remove(VIDEO_PAGE_CLASS)
+  }
+})
+
 export default router
