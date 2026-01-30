@@ -4,6 +4,11 @@
   box-sizing: border-box;
 }
 
+html {
+  /* 避免 Chrome/Edge 滚动条导致的布局偏移 */
+  overflow-x: hidden;
+}
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
     'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
@@ -15,4 +20,13 @@ body {
 #app {
   width: 100%;
   min-height: 100vh;
+}
+
+/* 视频播放页：禁止整页滚动，仅右侧视频列表可滚动；统一 Chrome/Edge 表现 */
+body.lyedu-video-page,
+body.lyedu-video-page #app {
+  height: 100vh;
+  overflow: hidden;
+  /* 避免 Chrome 下子元素导致的偏移 */
+  position: relative;
 }
