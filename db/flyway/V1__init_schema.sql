@@ -1,8 +1,4 @@
--- LyEdu 数据库初始化脚本
-
-CREATE DATABASE IF NOT EXISTS `lyedu` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
-USE `lyedu`;
+-- Flyway V1: 初始化基础表结构（不包含 CREATE DATABASE）
 
 -- 用户表
 CREATE TABLE IF NOT EXISTS `ly_user` (
@@ -61,18 +57,14 @@ CREATE TABLE IF NOT EXISTS `ly_course` (
     `category_id` BIGINT DEFAULT NULL COMMENT '分类ID',
     `status` TINYINT DEFAULT 1 COMMENT '状态：0-下架，1-上架',
     `sort` INT DEFAULT 0 COMMENT '排序',
-    `is_required` TINYINT DEFAULT 0 COMMENT '是否必修：0-选修，1-必修',
-    `visibility` TINYINT DEFAULT 1 COMMENT '可见性：1-公开，0-私有',
-    `department_id` BIGINT DEFAULT NULL COMMENT '关联部门（私有时必填）',
     `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted` TINYINT DEFAULT 0 COMMENT '是否删除：0-未删除，1-已删除',
     PRIMARY KEY (`id`),
-    KEY `idx_category_id` (`category_id`),
-    KEY `idx_department_id` (`department_id`)
+    KEY `idx_category_id` (`category_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='课程表';
 
--- 课程章节表（课程详情依赖，缺表会导致 bad SQL grammar）
+-- 课程章节表
 CREATE TABLE IF NOT EXISTS `ly_course_chapter` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
     `course_id` BIGINT NOT NULL COMMENT '课程ID',
@@ -102,7 +94,7 @@ CREATE TABLE IF NOT EXISTS `ly_video` (
     KEY `idx_chapter_id` (`chapter_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='视频表';
 
--- 用户课程关联表
+-- 用户课程关联表（记录用户学习的课程）
 CREATE TABLE IF NOT EXISTS `ly_user_course` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
     `user_id` BIGINT NOT NULL COMMENT '用户ID',
@@ -125,7 +117,6 @@ CREATE TABLE IF NOT EXISTS `ly_user_video_progress` (
     `progress` INT DEFAULT 0 COMMENT '学习进度（秒）',
     `duration` INT DEFAULT 0 COMMENT '视频总时长（秒）',
     `is_finished` TINYINT DEFAULT 0 COMMENT '是否完成：0-未完成，1-已完成',
-    `last_play_ping_at` DATETIME NULL COMMENT '最近播放心跳时间',
     `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (`id`),
@@ -134,31 +125,3 @@ CREATE TABLE IF NOT EXISTS `ly_user_video_progress` (
     KEY `idx_video_id` (`video_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户视频学习进度表';
 
--- 课程附件表
-CREATE TABLE IF NOT EXISTS `ly_course_attachment` (
-    `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-    `course_id` BIGINT NOT NULL COMMENT '课程ID',
-    `name` VARCHAR(200) NOT NULL COMMENT '附件名称',
-    `type` VARCHAR(50) DEFAULT NULL COMMENT '附件类型/扩展名',
-    `file_url` VARCHAR(500) NOT NULL COMMENT '文件地址',
-    `sort` INT DEFAULT 0 COMMENT '排序',
-    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    `deleted` TINYINT DEFAULT 0 COMMENT '是否删除：0-未删除，1-已删除',
-    PRIMARY KEY (`id`),
-    KEY `idx_course_id` (`course_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='课程附件表';
-
--- 文件上传表（可选，API 上传依赖）
-CREATE TABLE IF NOT EXISTS `ly_file_upload` (
-    `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-    `file_id` VARCHAR(64) NOT NULL COMMENT '文件唯一ID',
-    `file_name` VARCHAR(255) DEFAULT NULL COMMENT '原始文件名',
-    `file_path` VARCHAR(500) NOT NULL COMMENT '存储路径',
-    `file_size` BIGINT DEFAULT 0 COMMENT '文件大小',
-    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `uk_file_id` (`file_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='文件上传表';
-
--- 初始化管理员账号由 Flyway V2__init_admin_user.sql 负责插入，避免重复数据

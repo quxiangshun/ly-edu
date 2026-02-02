@@ -9,6 +9,10 @@ export interface Course {
   status: number
   sort: number
   isRequired?: number
+  /** 可见性：1-公开，0-私有 */
+  visibility?: number
+  /** 关联部门（私有时必填） */
+  departmentId?: number
 }
 
 export interface PageResult<T> {
