@@ -20,9 +20,27 @@ export interface Video {
   sort: number
 }
 
+export interface ChapterItem {
+  id: number | null
+  title: string
+  sort: number
+  hours: Video[]
+}
+
+export interface CourseAttachment {
+  id: number
+  courseId: number
+  name: string
+  type?: string
+  fileUrl: string
+  sort: number
+}
+
 export interface CourseDetail {
   course: Course
   videos: Video[]
+  chapters?: ChapterItem[]
+  attachments?: CourseAttachment[]
 }
 
 export interface PageResult<T> {
