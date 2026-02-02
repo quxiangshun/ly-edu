@@ -13,7 +13,7 @@
         >
           <el-menu-item index="home">首页</el-menu-item>
           <el-menu-item index="courses">课程中心</el-menu-item>
-          <el-menu-item index="my">我的学习</el-menu-item>
+          <el-menu-item index="my" @click="$router.push('/my-learning')">我的学习</el-menu-item>
         </el-menu>
         <div class="header-right">
           <template v-if="!isLoggedIn">
@@ -46,6 +46,48 @@
           开始学习
         </el-button>
       </div>
+
+      <!-- 最近学习（登录后展示） -->
+      <div v-if="isLoggedIn && recentCourses.length > 0" class="section-block">
+        <div class="section-header">
+          <h3>最近学习</h3>
+          <el-button type="primary" link @click="router.push('/my-learning')">更多</el-button>
+        </div>
+        <el-row :gutter="20">
+          <el-col :span="6" v-for="course in recentCourses.slice(0, 4)" :key="'recent-' + course.id">
+            <el-card class="course-card" shadow="hover" @click="router.push(`/course/${course.id}`)">
+              <img :src="course.cover || 'https://via.placeholder.com/300x200'" class="course-img" :alt="course.title" />
+              <div class="course-info">
+                <h4>{{ course.title }}</h4>
+                <p>{{ course.description || '暂无描述' }}</p>
+                <el-button type="primary" size="small" @click.stop="router.push(`/course/${course.id}`)">继续学习</el-button>
+              </div>
+            </el-card>
+          </el-col>
+        </el-row>
+      </div>
+
+      <!-- 推荐课程 -->
+      <div class="section-block">
+        <div class="section-header">
+          <h3>推荐课程</h3>
+          <el-button type="primary" link @click="router.push('/courses')">更多</el-button>
+        </div>
+        <el-row :gutter="20" v-loading="recommendLoading">
+          <el-col :span="6" v-for="course in recommendedCourses" :key="course.id">
+            <el-card class="course-card" shadow="hover" @click="router.push(`/course/${course.id}`)">
+              <img :src="course.cover || 'https://via.placeholder.com/300x200'" class="course-img" :alt="course.title" />
+              <div class="course-info">
+                <h4>{{ course.title }}</h4>
+                <p>{{ course.description || '暂无描述' }}</p>
+                <el-button type="primary" size="small" @click.stop="handleStartLearn(course)">开始学习</el-button>
+              </div>
+            </el-card>
+          </el-col>
+          <el-empty v-if="!recommendLoading && recommendedCourses.length === 0" description="暂无推荐课程" />
+        </el-row>
+      </div>
+
       <div class="features">
         <el-row :gutter="20">
           <el-col :span="8">
@@ -92,33 +134,88 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { VideoCamera, Document, DataAnalysis, User } from '@element-plus/icons-vue'
+import type { Course } from '@/api/course'
+import { getRecommendedCourses } from '@/api/course'
+import { getWatchedCourses, joinCourse } from '@/api/learning'
+
+const router = useRouter()
 
 const activeMenu = ref('home')
 const token = ref<string | null>(null)
+const recommendedCourses = ref<Course[]>([])
+const recentCourses = ref<Course[]>([])
+const recommendLoading = ref(false)
 
 // 是否已登录（根据本地 token 判断）
 const isLoggedIn = computed(() => !!token.value)
 
+const loadRecommended = async () => {
+  recommendLoading.value = true
+  try {
+    const list = await getRecommendedCourses(6)
+    recommendedCourses.value = list ?? []
+  } catch {
+    recommendedCourses.value = []
+  } finally {
+    recommendLoading.value = false
+  }
+}
+
+const loadRecentCourses = async () => {
+  if (!token.value) return
+  try {
+    const list = await getWatchedCourses()
+    recentCourses.value = list ?? []
+  } catch {
+    recentCourses.value = []
+  }
+}
+
+const handleStartLearn = async (course: Course) => {
+  if (!token.value) {
+    ElMessage.warning('请先登录')
+    router.push({ path: '/login', query: { redirect: `/course/${course.id}` } })
+    return
+  }
+  try {
+    await joinCourse(course.id)
+    ElMessage.success('已加入课程')
+    router.push(`/course/${course.id}`)
+  } catch {
+    ElMessage.error('加入课程失败')
+  }
+}
+
 // 从localStorage读取token并监听变化
 onMounted(() => {
   token.value = localStorage.getItem('token')
+  loadRecommended()
+  loadRecentCourses()
   // 监听storage事件，当其他页面修改token时也能更新
   window.addEventListener('storage', () => {
     token.value = localStorage.getItem('token')
+    loadRecentCourses()
   })
   // 定期检查token（处理同页面内修改的情况）
   setInterval(() => {
     const currentToken = localStorage.getItem('token')
     if (currentToken !== token.value) {
       token.value = currentToken
+      loadRecentCourses()
     }
   }, 500)
 })
 
 const handleMenuSelect = (index: string) => {
-  if (index === 'courses') {
-    window.location.href = '/courses'
+  if (index === 'home') {
+    router.push('/')
+  } else if (index === 'courses') {
+    router.push('/courses')
+  } else if (index === 'my') {
+    router.push('/my-learning')
   }
 }
 
@@ -191,6 +288,47 @@ const handleLogout = () => {
       margin-bottom: 30px;
       opacity: 0.9;
     }
+  }
+
+  .section-block {
+    max-width: 1200px;
+    margin: 0 auto 40px;
+    padding: 0 20px;
+  }
+  .section-block .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  .section-block .section-header h3 {
+    font-size: 20px;
+    color: #303133;
+    margin: 0;
+  }
+  .section-block .course-card {
+    cursor: pointer;
+  }
+  .section-block .course-card .course-img {
+    width: 100%;
+    height: 140px;
+    object-fit: cover;
+    display: block;
+  }
+  .section-block .course-info h4 {
+    font-size: 16px;
+    margin: 0 0 8px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .section-block .course-info p {
+    font-size: 13px;
+    color: #909399;
+    margin: 0 0 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .features {

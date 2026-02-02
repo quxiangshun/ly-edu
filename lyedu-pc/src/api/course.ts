@@ -8,6 +8,8 @@ export interface Course {
   categoryId?: number
   status: number
   sort: number
+  /** 是否必修：0-选修，1-必修 */
+  isRequired?: number
 }
 
 export interface Video {
@@ -20,9 +22,34 @@ export interface Video {
   sort: number
 }
 
+export interface ChapterItem {
+  id: number | null
+  title: string
+  sort: number
+  hours: Video[]
+}
+
+export interface LearnRecordItem {
+  progress: number
+  duration: number
+}
+
+export interface CourseAttachment {
+  id: number
+  courseId: number
+  name: string
+  type?: string
+  fileUrl: string
+  sort: number
+}
+
 export interface CourseDetail {
   course: Course
   videos: Video[]
+  chapters?: ChapterItem[]
+  learnRecord?: Record<string, LearnRecordItem>
+  courseProgress?: number
+  attachments?: CourseAttachment[]
 }
 
 export interface PageResult<T> {
