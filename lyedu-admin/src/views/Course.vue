@@ -35,9 +35,11 @@
           </template>
         </el-table-column>
         <el-table-column prop="sort" label="排序" width="100" />
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" width="280" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link @click="handleEdit(row)">编辑</el-button>
+            <el-button type="primary" link @click="handleChapters(row)">章节</el-button>
+            <el-button type="primary" link @click="handleAttachments(row)">附件</el-button>
             <el-button type="danger" link @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
@@ -54,6 +56,79 @@
         style="margin-top: 20px; justify-content: flex-end"
       />
     </el-card>
+
+    <!-- 章节管理对话框 -->
+    <el-dialog v-model="chapterDialogVisible" :title="`章节管理 - ${currentCourse?.title || ''}`" width="640px">
+      <el-button type="primary" size="small" @click="handleAddChapter" style="margin-bottom: 12px">新增章节</el-button>
+      <el-table :data="chapterList" border size="small">
+        <el-table-column prop="id" label="ID" width="70" />
+        <el-table-column prop="title" label="章节名称" />
+        <el-table-column prop="sort" label="排序" width="80" />
+        <el-table-column label="操作" width="140">
+          <template #default="{ row }">
+            <el-button type="primary" link size="small" @click="handleEditChapter(row)">编辑</el-button>
+            <el-button type="danger" link size="small" @click="handleDeleteChapter(row)">删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <template #footer>
+        <el-button @click="chapterDialogVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
+    <el-dialog v-model="chapterFormVisible" :title="chapterFormId ? '编辑章节' : '新增章节'" width="400px">
+      <el-form :model="chapterForm" label-width="80px">
+        <el-form-item label="章节名称">
+          <el-input v-model="chapterForm.title" placeholder="章节名称（1-64字）" maxlength="64" show-word-limit />
+        </el-form-item>
+        <el-form-item label="排序">
+          <el-input-number v-model="chapterForm.sort" :min="0" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="chapterFormVisible = false">取消</el-button>
+        <el-button type="primary" @click="submitChapter">确定</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 附件管理对话框 -->
+    <el-dialog v-model="attachmentDialogVisible" :title="`附件管理 - ${currentCourse?.title || ''}`" width="720px">
+      <el-button type="primary" size="small" @click="handleAddAttachment" style="margin-bottom: 12px">新增附件</el-button>
+      <el-table :data="attachmentList" border size="small">
+        <el-table-column prop="id" label="ID" width="70" />
+        <el-table-column prop="name" label="附件名称" />
+        <el-table-column prop="type" label="类型" width="80" />
+        <el-table-column prop="fileUrl" label="文件地址" min-width="180" show-overflow-tooltip />
+        <el-table-column prop="sort" label="排序" width="70" />
+        <el-table-column label="操作" width="80">
+          <template #default="{ row }">
+            <el-button type="danger" link size="small" @click="handleDeleteAttachment(row)">删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <template #footer>
+        <el-button @click="attachmentDialogVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
+    <el-dialog v-model="attachmentFormVisible" title="新增附件" width="440px">
+      <el-form :model="attachmentForm" label-width="90px">
+        <el-form-item label="附件名称">
+          <el-input v-model="attachmentForm.name" placeholder="附件名称" />
+        </el-form-item>
+        <el-form-item label="类型/扩展名">
+          <el-input v-model="attachmentForm.type" placeholder="如 txt、pdf（可选）" />
+        </el-form-item>
+        <el-form-item label="文件地址">
+          <el-input v-model="attachmentForm.fileUrl" placeholder="文件 URL" />
+        </el-form-item>
+        <el-form-item label="排序">
+          <el-input-number v-model="attachmentForm.sort" :min="0" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="attachmentFormVisible = false">取消</el-button>
+        <el-button type="primary" @click="submitAttachment">确定</el-button>
+      </template>
+    </el-dialog>
 
     <!-- 新增/编辑对话框 -->
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="600px">
@@ -73,6 +148,12 @@
             <el-radio :label="0">下架</el-radio>
           </el-radio-group>
         </el-form-item>
+        <el-form-item label="必修/选修" prop="isRequired">
+          <el-radio-group v-model="form.isRequired">
+            <el-radio :label="0">选修</el-radio>
+            <el-radio :label="1">必修</el-radio>
+          </el-radio-group>
+        </el-form-item>
         <el-form-item label="排序" prop="sort">
           <el-input-number v-model="form.sort" :min="0" />
         </el-form-item>
@@ -90,8 +171,31 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import { getCoursePage, createCourse, updateCourse, deleteCourse, type Course } from '@/api/course'
+import {
+  getChaptersByCourseId,
+  createChapter,
+  updateChapter,
+  deleteChapter,
+  type Chapter
+} from '@/api/chapter'
+import {
+  getAttachmentsByCourseId,
+  createAttachment,
+  deleteAttachment,
+  type CourseAttachment
+} from '@/api/courseAttachment'
 
 const loading = ref(false)
+const currentCourse = ref<Course | null>(null)
+const chapterDialogVisible = ref(false)
+const chapterList = ref<Chapter[]>([])
+const chapterFormVisible = ref(false)
+const chapterFormId = ref<number | null>(null)
+const chapterForm = reactive({ title: '', sort: 0 })
+const attachmentDialogVisible = ref(false)
+const attachmentList = ref<CourseAttachment[]>([])
+const attachmentFormVisible = ref(false)
+const attachmentForm = reactive({ name: '', type: '', fileUrl: '', sort: 0 })
 const courseList = ref<Course[]>([])
 const formRef = ref<FormInstance>()
 const dialogVisible = ref(false)
@@ -113,7 +217,8 @@ const form = reactive<Partial<Course>>({
   cover: '',
   description: '',
   status: 1,
-  sort: 0
+  sort: 0,
+  isRequired: 0
 })
 
 const rules: FormRules = {
@@ -155,7 +260,8 @@ const handleAdd = () => {
     cover: '',
     description: '',
     status: 1,
-    sort: 0
+    sort: 0,
+    isRequired: 0
   })
   dialogVisible.value = true
 }
@@ -177,6 +283,118 @@ const handleDelete = async (row: Course) => {
     loadData()
   } catch (e) {
     // 用户取消或删除失败
+  }
+}
+
+const handleChapters = async (row: Course) => {
+  currentCourse.value = row
+  chapterDialogVisible.value = true
+  try {
+    const list = await getChaptersByCourseId(row.id)
+    chapterList.value = Array.isArray(list) ? list : []
+  } catch (e) {
+    ElMessage.error('加载章节失败')
+    chapterList.value = []
+  }
+}
+
+const handleAddChapter = () => {
+  chapterFormId.value = null
+  chapterForm.title = ''
+  chapterForm.sort = chapterList.value.length
+  chapterFormVisible.value = true
+}
+
+const handleEditChapter = (row: Chapter) => {
+  chapterFormId.value = row.id
+  chapterForm.title = row.title
+  chapterForm.sort = row.sort
+  chapterFormVisible.value = true
+}
+
+const handleDeleteChapter = async (row: Chapter) => {
+  try {
+    await ElMessageBox.confirm('确定删除该章节？', '提示', { type: 'warning' })
+    await deleteChapter(row.id)
+    ElMessage.success('删除成功')
+    if (currentCourse.value) chapterList.value = await getChaptersByCourseId(currentCourse.value.id)
+  } catch (e) {}
+}
+
+const submitChapter = async () => {
+  if (!currentCourse.value) return
+  if (!chapterForm.title?.trim()) {
+    ElMessage.warning('请输入章节名称')
+    return
+  }
+  try {
+    if (chapterFormId.value) {
+      await updateChapter(chapterFormId.value, { title: chapterForm.title.trim(), sort: chapterForm.sort })
+      ElMessage.success('更新成功')
+    } else {
+      await createChapter({ courseId: currentCourse.value.id, title: chapterForm.title.trim(), sort: chapterForm.sort })
+      ElMessage.success('新增成功')
+    }
+    chapterFormVisible.value = false
+    const list = await getChaptersByCourseId(currentCourse.value.id)
+    chapterList.value = Array.isArray(list) ? list : []
+  } catch (e) {
+    ElMessage.error(chapterFormId.value ? '更新失败' : '新增失败')
+  }
+}
+
+const handleAttachments = async (row: Course) => {
+  currentCourse.value = row
+  attachmentDialogVisible.value = true
+  try {
+    const list = await getAttachmentsByCourseId(row.id)
+    attachmentList.value = Array.isArray(list) ? list : []
+  } catch (e) {
+    ElMessage.error('加载附件失败')
+    attachmentList.value = []
+  }
+}
+
+const handleAddAttachment = () => {
+  attachmentForm.name = ''
+  attachmentForm.type = ''
+  attachmentForm.fileUrl = ''
+  attachmentForm.sort = attachmentList.value.length
+  attachmentFormVisible.value = true
+}
+
+const handleDeleteAttachment = async (row: CourseAttachment) => {
+  try {
+    await ElMessageBox.confirm('确定删除该附件？', '提示', { type: 'warning' })
+    await deleteAttachment(row.id)
+    ElMessage.success('删除成功')
+    if (currentCourse.value) {
+      const list = await getAttachmentsByCourseId(currentCourse.value.id)
+      attachmentList.value = Array.isArray(list) ? list : []
+    }
+  } catch (e) {}
+}
+
+const submitAttachment = async () => {
+  if (!currentCourse.value) return
+  if (!attachmentForm.name?.trim() || !attachmentForm.fileUrl?.trim()) {
+    ElMessage.warning('请填写附件名称和文件地址')
+    return
+  }
+  try {
+    await createAttachment({
+      courseId: currentCourse.value.id,
+      name: attachmentForm.name.trim(),
+      type: attachmentForm.type?.trim() || undefined,
+      fileUrl: attachmentForm.fileUrl.trim(),
+      sort: attachmentForm.sort
+    })
+    ElMessage.success('新增成功')
+    attachmentFormVisible.value = false
+    const list = await getAttachmentsByCourseId(currentCourse.value.id)
+    attachmentList.value = Array.isArray(list) ? list : []
+  } catch (e) {
+    ElMessage.error('新增失败')
   }
 }
 

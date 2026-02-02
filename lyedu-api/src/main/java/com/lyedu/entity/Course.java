@@ -41,4 +41,9 @@ public class Course extends BaseEntity {
      * 排序
      */
     private Integer sort;
+
+    /**
+     * 是否必修（0-选修，1-必修）
+     */
+    private Integer isRequired;
 }
