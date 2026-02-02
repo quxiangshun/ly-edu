@@ -20,7 +20,8 @@ public class FlywayConfig {
     public Flyway flyway(DataSource dataSource) {
         return Flyway.configure()
                 .dataSource(dataSource)
-                .locations("classpath:db/migration")
+                // 优先 classpath，备用仓库根 db/flyway（防止仅部署 Java 时缺迁移）
+                .locations("classpath:db/migration", "filesystem:../db/flyway")
                 .baselineOnMigrate(true)
                 .baselineVersion(MigrationVersion.fromVersion("1"))
                 .load();

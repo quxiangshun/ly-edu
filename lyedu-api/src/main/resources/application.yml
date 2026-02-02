@@ -29,7 +29,8 @@ spring:
 
   flyway:
     enabled: true
-    locations: classpath:db/migration
+    # 优先 classpath，备用仓库根 db/flyway（与 FlywayConfig 一致）
+    locations: classpath:db/migration,filesystem:../db/flyway
     baseline-on-migrate: true
     baseline-version: 1
 

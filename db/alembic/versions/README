@@ -1,0 +1,14 @@
+Alembic 迁移版本（与 Flyway 一一对应）：
+v1 -> v2 -> v3 -> v4 -> v5 -> v6 -> v7 -> v8 -> v9 -> v10 -> v11 -> v12_course_visibility
+- v1: V1__init_schema.sql
+- v2: V2__init_admin_user.sql
+- v3: V3__init_test_data.sql
+- v4: V4__create_file_upload_table.sql
+- v5: V5__fix_video_titles.sql
+- v6: V6__ensure_user_video_progress_table.sql
+- v7: V7__add_last_play_ping_at.sql
+- v8: V8__create_course_attachment.sql
+- v9: V9__add_course_is_required.sql
+- v10: V10__ensure_course_chapter_and_attachment.sql
+- v11: V11__ensure_user_course_table.sql
+- v12_course_visibility: V12__add_course_visibility_and_department.sql
