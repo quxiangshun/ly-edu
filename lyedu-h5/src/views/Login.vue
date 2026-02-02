@@ -4,8 +4,8 @@
     
     <div class="login-content">
       <div class="logo">
-        <h1>LyEdu</h1>
-        <p>企业培训平台</p>
+        <img src="/icon-192.png" alt="LyEdu" class="login-logo" />
+        <h1 class="login-title">LyEdu <span class="login-subtitle">企业培训平台</span></h1>
       </div>
 
       <van-form @submit="handleLogin">
@@ -102,15 +102,26 @@ const handleLogin = async () => {
     text-align: center;
     margin-bottom: 40px;
 
-    h1 {
-      font-size: 36px;
-      color: #667eea;
-      margin-bottom: 10px;
+    .login-logo {
+      width: 72px;
+      height: 72px;
+      margin-bottom: 12px;
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
     }
 
-    p {
+    .login-title {
+      font-size: 28px;
+      color: #667eea;
+      margin: 0;
+      font-weight: 600;
+    }
+
+    .login-subtitle {
+      font-size: 16px;
       color: #969799;
-      font-size: 14px;
+      font-weight: normal;
     }
   }
 
