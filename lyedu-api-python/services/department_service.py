@@ -27,9 +27,26 @@ def list_all() -> List[dict]:
     return [_row_to_dept(r) for r in rows]
 
 
+def _build_tree(dept_list: List[dict], parent_id: int) -> List[dict]:
+    """递归构建多级树：parent_id 为 0 或 None 表示根级"""
+    result = []
+    for d in dept_list:
+        pid = d.get("parentId")
+        if (pid is None or pid == 0) and (parent_id == 0 or parent_id is None):
+            result.append(d)
+        elif pid == parent_id:
+            result.append(d)
+    for node in result:
+        kids = _build_tree(dept_list, node["id"])
+        node["children"] = kids if kids else None
+    result.sort(key=lambda x: (x.get("sort", 0), x.get("id", 0)))
+    return result
+
+
 def list_tree() -> List[dict]:
-    """部门树/列表：返回全部部门（扁平），便于前端表格展示；与 Java 语义兼容"""
-    return list_all()
+    """部门多级树：返回树形结构，每节点含 children（子部门列表）"""
+    flat = list_all()
+    return _build_tree(flat, 0)
 
 
 def get_by_id(dept_id: int) -> Optional[dict]:
