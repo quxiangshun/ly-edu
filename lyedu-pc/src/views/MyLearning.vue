@@ -47,17 +47,24 @@
         </template>
         <template v-else>
           <el-row :gutter="20" v-loading="loading">
-            <el-col :span="6" v-for="course in courseList" :key="course.id">
-              <el-card class="course-card" shadow="hover" @click="$router.push(`/course/${course.id}`)">
+            <el-col :span="6" v-for="item in courseList" :key="item.course.id">
+              <el-card class="course-card" shadow="hover" @click="$router.push(`/course/${item.course.id}`)">
                 <img
-                  :src="course.cover || 'https://via.placeholder.com/300x200'"
+                  :src="item.course.cover || 'https://via.placeholder.com/300x200'"
                   class="course-image"
-                  :alt="course.title"
+                  :alt="item.course.title"
                 />
                 <div class="course-info">
-                  <h3>{{ course.title }}</h3>
-                  <p>{{ course.description || '暂无描述' }}</p>
-                  <el-button type="primary" size="small" @click.stop="$router.push(`/course/${course.id}`)">继续学习</el-button>
+                  <h3>{{ item.course.title }}</h3>
+                  <p>{{ item.course.description || '暂无描述' }}</p>
+                  <div class="progress-row">
+                    <el-progress
+                      :percentage="item.progress ?? 0"
+                      :stroke-width="8"
+                      :show-text="true"
+                    />
+                  </div>
+                  <el-button type="primary" size="small" @click.stop="$router.push(`/course/${item.course.id}`)">继续学习</el-button>
                 </div>
               </el-card>
             </el-col>
@@ -199,6 +206,10 @@ onMounted(() => {
     }
 
     .course-info {
+      .progress-row {
+        margin: 10px 0;
+      }
+
       h3 {
         font-size: 16px;
         margin-bottom: 10px;
