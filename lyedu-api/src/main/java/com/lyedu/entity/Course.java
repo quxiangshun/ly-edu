@@ -46,4 +46,14 @@ public class Course extends BaseEntity {
      * 是否必修（0-选修，1-必修）
      */
     private Integer isRequired;
+
+    /**
+     * 可见性（1-公开，0-私有）
+     */
+    private Integer visibility;
+
+    /**
+     * 关联部门（私有时必填，仅本部门及子部门用户可见）
+     */
+    private Long departmentId;
 }

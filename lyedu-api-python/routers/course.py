@@ -27,20 +27,27 @@ def page(
     size: int = 10,
     keyword: Optional[str] = None,
     categoryId: Optional[int] = None,
+    authorization: Optional[str] = Header(None, alias="Authorization"),
 ):
+    user_id = _user_id(authorization)
     return success(
-        course_service.page(page_num=page, size=size, keyword=keyword, category_id=categoryId)
+        course_service.page(page_num=page, size=size, keyword=keyword, category_id=categoryId, user_id=user_id)
     )
 
 
 @router.get("/recommended")
-def recommended(limit: int = 6):
-    return success(course_service.list_recommended(limit=limit))
+def recommended(
+    limit: int = 6,
+    authorization: Optional[str] = Header(None, alias="Authorization"),
+):
+    user_id = _user_id(authorization)
+    return success(course_service.list_recommended(limit=limit, user_id=user_id))
 
 
 @router.get("/{id}")
 def get_by_id(id: int, authorization: Optional[str] = Header(None, alias="Authorization")):
-    course = course_service.get_detail_by_id(id)
+    user_id = _user_id(authorization)
+    course = course_service.get_detail_by_id(id, user_id=user_id)
     if not course:
         return error(404, "课程不存在")
     chapters = chapter_service.list_by_course_id(id)
@@ -103,13 +110,15 @@ def create(body: CourseRequest):
         status=body.status or 1,
         sort=body.sort or 0,
         is_required=body.is_required or 0,
+        visibility=body.visibility if body.visibility is not None else 1,
+        department_id=body.department_id,
     )
     return success()
 
 
 @router.put("/{id}")
 def update(id: int, body: CourseRequest):
-    course = course_service.get_detail_by_id(id)
+    course = course_service.get_by_id_ignore_visibility(id)
     if not course:
         return error(404, "课程不存在")
     course_service.update(
@@ -121,6 +130,8 @@ def update(id: int, body: CourseRequest):
         status=body.status,
         sort=body.sort,
         is_required=body.is_required,
+        visibility=body.visibility if body.visibility is not None else 1,
+        department_id=body.department_id,
     )
     return success()
 
