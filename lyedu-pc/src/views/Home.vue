@@ -3,6 +3,7 @@
     <el-header class="header">
       <div class="header-content">
         <div class="logo">
+          <img src="/icon-192.png" alt="" class="header-logo-icon" />
           <h1>LyEdu</h1>
         </div>
         <el-menu
@@ -249,10 +250,23 @@ const handleLogout = () => {
     padding: 0 20px;
 
     .logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+
+      .header-logo-icon {
+        width: 28px;
+        height: 28px;
+        display: block;
+        object-fit: contain;
+      }
+
       h1 {
         color: #667eea;
         font-size: 24px;
         margin: 0;
+        line-height: 28px;
       }
     }
 
