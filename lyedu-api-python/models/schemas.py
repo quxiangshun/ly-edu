@@ -14,6 +14,8 @@ class CourseRequest(BaseModel):
     status: Optional[int] = 1
     sort: Optional[int] = 0
     is_required: Optional[int] = 0
+    visibility: Optional[int] = 1  # 1-公开，0-私有
+    department_id: Optional[int] = None  # 私有时必填
 
 
 class ChapterRequest(BaseModel):
