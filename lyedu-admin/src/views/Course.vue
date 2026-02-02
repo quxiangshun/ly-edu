@@ -27,6 +27,18 @@
             <span v-else>-</span>
           </template>
         </el-table-column>
+        <el-table-column prop="visibility" label="可见性" width="90">
+          <template #default="{ row }">
+            <el-tag :type="row.visibility === 1 ? 'success' : 'warning'">
+              {{ row.visibility === 1 ? '公开' : '私有' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="departmentId" label="关联部门" width="120">
+          <template #default="{ row }">
+            {{ row.visibility === 0 && row.departmentId ? departmentNameMap.get(row.departmentId) ?? row.departmentId : '-' }}
+          </template>
+        </el-table-column>
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
             <el-tag :type="row.status === 1 ? 'success' : 'info'">
@@ -154,6 +166,24 @@
             <el-radio :label="1">必修</el-radio>
           </el-radio-group>
         </el-form-item>
+        <el-form-item label="可见性" prop="visibility">
+          <el-radio-group v-model="form.visibility">
+            <el-radio :label="1">公开</el-radio>
+            <el-radio :label="0">私有</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item v-if="form.visibility === 0" label="关联部门" prop="departmentId">
+          <el-tree-select
+            v-model="form.departmentId"
+            :data="departmentTreeOptions"
+            :props="{ label: 'name', value: 'id' }"
+            placeholder="请选择关联部门"
+            clearable
+            check-strictly
+            default-expand-all
+            style="width: 100%"
+          />
+        </el-form-item>
         <el-form-item label="排序" prop="sort">
           <el-input-number v-model="form.sort" :min="0" />
         </el-form-item>
@@ -167,10 +197,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import { getCoursePage, createCourse, updateCourse, deleteCourse, type Course } from '@/api/course'
+import { getDepartmentTree, type Department } from '@/api/department'
 import {
   getChaptersByCourseId,
   createChapter,
@@ -185,8 +216,30 @@ import {
   type CourseAttachment
 } from '@/api/courseAttachment'
 
+function flattenDepartments(list: Department[]): Department[] {
+  const out: Department[] = []
+  function walk(items: Department[]) {
+    for (const d of items) {
+      out.push(d)
+      if (d.children?.length) walk(d.children)
+    }
+  }
+  walk(list)
+  return out
+}
+
 const loading = ref(false)
+const departmentTree = ref<Department[]>([])
 const currentCourse = ref<Course | null>(null)
+
+const departmentTreeOptions = computed(() => departmentTree.value || [])
+
+const departmentNameMap = computed(() => {
+  const flat = flattenDepartments(departmentTree.value || [])
+  const map = new Map<number, string>()
+  flat.forEach((d) => map.set(d.id, d.name))
+  return map
+})
 const chapterDialogVisible = ref(false)
 const chapterList = ref<Chapter[]>([])
 const chapterFormVisible = ref(false)
@@ -218,11 +271,25 @@ const form = reactive<Partial<Course>>({
   description: '',
   status: 1,
   sort: 0,
-  isRequired: 0
+  isRequired: 0,
+  visibility: 1,
+  departmentId: undefined
 })
 
 const rules: FormRules = {
-  title: [{ required: true, message: '请输入课程名称', trigger: 'blur' }]
+  title: [{ required: true, message: '请输入课程名称', trigger: 'blur' }],
+  departmentId: [
+    {
+      validator: (_rule: unknown, value: unknown, callback: (err?: Error) => void) => {
+        if (form.visibility === 0 && (value === undefined || value === null || value === '')) {
+          callback(new Error('私有课程请选择关联部门'))
+        } else {
+          callback()
+        }
+      },
+      trigger: 'change'
+    }
+  ]
 }
 
 const loadData = async () => {
@@ -261,7 +328,9 @@ const handleAdd = () => {
     description: '',
     status: 1,
     sort: 0,
-    isRequired: 0
+    isRequired: 0,
+    visibility: 1,
+    departmentId: undefined
   })
   dialogVisible.value = true
 }
@@ -424,7 +493,12 @@ const handlePageChange = () => {
   loadData()
 }
 
-onMounted(() => {
+onMounted(async () => {
+  try {
+    departmentTree.value = await getDepartmentTree()
+  } catch {
+    departmentTree.value = []
+  }
   loadData()
 })
 </script>

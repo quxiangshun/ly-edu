@@ -98,3 +98,22 @@ def update(
 
 def delete(dept_id: int) -> int:
     return db.execute("UPDATE ly_department SET deleted = 1 WHERE id = %s", (dept_id,))
+
+
+def get_department_id_and_descendant_ids(department_id: int) -> List[int]:
+    """获取指定部门及其所有子部门ID（含自身），用于课程可见性过滤"""
+    if department_id is None:
+        return []
+    flat = list_all()
+    result = [department_id]
+    _collect_descendant_ids(flat, department_id, result)
+    return result
+
+
+def _collect_descendant_ids(dept_list: List[dict], parent_id: int, result: List[int]) -> None:
+    for d in dept_list:
+        pid = d.get("parentId") if d.get("parentId") is not None else d.get("parent_id")
+        if pid == parent_id:
+            kid_id = d["id"]
+            result.append(kid_id)
+            _collect_descendant_ids(dept_list, kid_id, result)

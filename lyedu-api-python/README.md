@@ -32,11 +32,16 @@ python -m venv venv
 pip install -r requirements.txt
 ```
 
-4. 启动服务：
+4. 启动服务（**启动时会自动执行 Alembic 迁移**）：
 
 ```bash
 uvicorn main:app --host 0.0.0.0 --port 9700
 ```
+
+或使用启动脚本（先执行 `alembic upgrade head`，再启动 uvicorn）：
+
+- **PowerShell：** `.\start.ps1`
+- **Linux/macOS：** `./start.sh`（需 `chmod +x start.sh`）
 
 ### pip 使用国内镜像源
 
@@ -76,17 +81,13 @@ pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
 - `JWT_SECRET`、`JWT_EXPIRE`
 - 可选：`HOST`（默认 0.0.0.0）、`PORT`（默认 9700）
 
-启动：
+启动（应用启动时会自动执行 Alembic 迁移；迁移失败仅打日志，不阻塞服务）：
 
 ```bash
 uvicorn main:app --host 0.0.0.0 --port 9700
 ```
 
-或：
-
-```bash
-python main.py
-```
+或使用脚本：`.\start.ps1`（PowerShell）/ `./start.sh`（Linux/macOS）。
 
 接口文档：<http://localhost:9700/docs>
 
