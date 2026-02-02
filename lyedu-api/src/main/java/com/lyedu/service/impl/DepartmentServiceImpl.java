@@ -78,19 +78,20 @@ public class DepartmentServiceImpl implements DepartmentService {
     }
 
     /**
-     * 构建树形结构
+     * 构建多级树形结构：递归挂载子部门到 children
      */
     private List<Department> buildTree(List<Department> all, Long parentId) {
-        return all.stream()
+        List<Department> list = all.stream()
                 .filter(dept -> {
                     Long pid = dept.getParentId();
                     return (pid == null && parentId == 0L) || (pid != null && pid.equals(parentId));
                 })
-                .peek(dept -> {
-                    List<Department> children = buildTree(all, dept.getId());
-                    // 这里可以添加 children 属性，但为了简化，暂时不添加
-                })
                 .collect(Collectors.toList());
+        for (Department dept : list) {
+            List<Department> children = buildTree(all, dept.getId());
+            dept.setChildren(children.isEmpty() ? null : children);
+        }
+        return list;
     }
 
     private static class DepartmentRowMapper implements RowMapper<Department> {
