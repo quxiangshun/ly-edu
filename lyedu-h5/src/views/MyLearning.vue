@@ -16,15 +16,18 @@
       </div>
       <div v-else class="course-list">
         <van-card
-          v-for="course in courseList"
-          :key="course.id"
-          :title="course.title"
-          :desc="course.description || '暂无描述'"
-          :thumb="course.cover || 'https://via.placeholder.com/200x120'"
-          @click="$router.push(`/course/${course.id}`)"
+          v-for="item in courseList"
+          :key="item.course.id"
+          :title="item.course.title"
+          :desc="item.course.description || '暂无描述'"
+          :thumb="item.course.cover || 'https://via.placeholder.com/200x120'"
+          @click="$router.push(`/course/${item.course.id}`)"
         >
           <template #tags>
-            <van-tag type="primary">继续学习</van-tag>
+            <div class="progress-wrap">
+              <van-progress :percentage="item.progress ?? 0" :stroke-width="6" />
+              <van-tag type="primary" style="margin-top: 6px">继续学习</van-tag>
+            </div>
           </template>
         </van-card>
       </div>
@@ -34,12 +37,11 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import type { Course } from '@/api/course'
-import { getWatchedCourses } from '@/api/learning'
+import { getWatchedCourses, type WatchedCourseItem } from '@/api/learning'
 
 const token = ref<string | null>(localStorage.getItem('token'))
 const loading = ref(false)
-const courseList = ref<Course[]>([])
+const courseList = ref<WatchedCourseItem[]>([])
 
 const loadWatchedCourses = async () => {
   if (!token.value) return
@@ -85,6 +87,10 @@ onMounted(() => {
 
 .course-list {
   padding: 0 16px;
+
+  .progress-wrap {
+    margin-top: 8px;
+  }
 
   :deep(.van-card) {
     margin-bottom: 12px;
