@@ -1,7 +1,7 @@
 <template>
   <div class="home-container">
     <van-nav-bar title="LyEdu" fixed placeholder />
-    
+
     <div class="banner">
       <h2>欢迎来到 LyEdu</h2>
       <p>随时随地，轻松学习</p>
@@ -9,32 +9,57 @@
 
     <div class="features">
       <van-grid :column-num="3" :border="false">
-        <van-grid-item icon="video-o" text="视频学习" />
-        <van-grid-item icon="orders-o" text="我的课程" />
+        <van-grid-item icon="video-o" text="视频学习" @click="$router.push('/courses')" />
+        <van-grid-item icon="orders-o" text="我的课程" @click="$router.push('/my-learning')" />
         <van-grid-item icon="chart-trending-o" text="学习统计" />
       </van-grid>
     </div>
 
+    <!-- 最近学习（登录后展示） -->
+    <div v-if="token && recentCourses.length > 0" class="courses-section">
+      <div class="section-header">
+        <h3>最近学习</h3>
+        <span @click="$router.push('/my-learning')">更多 ></span>
+      </div>
+      <van-card
+        v-for="course in recentCourses.slice(0, 4)"
+        :key="'recent-' + course.id"
+        :title="course.title"
+        :desc="course.description || '暂无描述'"
+        :thumb="course.cover || 'https://via.placeholder.com/200x120'"
+        @click="$router.push(`/course/${course.id}`)"
+      >
+        <template #tags>
+          <van-tag type="primary">继续学习</van-tag>
+        </template>
+      </van-card>
+    </div>
+
+    <!-- 推荐课程 -->
     <div class="courses-section">
       <div class="section-header">
         <h3>推荐课程</h3>
         <span @click="$router.push('/courses')">更多 ></span>
       </div>
-      <van-card
-        v-for="i in 3"
-        :key="i"
-        :title="`示例课程 ${i}`"
-        :desc="'这是课程描述信息'"
-        thumb="https://via.placeholder.com/200x120"
-        @click="handleCourseClick(i)"
-      >
-        <template #tags>
-          <van-tag type="primary">热门</van-tag>
-        </template>
-        <template #footer>
-          <van-button size="mini" type="primary">开始学习</van-button>
-        </template>
-      </van-card>
+      <van-loading v-if="recommendLoading" class="loading" size="24px">加载中...</van-loading>
+      <template v-else>
+        <van-card
+          v-for="course in recommendedCourses"
+          :key="course.id"
+          :title="course.title"
+          :desc="course.description || '暂无描述'"
+          :thumb="course.cover || 'https://via.placeholder.com/200x120'"
+          @click="handleCourseClick(course)"
+        >
+          <template #tags>
+            <van-tag type="primary">热门</van-tag>
+          </template>
+          <template #footer>
+            <van-button size="mini" type="primary" @click.stop="handleCourseClick(course)">开始学习</van-button>
+          </template>
+        </van-card>
+        <van-empty v-if="recommendedCourses.length === 0" description="暂无推荐课程" />
+      </template>
     </div>
 
     <van-tabbar v-model="active" fixed placeholder>
@@ -46,16 +71,62 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { showSuccessToast, showFailToast } from 'vant'
+import type { Course } from '@/api/course'
+import { getRecommendedCourses } from '@/api/course'
+import { getWatchedCourses, joinCourse } from '@/api/learning'
 
 const router = useRouter()
 const active = ref(0)
+const token = ref<string | null>(localStorage.getItem('token'))
+const recommendedCourses = ref<Course[]>([])
+const recentCourses = ref<Course[]>([])
+const recommendLoading = ref(false)
 
-const handleCourseClick = (id: number) => {
-  // TODO: 跳转到课程详情页
-  console.log('点击课程:', id)
+const loadRecommended = async () => {
+  recommendLoading.value = true
+  try {
+    const list = await getRecommendedCourses(6)
+    recommendedCourses.value = list ?? []
+  } catch {
+    recommendedCourses.value = []
+  } finally {
+    recommendLoading.value = false
+  }
 }
+
+const loadRecentCourses = async () => {
+  if (!token.value) return
+  try {
+    const list = await getWatchedCourses()
+    recentCourses.value = list ?? []
+  } catch {
+    recentCourses.value = []
+  }
+}
+
+const handleCourseClick = async (course: Course) => {
+  if (!token.value) {
+    showFailToast('请先登录')
+    router.push({ path: '/login', query: { redirect: `/course/${course.id}` } })
+    return
+  }
+  try {
+    await joinCourse(course.id)
+    showSuccessToast('已加入课程')
+    router.push(`/course/${course.id}`)
+  } catch {
+    showFailToast('加入课程失败')
+  }
+}
+
+onMounted(() => {
+  token.value = localStorage.getItem('token')
+  loadRecommended()
+  loadRecentCourses()
+})
 </script>
 
 <style scoped lang="scss">
@@ -90,22 +161,25 @@ const handleCourseClick = (id: number) => {
 .courses-section {
   background: white;
   padding: 20px;
-
-  .section-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 15px;
-
-    h3 {
-      font-size: 18px;
-      color: #323233;
-    }
-
-    span {
-      font-size: 14px;
-      color: #969799;
-    }
-  }
+  margin-bottom: 20px;
+}
+.courses-section .loading {
+  display: flex;
+  justify-content: center;
+  padding: 24px 0;
+}
+.courses-section .section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+.courses-section .section-header h3 {
+  font-size: 18px;
+  color: #323233;
+}
+.courses-section .section-header span {
+  font-size: 14px;
+  color: #969799;
 }
 </style>

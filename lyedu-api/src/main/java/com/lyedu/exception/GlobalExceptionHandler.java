@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -17,6 +18,15 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    /**
+     * 缺少必填请求头（如 Authorization）时返回 401
+     */
+    @ExceptionHandler(MissingRequestHeaderException.class)
+    public Result<Void> handleMissingRequestHeader(MissingRequestHeaderException e) {
+        log.warn("缺少请求头: {}", e.getHeaderName());
+        return Result.error(ResultCode.UNAUTHORIZED);
+    }
 
     /**
      * 处理参数校验异常
