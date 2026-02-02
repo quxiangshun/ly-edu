@@ -1,6 +1,13 @@
 <template>
   <div class="home-container">
-    <van-nav-bar title="LyEdu" fixed placeholder />
+    <van-nav-bar fixed placeholder>
+      <template #title>
+        <span class="nav-title">
+          <img src="/icon-192.png" alt="" class="nav-logo-icon" />
+          LyEdu
+        </span>
+      </template>
+    </van-nav-bar>
 
     <div class="banner">
       <h2>欢迎来到 LyEdu</h2>
@@ -181,5 +188,18 @@ onMounted(() => {
 .courses-section .section-header span {
   font-size: 14px;
   color: #969799;
+}
+
+.nav-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 24px;
+}
+.nav-logo-icon {
+  width: 24px;
+  height: 24px;
+  display: block;
+  object-fit: contain;
 }
 </style>
