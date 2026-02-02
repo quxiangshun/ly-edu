@@ -21,7 +21,7 @@
             <div class="course-meta-row">
               <van-circle
                 v-if="courseDetail.courseProgress != null"
-                :rate="courseDetail.courseProgress"
+                :rate="(courseDetail.courseProgress ?? 0) / 100"
                 :size="72"
                 :stroke-width="6"
                 layer-color="#ebedf0"
