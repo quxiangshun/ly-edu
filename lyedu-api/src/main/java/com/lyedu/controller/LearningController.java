@@ -20,7 +20,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 学习相关控制器
@@ -125,11 +127,11 @@ public class LearningController {
     }
 
     /**
-     * 我的学习：仅返回看过的课程（有视频观看记录的课程）
+     * 我的学习：仅返回看过的课程（有视频观看记录的课程），带课程进度 0-100
      * 无 Token 返回 401；其它异常不抛 500，返回空列表。
      */
     @GetMapping("/watched-courses")
-    public Result<List<Course>> watchedCourses(@RequestHeader(value = "Authorization", required = false) String authorization) {
+    public Result<List<WatchedCourseItem>> watchedCourses(@RequestHeader(value = "Authorization", required = false) String authorization) {
         Long userId = getUserIdFromAuth(authorization);
         if (userId == null) {
             return Result.error(ResultCode.UNAUTHORIZED);
@@ -140,14 +142,39 @@ public class LearningController {
                 return Result.success(Collections.emptyList());
             }
             Set<Long> seen = new LinkedHashSet<>(courseIds);
-            List<Course> list = new ArrayList<>();
+            List<WatchedCourseItem> list = new ArrayList<>();
             for (Long courseId : seen) {
                 if (courseId == null || courseId <= 0) continue;
                 try {
                     Course c = courseService.getDetailById(courseId);
-                    if (c != null) {
-                        list.add(c);
+                    if (c == null) continue;
+                    List<Video> videos = videoService.listByCourseId(courseId);
+                    int progressPercent = 0;
+                    if (!videos.isEmpty()) {
+                        List<Long> videoIds = videos.stream().map(Video::getId).collect(Collectors.toList());
+                        Map<Long, UserVideoProgress> progressMap = userVideoProgressService.getProgressMap(userId, videoIds);
+                        long totalDuration = 0;
+                        long finishedDuration = 0;
+                        for (Video v : videos) {
+                            int d = v.getDuration() != null ? v.getDuration() : 0;
+                            if (d <= 0) continue;
+                            totalDuration += d;
+                            UserVideoProgress p = progressMap.get(v.getId());
+                            if (p != null && p.getProgress() != null) {
+                                finishedDuration += Math.min(p.getProgress(), d);
+                            }
+                        }
+                        progressPercent = (totalDuration > 0) ? (int) (finishedDuration * 100 / totalDuration) : 0;
+                        progressPercent = Math.min(100, progressPercent);
                     }
+                    UserCourse uc = userCourseService.getByUserAndCourse(userId, courseId);
+                    if (uc != null && uc.getProgress() != null && uc.getProgress() > progressPercent) {
+                        progressPercent = uc.getProgress();
+                    }
+                    WatchedCourseItem item = new WatchedCourseItem();
+                    item.setCourse(c);
+                    item.setProgress(progressPercent);
+                    list.add(item);
                 } catch (Exception ignored) {
                 }
             }
@@ -173,5 +200,12 @@ public class LearningController {
     @Data
     public static class PlayPingRequest {
         private Long videoId;
+    }
+
+    /** 我的学习列表项：课程 + 学习进度 0-100 */
+    @Data
+    public static class WatchedCourseItem {
+        private Course course;
+        private Integer progress;
     }
 }

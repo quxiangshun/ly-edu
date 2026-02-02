@@ -40,8 +40,8 @@
 
       <el-table :data="videoList" v-loading="loading" border>
         <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="courseId" label="课程ID" width="100" />
-        <el-table-column prop="chapterId" label="章节ID" width="100" />
+        <el-table-column prop="courseName" label="课程名称" min-width="120" show-overflow-tooltip />
+        <el-table-column prop="chapterName" label="章节名称" min-width="120" show-overflow-tooltip />
         <el-table-column prop="title" label="视频标题" />
         <el-table-column prop="url" label="视频地址" min-width="200">
           <template #default="{ row }">
@@ -291,9 +291,12 @@ const handleAdd = () => {
 const handleEdit = (row: Video) => {
   isEdit.value = true
   dialogTitle.value = '编辑视频'
+  const courseId = row.courseId ?? (row as any).course_id
+  const chapterId = row.chapterId ?? (row as any).chapter_id ?? 0
   Object.assign(form, {
     ...row,
-    chapterId: row.chapterId ?? 0
+    courseId,
+    chapterId: chapterId ?? 0
   })
   dialogVisible.value = true
 }
