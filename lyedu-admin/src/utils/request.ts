@@ -51,7 +51,8 @@ service.interceptors.response.use(
       // 401: 未授权，跳转到登录页
       if (res.code === 401) {
         localStorage.removeItem('token')
-        window.location.href = '/login'
+        const redirect = encodeURIComponent(location.pathname + location.search)
+        window.location.href = redirect ? `/login?redirect=${redirect}` : '/login'
       }
       
       return Promise.reject(new Error(res.message || '请求失败'))

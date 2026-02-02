@@ -8,7 +8,7 @@
         <el-menu mode="horizontal" default-active="courses" class="header-menu">
           <el-menu-item index="home" @click="$router.push('/')">首页</el-menu-item>
           <el-menu-item index="courses" @click="$router.push('/courses')">课程中心</el-menu-item>
-          <el-menu-item index="my">我的学习</el-menu-item>
+          <el-menu-item index="my" @click="$router.push('/my-learning')">我的学习</el-menu-item>
         </el-menu>
       </div>
     </el-header>
@@ -90,6 +90,7 @@ import { ElMessage } from 'element-plus'
 import { Clock, VideoPlay } from '@element-plus/icons-vue'
 import { getVideoById } from '@/api/video'
 import { getCourseById } from '@/api/course'
+import { updateVideoProgress, playPing } from '@/api/learning'
 import type { Video } from '@/api/course'
 
 const router = useRouter()
@@ -100,17 +101,22 @@ const relatedVideos = ref<Video[]>([])
 const videoPlayer = ref<HTMLVideoElement | null>(null)
 const videoListRef = ref<HTMLElement | null>(null)
 const currentTime = ref(0)
+const lastProgressSaveAt = ref(0)
+const hasSavedMinProgress = ref(false)
+const PROGRESS_SAVE_INTERVAL_MS = 5000
+const MIN_PROGRESS_TO_COUNT_AS_WATCHED = 1
+const PLAY_PING_INTERVAL_MS = 30000
+const playPingTimerRef = ref<ReturnType<typeof setInterval> | null>(null)
 
 const videoUrl = computed(() => {
   if (!video.value?.url) return ''
   let url = video.value.url
-  
-  // 如果URL是相对路径，转换为完整URL
+  const apiBase = window.location.origin + '/api'
+  // 相对路径转为完整URL（适配Docker/多环境）
   if (url.startsWith('/')) {
-    url = `http://localhost:9700${url}`
+    url = apiBase + url
   } else if (!url.startsWith('http://') && !url.startsWith('https://')) {
-    // 否则添加基础URL
-    url = `http://localhost:9700/api${url}`
+    url = apiBase + (url.startsWith('/') ? url : '/' + url)
   }
   
   // 对URL中的中文字符进行编码
@@ -135,6 +141,10 @@ const loadVideo = async () => {
     return
   }
 
+  if (playPingTimerRef.value) {
+    clearInterval(playPingTimerRef.value)
+    playPingTimerRef.value = null
+  }
   loading.value = true
   try {
     const res = await getVideoById(videoId)
@@ -148,6 +158,16 @@ const loadVideo = async () => {
       // 等待DOM更新后，滚动到当前视频项
       await nextTick()
       scrollToCurrentVideo()
+    }
+    // 防挂机：播放过程中心跳上报（每 30 秒）
+    if (localStorage.getItem('token')) {
+      playPingTimerRef.value = setInterval(() => {
+        const el = videoPlayer.value
+        const v = video.value
+        if (el && !el.paused && el.currentTime >= MIN_PROGRESS_TO_COUNT_AS_WATCHED && v) {
+          playPing(v.id).catch(() => {})
+        }
+      }, PLAY_PING_INTERVAL_MS)
     }
   } catch (e: any) {
     ElMessage.error(e?.response?.data?.message || '加载视频失败')
@@ -188,10 +208,30 @@ const handleLoadedMetadata = () => {
   }
 }
 
+const saveProgressIfNeeded = () => {
+  const token = localStorage.getItem('token')
+  if (!token || !video.value || !videoPlayer.value) return
+  const progress = Math.floor(videoPlayer.value.currentTime)
+  const duration = Math.floor(videoPlayer.value.duration)
+  if (!Number.isFinite(progress) || !Number.isFinite(duration) || duration <= 0) return
+  if (progress < MIN_PROGRESS_TO_COUNT_AS_WATCHED) return
+  const now = Date.now()
+  // 至少播放 1 秒时立即保存一次，这样「我的学习」能马上出现
+  if (!hasSavedMinProgress.value) {
+    hasSavedMinProgress.value = true
+    lastProgressSaveAt.value = now
+    updateVideoProgress(video.value.id, progress, duration).catch(() => {})
+    return
+  }
+  if (now - lastProgressSaveAt.value < PROGRESS_SAVE_INTERVAL_MS) return
+  lastProgressSaveAt.value = now
+  updateVideoProgress(video.value.id, progress, duration).catch(() => {})
+}
+
 const handleTimeUpdate = () => {
   if (videoPlayer.value) {
     currentTime.value = videoPlayer.value.currentTime
-    // TODO: 可以在这里保存播放进度
+    saveProgressIfNeeded()
   }
 }
 
@@ -218,6 +258,7 @@ const handleVideoEnded = async () => {
 // 监听路由参数变化，当视频ID变化时重新加载
 watch(() => route.params.id, (newId, oldId) => {
   if (newId && newId !== oldId) {
+    hasSavedMinProgress.value = false
     loadVideo()
   }
 }, { immediate: false })
@@ -235,6 +276,17 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  if (playPingTimerRef.value) {
+    clearInterval(playPingTimerRef.value)
+    playPingTimerRef.value = null
+  }
+  if (videoPlayer.value && video.value && localStorage.getItem('token')) {
+    const progress = Math.floor(videoPlayer.value.currentTime)
+    const duration = Math.floor(videoPlayer.value.duration)
+    if (Number.isFinite(progress) && Number.isFinite(duration) && progress >= MIN_PROGRESS_TO_COUNT_AS_WATCHED) {
+      updateVideoProgress(video.value.id, progress, duration).catch(() => {})
+    }
+  }
   if (videoPlayer.value) {
     videoPlayer.value.pause()
     videoPlayer.value = null

@@ -3,6 +3,13 @@
 
 $ErrorActionPreference = "Stop"
 
+# 使用 UTF-8 输出，避免 Gradle/Java 中文警告乱码
+$OutputEncoding = [System.Text.Encoding]::UTF8
+if ([Console]::OutputEncoding.CodePage -ne 65001) {
+  [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+  chcp 65001 | Out-Null
+}
+
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "LyEdu API - Gradle Build" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan

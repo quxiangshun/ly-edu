@@ -65,7 +65,7 @@ const handleStartLearn = async (course: Course) => {
   const token = localStorage.getItem('token')
   if (!token) {
     showFailToast('请先登录')
-    router.push('/login')
+    router.push({ path: '/login', query: { redirect: `/course/${course.id}` } })
     return
   }
   
