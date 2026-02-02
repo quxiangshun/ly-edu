@@ -23,7 +23,8 @@ const routes: RouteRecordRaw[] = [
     name: 'Courses',
     component: () => import('@/views/Courses.vue'),
     meta: {
-      title: '课程中心'
+      title: '课程中心',
+      requiresAuth: true
     }
   },
   {
@@ -31,7 +32,8 @@ const routes: RouteRecordRaw[] = [
     name: 'CourseDetail',
     component: () => import('@/views/CourseDetail.vue'),
     meta: {
-      title: '课程详情'
+      title: '课程详情',
+      requiresAuth: true
     }
   },
   {
@@ -39,7 +41,8 @@ const routes: RouteRecordRaw[] = [
     name: 'VideoPlayer',
     component: () => import('@/views/VideoPlayer.vue'),
     meta: {
-      title: '视频播放'
+      title: '视频播放',
+      requiresAuth: true
     }
   },
   {
@@ -50,12 +53,32 @@ const routes: RouteRecordRaw[] = [
       title: '我的',
       requiresAuth: true
     }
+  },
+  {
+    path: '/my-learning',
+    name: 'MyLearning',
+    component: () => import('@/views/MyLearning.vue'),
+    meta: {
+      title: '我的学习',
+      requiresAuth: true
+    }
   }
 ]
 
 const router = createRouter({
   history: createWebHistory(),
   routes
+})
+
+// 课程中心、我的学习、我的等需登录
+router.beforeEach((to, _from, next) => {
+  const requiresAuth = to.matched.some(r => r.meta?.requiresAuth)
+  const token = localStorage.getItem('token')
+  if (requiresAuth && !token) {
+    next({ path: '/login', query: { redirect: to.fullPath } })
+  } else {
+    next()
+  }
 })
 
 export default router

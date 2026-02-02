@@ -8,6 +8,7 @@ export interface Course {
   categoryId?: number
   status: number
   sort: number
+  isRequired?: number
 }
 
 export interface PageResult<T> {

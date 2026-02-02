@@ -40,3 +40,7 @@ export const getCoursePage = (params: { page: number; size: number; keyword?: st
 export const getCourseById = (id: number) => {
   return request.get<CourseDetail>(`/course/${id}`)
 }
+
+export const getRecommendedCourses = (limit: number = 6) => {
+  return request.get<Course[]>('/course/recommended', { params: { limit } })
+}

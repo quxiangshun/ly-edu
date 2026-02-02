@@ -16,8 +16,8 @@ public class LyEduApplication {
         System.out.println("""
                 
                 ========================================
-                LyEdu API 启动成功！
-                访问地址: http://localhost:9700/api
+                LyEdu API started.
+                Base URL: http://localhost:9700/api
                 ========================================
                 """);
     }

@@ -47,11 +47,12 @@
 
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { showSuccessToast } from 'vant'
 import request from '@/utils/request'
 
 const router = useRouter()
+const route = useRoute()
 const loading = ref(false)
 const showPassword = ref(false)
 
@@ -65,9 +66,21 @@ const handleLogin = async () => {
   try {
     const res = await request.post('/auth/login', loginForm)
     localStorage.setItem('token', res.token)
-    localStorage.setItem('user', JSON.stringify(res.userInfo))
+    localStorage.setItem('user', JSON.stringify(res.userInfo ?? {}))
     showSuccessToast('登录成功')
-    router.push('/')
+    let redirect = (route.query.redirect as string) || '/'
+    if (redirect === '/login') redirect = '/'
+    const target = redirect.startsWith('/') ? redirect : `/${redirect}`
+    const url = window.location.origin + target
+    try {
+      await router.push(target)
+    } catch {
+      window.location.href = url
+      return
+    }
+    setTimeout(() => {
+      if (location.pathname === '/login') window.location.href = url
+    }, 100)
   } catch (e) {
     // 错误提示由 axios 拦截器处理
   } finally {
