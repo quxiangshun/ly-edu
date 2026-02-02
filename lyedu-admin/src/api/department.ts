@@ -6,6 +6,7 @@ export interface Department {
   parentId: number
   sort: number
   status: number
+  children?: Department[]
 }
 
 export const getDepartmentTree = () => {
