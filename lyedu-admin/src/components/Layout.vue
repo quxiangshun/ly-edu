@@ -2,8 +2,9 @@
   <el-container class="layout-container">
     <el-aside :width="isCollapse ? '64px' : '200px'" class="aside">
       <div class="logo">
+        <img v-if="!isCollapse" src="/icon-192.png" alt="LyEdu" class="logo-icon" />
+        <img v-else src="/icon-192.png" alt="LyEdu" class="logo-icon collapse" />
         <h2 v-if="!isCollapse">LyEdu</h2>
-        <span v-else>L</span>
       </div>
       <el-menu
         :default-active="activeMenu"
@@ -124,13 +125,28 @@ const handleLogout = () => {
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: 8px;
     color: #fff;
     font-size: 20px;
     font-weight: bold;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 
+    .logo-icon {
+      width: 32px;
+      height: 32px;
+      flex-shrink: 0;
+      display: block;
+      object-fit: contain;
+
+      &.collapse {
+        width: 28px;
+        height: 28px;
+      }
+    }
+
     h2 {
       margin: 0;
+      line-height: 32px;
       color: #409eff;
     }
   }

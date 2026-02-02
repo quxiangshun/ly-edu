@@ -84,9 +84,12 @@ public class UserVideoProgressServiceImpl implements UserVideoProgressService {
     @Override
     public List<Long> listWatchedCourseIds(Long userId) {
         // 仅统计「真正看过」的课程：至少有一条视频进度 > 0 秒（排除仅点开未播放）
-        String sql = "SELECT DISTINCT v.`course_id` FROM `ly_user_video_progress` uvp " +
+        // 使用子查询 + GROUP BY 避免 MySQL DISTINCT 与 ORDER BY 非 SELECT 列不兼容
+        String sql = "SELECT t.`course_id` FROM (" +
+                "SELECT v.`course_id`, MAX(uvp.`update_time`) AS last_time FROM `ly_user_video_progress` uvp " +
                 "JOIN `ly_video` v ON uvp.`video_id` = v.`id` WHERE uvp.`user_id` = ? AND uvp.`progress` > 0 " +
-                "ORDER BY uvp.`update_time` DESC";
+                "GROUP BY v.`course_id`" +
+                ") t ORDER BY t.`last_time` DESC";
         return jdbcTemplate.query(sql, (rs, rowNum) -> rs.getLong("course_id"), userId);
     }
 
