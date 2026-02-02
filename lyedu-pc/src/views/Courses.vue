@@ -12,7 +12,7 @@
         >
           <el-menu-item index="home" @click="$router.push('/')">首页</el-menu-item>
           <el-menu-item index="courses">课程中心</el-menu-item>
-          <el-menu-item index="my">我的学习</el-menu-item>
+          <el-menu-item index="my" @click="$router.push('/my-learning')">我的学习</el-menu-item>
         </el-menu>
       </div>
     </el-header>
@@ -84,7 +84,7 @@ const handleStartLearn = async (course: Course) => {
   const token = localStorage.getItem('token')
   if (!token) {
     ElMessage.warning('请先登录')
-    router.push('/login')
+    router.push({ path: '/login', query: { redirect: `/course/${course.id}` } })
     return
   }
   

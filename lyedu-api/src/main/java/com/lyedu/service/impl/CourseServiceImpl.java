@@ -46,7 +46,7 @@ public class CourseServiceImpl implements CourseService {
         Integer totalInt = jdbcTemplate.queryForObject(countSql, params.toArray(), Integer.class);
         Long total = totalInt != null ? totalInt.longValue() : 0L;
         
-        String querySql = "SELECT id, CONVERT(title USING utf8mb4) as title, cover, CONVERT(description USING utf8mb4) as description, category_id, status, sort, create_time, update_time, deleted " +
+        String querySql = "SELECT id, CONVERT(title USING utf8mb4) as title, cover, CONVERT(description USING utf8mb4) as description, category_id, status, sort, is_required, create_time, update_time, deleted " +
                 "FROM ly_course " + whereClause + " ORDER BY sort ASC, id DESC LIMIT ? OFFSET ?";
         List<Object> queryParams = new java.util.ArrayList<>(params);
         queryParams.add(size);
@@ -59,7 +59,7 @@ public class CourseServiceImpl implements CourseService {
 
     @Override
     public Course getDetailById(Long id) {
-        String sql = "SELECT id, CONVERT(title USING utf8mb4) as title, cover, CONVERT(description USING utf8mb4) as description, category_id, status, sort, create_time, update_time, deleted " +
+        String sql = "SELECT id, CONVERT(title USING utf8mb4) as title, cover, CONVERT(description USING utf8mb4) as description, category_id, status, sort, is_required, create_time, update_time, deleted " +
                 "FROM ly_course WHERE id = ? AND deleted = 0";
         List<Course> list = jdbcTemplate.query(sql, new Object[]{id}, new CourseRowMapper());
         return list.isEmpty() ? null : list.get(0);
@@ -67,19 +67,20 @@ public class CourseServiceImpl implements CourseService {
 
     @Override
     public void save(Course course) {
-        String sql = "INSERT INTO ly_course (title, cover, description, category_id, status, sort) VALUES (?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO ly_course (title, cover, description, category_id, status, sort, is_required) VALUES (?, ?, ?, ?, ?, ?, ?)";
         jdbcTemplate.update(sql,
                 course.getTitle(),
                 course.getCover(),
                 course.getDescription(),
                 course.getCategoryId(),
                 course.getStatus() != null ? course.getStatus() : 1,
-                course.getSort() != null ? course.getSort() : 0);
+                course.getSort() != null ? course.getSort() : 0,
+                course.getIsRequired() != null ? course.getIsRequired() : 0);
     }
 
     @Override
     public void update(Course course) {
-        String sql = "UPDATE ly_course SET title = ?, cover = ?, description = ?, category_id = ?, status = ?, sort = ? WHERE id = ? AND deleted = 0";
+        String sql = "UPDATE ly_course SET title = ?, cover = ?, description = ?, category_id = ?, status = ?, sort = ?, is_required = ? WHERE id = ? AND deleted = 0";
         jdbcTemplate.update(sql,
                 course.getTitle(),
                 course.getCover(),
@@ -87,6 +88,7 @@ public class CourseServiceImpl implements CourseService {
                 course.getCategoryId(),
                 course.getStatus(),
                 course.getSort(),
+                course.getIsRequired() != null ? course.getIsRequired() : 0,
                 course.getId());
     }
 
@@ -98,7 +100,7 @@ public class CourseServiceImpl implements CourseService {
 
     @Override
     public List<Course> listRecommended(Integer limit) {
-        String sql = "SELECT id, CONVERT(title USING utf8mb4) as title, cover, CONVERT(description USING utf8mb4) as description, category_id, status, sort, create_time, update_time, deleted " +
+        String sql = "SELECT id, CONVERT(title USING utf8mb4) as title, cover, CONVERT(description USING utf8mb4) as description, category_id, status, sort, is_required, create_time, update_time, deleted " +
                 "FROM ly_course WHERE deleted = 0 AND status = 1 ORDER BY sort ASC, id DESC LIMIT ?";
         return jdbcTemplate.query(sql, new Object[]{limit}, new CourseRowMapper());
     }
@@ -117,6 +119,10 @@ public class CourseServiceImpl implements CourseService {
             }
             course.setStatus(rs.getInt("status"));
             course.setSort(rs.getInt("sort"));
+            try {
+                int ir = rs.getInt("is_required");
+                if (!rs.wasNull()) course.setIsRequired(ir);
+            } catch (SQLException ignored) { }
             return course;
         }
     }

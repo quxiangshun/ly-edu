@@ -44,7 +44,13 @@ service.interceptors.response.use(
       
       if (res.code === 401) {
         localStorage.removeItem('token')
-        window.location.href = '/login'
+        const path = location.pathname + location.search
+        if (path === '/login') {
+          window.location.href = '/login'
+        } else {
+          const redirect = encodeURIComponent(path)
+          window.location.href = `/login?redirect=${redirect}`
+        }
       }
       
       return Promise.reject(new Error(res.message || '请求失败'))

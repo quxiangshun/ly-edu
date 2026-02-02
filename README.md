@@ -90,7 +90,7 @@ docker-compose up -d
 
 **国内镜像源（推荐）**：如果你在国内访问 Docker Hub 不稳定，请先配置 `.env` 里的 `DOCKER_REGISTRY` / `NPM_REGISTRY`，项目已支持在构建阶段走国内源。
 
-**重要：** 如果仍遇到 JDK 25 镜像下载问题，请先查看 [JDK25_DOCKER_FIX.md](JDK25_DOCKER_FIX.md) 或 [QUICK_FIX_JDK25.md](QUICK_FIX_JDK25.md)
+**重要：** 如果仍遇到 JDK 25 镜像下载问题，请先查看 [JDK25_DOCKER_FIX.md](docs/JDK25_DOCKER_FIX.md) 或 [QUICK_FIX_JDK25.md](docs/QUICK_FIX_JDK25.md)
 
 #### 国内镜像源示例
 
@@ -136,6 +136,7 @@ lyedu/
 ├── lyedu-h5/           # H5 端前端
 ├── docker/             # Docker 配置文件
 ├── compose.yml         # Docker Compose 配置
+├── docs/               # 项目文档（Docker、Gradle、结构说明等）
 └── README.md           # 项目说明
 ```
 

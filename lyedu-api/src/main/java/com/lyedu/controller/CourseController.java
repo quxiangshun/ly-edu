@@ -5,14 +5,27 @@ import com.lyedu.common.CourseDetail;
 import com.lyedu.common.PageResult;
 import com.lyedu.common.Result;
 import com.lyedu.entity.Course;
+import com.lyedu.entity.CourseAttachment;
+import com.lyedu.entity.CourseChapter;
+import com.lyedu.entity.UserCourse;
+import com.lyedu.entity.UserVideoProgress;
 import com.lyedu.entity.Video;
+import com.lyedu.service.CourseAttachmentService;
+import com.lyedu.service.CourseChapterService;
 import com.lyedu.service.CourseService;
+import com.lyedu.service.UserCourseService;
+import com.lyedu.service.UserVideoProgressService;
 import com.lyedu.service.VideoService;
+import com.lyedu.util.JwtUtil;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 课程管理控制器
@@ -26,6 +39,18 @@ public class CourseController {
 
     private final CourseService courseService;
     private final VideoService videoService;
+    private final CourseChapterService courseChapterService;
+    private final CourseAttachmentService courseAttachmentService;
+    private final UserVideoProgressService userVideoProgressService;
+    private final UserCourseService userCourseService;
+    private final JwtUtil jwtUtil;
+
+    private Long getUserIdFromAuth(String authorization) {
+        if (authorization == null || authorization.isBlank()) return null;
+        String token = authorization.startsWith("Bearer ") ? authorization.substring(7) : authorization.trim();
+        if (token.isEmpty()) return null;
+        return jwtUtil.getUserIdFromToken(token);
+    }
 
     /**
      * 分页查询课程
@@ -41,23 +66,90 @@ public class CourseController {
     }
 
     /**
-     * 获取课程详情（包含视频列表）
+     * 获取课程详情（包含章节/课时、视频列表、学习记录与进度）
+     * 带 Authorization 时返回 learnRecord、courseProgress
      */
     @NoAuth
     @GetMapping("/{id}")
-    public Result<CourseDetail> getById(@PathVariable Long id) {
+    public Result<CourseDetail> getById(
+            @PathVariable Long id,
+            @RequestHeader(value = "Authorization", required = false) String authorization) {
         Course course = courseService.getDetailById(id);
         if (course == null) {
             return Result.error(404, "课程不存在");
         }
-        
-        // 获取课程相关的视频列表
+
+        List<CourseChapter> chapterList = courseChapterService.listByCourseId(id);
         List<Video> videos = videoService.listByCourseId(id);
-        
+
+        // 按章节组装：每章节下 hours = 该章节的课时（视频）
+        List<CourseDetail.ChapterItem> chapterItems = new ArrayList<>();
+        for (CourseChapter ch : chapterList) {
+            CourseDetail.ChapterItem item = new CourseDetail.ChapterItem();
+            item.setId(ch.getId());
+            item.setTitle(ch.getTitle());
+            item.setSort(ch.getSort());
+            List<Video> hours = videos.stream()
+                    .filter(v -> ch.getId().equals(v.getChapterId()))
+                    .collect(Collectors.toList());
+            item.setHours(hours);
+            chapterItems.add(item);
+        }
+        // 未分类课时（无 chapterId）
+        List<Video> uncategorized = videos.stream().filter(v -> v.getChapterId() == null).collect(Collectors.toList());
+        if (!uncategorized.isEmpty()) {
+            CourseDetail.ChapterItem uncat = new CourseDetail.ChapterItem();
+            uncat.setId(null);
+            uncat.setTitle("未分类");
+            uncat.setSort(Integer.MAX_VALUE);
+            uncat.setHours(uncategorized);
+            chapterItems.add(uncat);
+        }
+
+        List<CourseAttachment> attachments = courseAttachmentService.listByCourseId(id);
+
         CourseDetail detail = new CourseDetail();
         detail.setCourse(course);
         detail.setVideos(videos);
-        
+        detail.setChapters(chapterItems);
+        detail.setAttachments(attachments);
+
+        Long userId = getUserIdFromAuth(authorization);
+        if (userId != null && !videos.isEmpty()) {
+            List<Long> videoIds = videos.stream().map(Video::getId).collect(Collectors.toList());
+            Map<Long, UserVideoProgress> progressMap = userVideoProgressService.getProgressMap(userId, videoIds);
+            Map<Long, CourseDetail.LearnRecordItem> learnRecord = new HashMap<>();
+            for (Map.Entry<Long, UserVideoProgress> e : progressMap.entrySet()) {
+                UserVideoProgress p = e.getValue();
+                CourseDetail.LearnRecordItem lr = new CourseDetail.LearnRecordItem();
+                lr.setProgress(p.getProgress());
+                lr.setDuration(p.getDuration());
+                learnRecord.put(e.getKey(), lr);
+            }
+            detail.setLearnRecord(learnRecord);
+
+            long totalDuration = 0;
+            long finishedDuration = 0;
+            for (Video v : videos) {
+                int d = v.getDuration() != null ? v.getDuration() : 0;
+                if (d <= 0) continue;
+                totalDuration += d;
+                UserVideoProgress p = progressMap.get(v.getId());
+                if (p != null && p.getProgress() != null) {
+                    finishedDuration += Math.min(p.getProgress(), d);
+                }
+            }
+            int courseProgressPercent = (totalDuration > 0)
+                    ? (int) (finishedDuration * 100 / totalDuration)
+                    : 0;
+            detail.setCourseProgress(Math.min(100, courseProgressPercent));
+
+            UserCourse uc = userCourseService.getByUserAndCourse(userId, id);
+            if (uc != null && uc.getProgress() != null && uc.getProgress() > courseProgressPercent) {
+                detail.setCourseProgress(uc.getProgress());
+            }
+        }
+
         return Result.success(detail);
     }
 
@@ -82,6 +174,7 @@ public class CourseController {
         course.setCategoryId(request.getCategoryId());
         course.setStatus(request.getStatus());
         course.setSort(request.getSort());
+        course.setIsRequired(request.getIsRequired());
         courseService.save(course);
         return Result.success();
     }
@@ -101,6 +194,7 @@ public class CourseController {
         course.setCategoryId(request.getCategoryId());
         course.setStatus(request.getStatus());
         course.setSort(request.getSort());
+        course.setIsRequired(request.getIsRequired());
         courseService.update(course);
         return Result.success();
     }
@@ -122,5 +216,7 @@ public class CourseController {
         private Long categoryId;
         private Integer status;
         private Integer sort;
+        /** 是否必修：0-选修，1-必修 */
+        private Integer isRequired;
     }
 }
