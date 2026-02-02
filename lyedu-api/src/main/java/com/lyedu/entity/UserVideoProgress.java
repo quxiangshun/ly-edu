@@ -51,4 +51,9 @@ public class UserVideoProgress {
      * 更新时间
      */
     private LocalDateTime updateTime;
+
+    /**
+     * 最近播放心跳时间（防挂机）
+     */
+    private LocalDateTime lastPlayPingAt;
 }

@@ -28,9 +28,8 @@
 
     <div class="menu-section">
       <van-cell-group inset>
-        <van-cell title="我的课程" is-link icon="orders-o" to="/courses" />
-        <van-cell title="学习记录" is-link icon="clock-o" />
-        <van-cell title="学习统计" is-link icon="chart-trending-o" />
+        <van-cell title="我的学习" is-link icon="video-o" to="/my-learning" />
+        <van-cell title="课程中心" is-link icon="orders-o" to="/courses" />
       </van-cell-group>
     </div>
 

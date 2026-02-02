@@ -52,13 +52,14 @@
 
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import { View, Hide } from '@element-plus/icons-vue'
 import { login, type LoginParams } from '@/api/user'
 
 const router = useRouter()
+const route = useRoute()
 const loginFormRef = ref<FormInstance>()
 const loading = ref(false)
 const showPassword = ref(false)
@@ -84,13 +85,28 @@ const handleLogin = async () => {
     await loginFormRef.value.validate()
     loading.value = true
     const res = await login(loginForm)
+    if (!res?.token) {
+      ElMessage.error('登录响应异常，请重试')
+      return
+    }
     localStorage.setItem('token', res.token)
     localStorage.setItem('user', JSON.stringify(res.userInfo ?? {}))
     ElMessage.success('登录成功')
-    // 强制刷新页面以确保Home组件重新检查登录状态
+    let redirect = (route.query.redirect as string) || '/'
+    if (redirect === '/login') redirect = '/'
+    const target = redirect.startsWith('/') ? redirect : `/${redirect}`
+    const url = window.location.origin + target
+    try {
+      await router.push(target)
+    } catch {
+      window.location.href = url
+      return
+    }
     setTimeout(() => {
-      window.location.href = '/'
-    }, 500)
+      if (location.pathname === '/login') {
+        window.location.href = url
+      }
+    }, 100)
   } catch (e) {
     // 校验或请求失败时，错误提示由 axios 拦截器或 UI 负责
   } finally {

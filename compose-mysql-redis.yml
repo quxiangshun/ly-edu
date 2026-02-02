@@ -1,0 +1,44 @@
+# 仅启动 MySQL + Redis，用于本地 Debug
+# 使用: docker compose -f compose-mysql-redis.yml up -d
+# 然后本地启动: API(9700) -> lyedu-admin(9900) / lyedu-pc(9800) / lyedu-h5(9801)
+# 连接: MySQL localhost:3306, Redis localhost:6379
+services:
+  mysql:
+    image: ${DOCKER_REGISTRY:-}mysql:8.0
+    container_name: lyedu-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: lyedu123456
+      MYSQL_DATABASE: lyedu
+      MYSQL_USER: lyedu
+      MYSQL_PASSWORD: lyedu123456
+      TZ: Asia/Shanghai
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    networks:
+      - lyedu-network
+    restart: unless-stopped
+
+  redis:
+    image: ${DOCKER_REGISTRY:-}redis:7-alpine
+    container_name: lyedu-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - lyedu-network
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+  redis_data:
+
+networks:
+  lyedu-network:
+    driver: bridge
