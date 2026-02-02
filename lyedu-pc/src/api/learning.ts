@@ -27,9 +27,14 @@ export const getVideoProgress = (videoId: number) => {
   return request.get(`/learning/video-progress/${videoId}`)
 }
 
-/** 我的学习：仅返回看过的课程 */
+/** 我的学习：仅返回看过的课程，带进度 0-100 */
+export interface WatchedCourseItem {
+  course: Course
+  progress: number
+}
+
 export const getWatchedCourses = () => {
-  return request.get<Course[]>('/learning/watched-courses')
+  return request.get<WatchedCourseItem[]>('/learning/watched-courses')
 }
 
 /** 播放心跳（防挂机）：播放过程中定时上报 */

@@ -27,30 +27,34 @@ public class VideoServiceImpl implements VideoService {
     public PageResult<Video> page(Integer page, Integer size, Long courseId, String keyword) {
         int offset = (page - 1) * size;
         
-        StringBuilder whereClause = new StringBuilder("WHERE deleted = 0");
+        StringBuilder whereClause = new StringBuilder("WHERE v.deleted = 0");
         List<Object> params = new java.util.ArrayList<>();
         
         if (courseId != null) {
-            whereClause.append(" AND course_id = ?");
+            whereClause.append(" AND v.course_id = ?");
             params.add(courseId);
         }
         
         if (keyword != null && !keyword.trim().isEmpty()) {
-            whereClause.append(" AND title LIKE ?");
+            whereClause.append(" AND v.title LIKE ?");
             params.add("%" + keyword + "%");
         }
         
-        String countSql = "SELECT COUNT(*) FROM ly_video " + whereClause.toString();
+        String countSql = "SELECT COUNT(*) FROM ly_video v " + whereClause.toString();
         Integer totalInt = jdbcTemplate.queryForObject(countSql, params.toArray(), Integer.class);
         Long total = totalInt != null ? totalInt.longValue() : 0L;
         
-        String querySql = "SELECT id, course_id, chapter_id, CONVERT(title USING utf8mb4) as title, url, duration, sort, create_time, update_time, deleted " +
-                "FROM ly_video " + whereClause.toString() + " ORDER BY sort ASC, id DESC LIMIT ? OFFSET ?";
+        String querySql = "SELECT v.id, v.course_id, v.chapter_id, CONVERT(v.title USING utf8mb4) as title, v.url, v.duration, v.sort, " +
+                "CONVERT(c.title USING utf8mb4) as course_name, CONVERT(ch.title USING utf8mb4) as chapter_name " +
+                "FROM ly_video v " +
+                "LEFT JOIN ly_course c ON v.course_id = c.id AND c.deleted = 0 " +
+                "LEFT JOIN ly_course_chapter ch ON v.chapter_id = ch.id AND ch.deleted = 0 " +
+                whereClause.toString() + " ORDER BY v.sort ASC, v.id DESC LIMIT ? OFFSET ?";
         List<Object> queryParams = new java.util.ArrayList<>(params);
         queryParams.add(size);
         queryParams.add(offset);
         
-        List<Video> list = jdbcTemplate.query(querySql, queryParams.toArray(), new VideoRowMapper());
+        List<Video> list = jdbcTemplate.query(querySql, queryParams.toArray(), new VideoPageRowMapper());
         
         return new PageResult<Video>(list, total, (long) page, (long) size);
     }
@@ -108,6 +112,26 @@ public class VideoServiceImpl implements VideoService {
         jdbcTemplate.update(sql, id);
     }
 
+    private static class VideoPageRowMapper implements RowMapper<Video> {
+        @Override
+        public Video mapRow(ResultSet rs, int rowNum) throws SQLException {
+            Video video = new Video();
+            video.setId(rs.getLong("id"));
+            video.setCourseId(rs.getLong("course_id"));
+            Long chapterId = rs.getLong("chapter_id");
+            if (!rs.wasNull()) {
+                video.setChapterId(chapterId);
+            }
+            video.setCourseName(getStringUtf8(rs, "course_name"));
+            video.setChapterName(getStringUtf8(rs, "chapter_name"));
+            video.setTitle(getStringUtf8(rs, "title"));
+            video.setUrl(rs.getString("url"));
+            video.setDuration(rs.getInt("duration"));
+            video.setSort(rs.getInt("sort"));
+            return video;
+        }
+    }
+
     private static class VideoRowMapper implements RowMapper<Video> {
         @Override
         public Video mapRow(ResultSet rs, int rowNum) throws SQLException {
@@ -118,17 +142,19 @@ public class VideoServiceImpl implements VideoService {
             if (!rs.wasNull()) {
                 video.setChapterId(chapterId);
             }
-            // 使用 getBytes 然后转换为 UTF-8 字符串，确保编码正确
-            byte[] titleBytes = rs.getBytes("title");
-            if (titleBytes != null) {
-                video.setTitle(new String(titleBytes, java.nio.charset.StandardCharsets.UTF_8));
-            } else {
-                video.setTitle(rs.getString("title"));
-            }
+            video.setTitle(getStringUtf8(rs, "title"));
             video.setUrl(rs.getString("url"));
             video.setDuration(rs.getInt("duration"));
             video.setSort(rs.getInt("sort"));
             return video;
         }
+    }
+
+    private static String getStringUtf8(ResultSet rs, String columnLabel) throws SQLException {
+        byte[] bytes = rs.getBytes(columnLabel);
+        if (bytes != null) {
+            return new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
+        }
+        return rs.getString(columnLabel);
     }
 }
