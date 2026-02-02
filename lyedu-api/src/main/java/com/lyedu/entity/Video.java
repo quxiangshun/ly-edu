@@ -23,6 +23,16 @@ public class Video extends BaseEntity {
     private Long chapterId;
 
     /**
+     * 课程名称（展示用，非表字段）
+     */
+    private String courseName;
+
+    /**
+     * 章节名称（展示用，非表字段）
+     */
+    private String chapterName;
+
+    /**
      * 视频标题
      */
     private String title;

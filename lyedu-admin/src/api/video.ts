@@ -4,6 +4,8 @@ export interface Video {
   id: number
   courseId: number
   chapterId?: number
+  courseName?: string
+  chapterName?: string
   title: string
   url: string
   duration?: number
