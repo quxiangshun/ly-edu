@@ -1,27 +1,22 @@
 package com.lyedu.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.converter.HttpMessageConverter;
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.context.annotation.Primary;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
-
-import java.nio.charset.StandardCharsets;
-import java.util.List;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
- * Web 配置
+ * Web 配置（Jackson 3 + Spring Framework 7）
  *
  * @author LyEdu Team
  */
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
-    
+
     @Value("${lyedu.upload.path:./uploads}")
     private String uploadPath;
 
@@ -36,24 +31,11 @@ public class WebConfig implements WebMvcConfigurer {
     }
 
     @Bean
-    public ObjectMapper objectMapper() {
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.setPropertyNamingStrategy(PropertyNamingStrategies.LOWER_CAMEL_CASE);
-        return mapper;
+    @Primary
+    public JsonMapper jsonMapper() {
+        return JsonMapper.builderWithJackson2Defaults().build();
     }
 
-    @Override
-    public void configureMessageConverters(List<HttpMessageConverter<?>> converters) {
-        MappingJackson2HttpMessageConverter converter = new MappingJackson2HttpMessageConverter();
-        converter.setDefaultCharset(StandardCharsets.UTF_8);
-        converter.setObjectMapper(objectMapper());
-        // 确保支持的媒体类型包含 UTF-8
-        converter.setSupportedMediaTypes(java.util.Arrays.asList(
-                new org.springframework.http.MediaType(org.springframework.http.MediaType.APPLICATION_JSON, StandardCharsets.UTF_8)
-        ));
-        converters.add(0, converter); // 添加到最前面，优先使用
-    }
-    
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         // 配置上传文件的静态资源访问（图片等）

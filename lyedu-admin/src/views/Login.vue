@@ -52,13 +52,14 @@
 
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import { View, Hide } from '@element-plus/icons-vue'
 import { login, type LoginParams } from '@/api/user'
 
 const router = useRouter()
+const route = useRoute()
 const loginFormRef = ref<FormInstance>()
 const loading = ref(false)
 const showPassword = ref(false)
@@ -89,7 +90,19 @@ const handleLogin = async () => {
     localStorage.setItem('token', res.token)
     localStorage.setItem('user', JSON.stringify(res.userInfo))
     ElMessage.success('登录成功')
-    router.push('/dashboard')
+    let redirect = (route.query.redirect as string) || '/dashboard'
+    if (redirect === '/login') redirect = '/dashboard'
+    const target = redirect.startsWith('/') ? redirect : `/${redirect}`
+    const url = window.location.origin + target
+    try {
+      await router.push(target)
+    } catch {
+      window.location.href = url
+      return
+    }
+    setTimeout(() => {
+      if (location.pathname === '/login') window.location.href = url
+    }, 100)
   } catch (e) {
     // 校验失败或接口报错时不处理（错误提示由拦截器或校验器给出）
   } finally {

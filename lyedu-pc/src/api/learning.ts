@@ -1,4 +1,5 @@
 import request from '@/utils/request'
+import type { Course } from '@/api/course'
 
 export interface UserCourse {
   id: number
@@ -24,5 +25,15 @@ export const updateVideoProgress = (videoId: number, progress: number, duration:
 
 export const getVideoProgress = (videoId: number) => {
   return request.get(`/learning/video-progress/${videoId}`)
+}
+
+/** 我的学习：仅返回看过的课程 */
+export const getWatchedCourses = () => {
+  return request.get<Course[]>('/learning/watched-courses')
+}
+
+/** 播放心跳（防挂机）：播放过程中定时上报 */
+export const playPing = (videoId: number) => {
+  return request.post('/learning/play-ping', { videoId })
 }
 

@@ -83,7 +83,7 @@ router.beforeEach((to, from, next) => {
   
   // 如果访问需要认证的页面且未登录，重定向到登录页
   if (to.meta.requiresAuth && !token) {
-    next('/login')
+    next({ path: '/login', query: { redirect: to.fullPath } })
     return
   }
   
