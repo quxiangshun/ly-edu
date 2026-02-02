@@ -37,10 +37,13 @@
         <div v-if="hasChaptersOrAttachments" class="tabs-section">
           <van-tabs v-model:active="activeTab">
             <van-tab title="课程目录" name="catalog">
-              <div v-if="courseDetail.chapters && courseDetail.chapters.length > 0" class="chapter-list">
-                <div v-for="(chapter, chIndex) in courseDetail.chapters" :key="chapter.id ?? 'uncat-' + chIndex" class="chapter-block">
-                  <div class="chapter-title">{{ chapter.title }}</div>
-                  <van-cell-group>
+              <div v-if="chaptersWithVideos.length > 0" class="chapter-list">
+                <div v-for="(chapter, chIndex) in chaptersWithVideos" :key="chapter.id ?? 'uncat-' + chIndex" class="chapter-block">
+                  <div class="chapter-header">
+                    <span class="chapter-num">第{{ chIndex + 1 }}章</span>
+                    <span class="chapter-title">{{ chapter.title }}</span>
+                  </div>
+                  <van-cell-group inset>
                     <van-cell
                       v-for="(video, index) in chapter.hours"
                       :key="video.id"
@@ -127,7 +130,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { showSuccessToast, showFailToast } from 'vant'
-import { getCourseById, type CourseDetail, type CourseAttachment } from '@/api/course'
+import { getCourseById, type CourseDetail, type CourseAttachment, type ChapterItem } from '@/api/course'
 import { joinCourse } from '@/api/learning'
 
 const router = useRouter()
@@ -142,6 +145,13 @@ const hasChaptersOrAttachments = computed(() => {
   const hasChapters = d.chapters && d.chapters.length > 0
   const hasAttachments = d.attachments && d.attachments.length > 0
   return hasChapters || hasAttachments
+})
+
+/** 仅包含有视频的章节，用于课程目录展示 */
+const chaptersWithVideos = computed<ChapterItem[]>(() => {
+  const d = courseDetail.value
+  if (!d?.chapters?.length) return []
+  return d.chapters.filter((ch) => ch.hours && ch.hours.length > 0)
 })
 
 function getLearnRecord(videoId: number) {
@@ -315,14 +325,37 @@ onMounted(() => {
   .chapter-list {
     .chapter-block {
       margin-bottom: 16px;
+      background: #f7f8fa;
+      border-radius: 8px;
+      overflow: hidden;
+      padding-bottom: 8px;
 
-      .chapter-title {
-        font-size: 15px;
-        font-weight: 600;
-        color: #323233;
-        margin-bottom: 10px;
-        padding-bottom: 6px;
-        border-bottom: 1px solid #ebedf0;
+      .chapter-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 16px;
+        background: linear-gradient(135deg, #e8f3ff 0%, #dcebff 100%);
+        border-left: 4px solid #1989fa;
+
+        .chapter-num {
+          font-size: 12px;
+          color: #1989fa;
+          font-weight: 600;
+          flex-shrink: 0;
+        }
+
+        .chapter-title {
+          font-size: 15px;
+          font-weight: 600;
+          color: #323233;
+        }
+      }
+
+      :deep(.van-cell-group--inset) {
+        margin: 0 12px;
+        border-radius: 8px;
+        overflow: hidden;
       }
     }
   }

@@ -53,9 +53,12 @@
         <el-card class="tabs-card" v-if="hasChaptersOrAttachments">
           <el-tabs v-model="activeTab">
             <el-tab-pane label="课程目录" name="catalog">
-              <div v-if="courseDetail.chapters && courseDetail.chapters.length > 0" class="chapter-list">
-                <div v-for="(chapter, chIndex) in courseDetail.chapters" :key="chapter.id ?? 'uncat-' + chIndex" class="chapter-block">
-                  <div class="chapter-title">{{ chapter.title }}</div>
+              <div v-if="chaptersWithVideos.length > 0" class="chapter-list">
+                <div v-for="(chapter, chIndex) in chaptersWithVideos" :key="chapter.id ?? 'uncat-' + chIndex" class="chapter-block">
+                  <div class="chapter-header">
+                    <span class="chapter-num">第 {{ chIndex + 1 }} 章</span>
+                    <span class="chapter-title">{{ chapter.title }}</span>
+                  </div>
                   <div class="video-list">
                     <div
                       v-for="(video, index) in chapter.hours"
@@ -173,7 +176,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Clock, VideoPlay, Document, Download } from '@element-plus/icons-vue'
-import { getCourseById, type CourseDetail, type CourseAttachment } from '@/api/course'
+import { getCourseById, type CourseDetail, type CourseAttachment, type ChapterItem } from '@/api/course'
 import { joinCourse } from '@/api/learning'
 
 const router = useRouter()
@@ -188,6 +191,13 @@ const hasChaptersOrAttachments = computed(() => {
   const hasChapters = d.chapters && d.chapters.length > 0
   const hasAttachments = d.attachments && d.attachments.length > 0
   return hasChapters || hasAttachments
+})
+
+/** 仅包含有视频的章节，用于课程目录展示 */
+const chaptersWithVideos = computed<ChapterItem[]>(() => {
+  const d = courseDetail.value
+  if (!d?.chapters?.length) return []
+  return d.chapters.filter((ch) => ch.hours && ch.hours.length > 0)
 })
 
 function getLearnRecord(videoId: number) {
@@ -411,15 +421,106 @@ onMounted(() => {
 
   .chapter-list {
     .chapter-block {
-      margin-bottom: 20px;
+      margin-bottom: 24px;
+      background: #fafbfc;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid #ebeef5;
 
-      .chapter-title {
-        font-size: 16px;
-        font-weight: 600;
-        color: #303133;
-        margin-bottom: 12px;
-        padding-bottom: 8px;
-        border-bottom: 1px solid #e4e7ed;
+      &:last-child {
+        margin-bottom: 0;
+      }
+
+      .chapter-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 14px 18px;
+        background: linear-gradient(135deg, #f0f5ff 0%, #e8efff 100%);
+        border-left: 4px solid #409eff;
+
+        .chapter-num {
+          font-size: 13px;
+          color: #409eff;
+          font-weight: 600;
+          flex-shrink: 0;
+        }
+
+        .chapter-title {
+          font-size: 16px;
+          font-weight: 600;
+          color: #303133;
+          margin: 0;
+        }
+      }
+
+      .video-list {
+        padding: 8px 0;
+
+        .video-item {
+          display: flex;
+          align-items: center;
+          padding: 14px 18px;
+          margin: 0 8px 4px;
+          border-radius: 8px;
+          cursor: pointer;
+          transition: background-color 0.2s;
+
+          &:hover {
+            background-color: #fff;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+          }
+
+          .video-index {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #e8f4ff;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #409eff;
+            margin-right: 14px;
+            flex-shrink: 0;
+          }
+
+          .video-info {
+            flex: 1;
+            min-width: 0;
+
+            h4 {
+              font-size: 15px;
+              color: #303133;
+              margin: 0 0 6px;
+              font-weight: 500;
+              overflow: hidden;
+              text-overflow: ellipsis;
+              white-space: nowrap;
+            }
+
+            .video-meta {
+              display: flex;
+              align-items: center;
+              gap: 12px;
+              font-size: 13px;
+              color: #909399;
+
+              .duration {
+                display: flex;
+                align-items: center;
+                gap: 4px;
+              }
+            }
+          }
+
+          .video-action {
+            color: #409eff;
+            font-size: 22px;
+            flex-shrink: 0;
+          }
+        }
       }
     }
   }
