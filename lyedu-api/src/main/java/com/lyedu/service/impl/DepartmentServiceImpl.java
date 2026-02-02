@@ -77,6 +77,27 @@ public class DepartmentServiceImpl implements DepartmentService {
         jdbcTemplate.update(DELETE_SQL, id);
     }
 
+    @Override
+    public List<Long> getDepartmentIdAndDescendantIds(Long departmentId) {
+        if (departmentId == null) {
+            return new ArrayList<>();
+        }
+        List<Department> all = jdbcTemplate.query(SELECT_ALL_SQL, new DepartmentRowMapper());
+        List<Long> result = new ArrayList<>();
+        result.add(departmentId);
+        collectDescendantIds(all, departmentId, result);
+        return result;
+    }
+
+    private void collectDescendantIds(List<Department> all, Long parentId, List<Long> result) {
+        for (Department d : all) {
+            if (parentId.equals(d.getParentId())) {
+                result.add(d.getId());
+                collectDescendantIds(all, d.getId(), result);
+            }
+        }
+    }
+
     /**
      * 构建多级树形结构：递归挂载子部门到 children
      */
