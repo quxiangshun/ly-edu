@@ -35,4 +35,9 @@ public interface DepartmentService {
      * 删除部门
      */
     void delete(Long id);
+
+    /**
+     * 获取指定部门及其所有子部门ID（含自身），用于课程可见性过滤
+     */
+    List<Long> getDepartmentIdAndDescendantIds(Long departmentId);
 }

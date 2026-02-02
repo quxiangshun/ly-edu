@@ -1,0 +1,2 @@
+Alembic 迁移版本目录。版本与 Java Flyway 对应：
+- v12_* 对应 Flyway V12__add_course_visibility_and_department.sql

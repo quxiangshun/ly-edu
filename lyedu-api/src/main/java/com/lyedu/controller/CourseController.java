@@ -53,7 +53,7 @@ public class CourseController {
     }
 
     /**
-     * 分页查询课程
+     * 分页查询课程（带 Authorization 时按用户部门过滤可见性）
      */
     @NoAuth
     @GetMapping("/page")
@@ -61,8 +61,10 @@ public class CourseController {
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer size,
             @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) Long categoryId) {
-        return Result.success(courseService.page(page, size, keyword, categoryId));
+            @RequestParam(required = false) Long categoryId,
+            @RequestHeader(value = "Authorization", required = false) String authorization) {
+        Long userId = getUserIdFromAuth(authorization);
+        return Result.success(courseService.page(page, size, keyword, categoryId, userId));
     }
 
     /**
@@ -74,7 +76,8 @@ public class CourseController {
     public Result<CourseDetail> getById(
             @PathVariable Long id,
             @RequestHeader(value = "Authorization", required = false) String authorization) {
-        Course course = courseService.getDetailById(id);
+        Long userId = getUserIdFromAuth(authorization);
+        Course course = courseService.getDetailById(id, userId);
         if (course == null) {
             return Result.error(404, "课程不存在");
         }
@@ -154,12 +157,15 @@ public class CourseController {
     }
 
     /**
-     * 获取推荐课程
+     * 获取推荐课程（带 Authorization 时按用户部门过滤可见性）
      */
     @NoAuth
     @GetMapping("/recommended")
-    public Result<List<Course>> recommended(@RequestParam(defaultValue = "6") Integer limit) {
-        return Result.success(courseService.listRecommended(limit));
+    public Result<List<Course>> recommended(
+            @RequestParam(defaultValue = "6") Integer limit,
+            @RequestHeader(value = "Authorization", required = false) String authorization) {
+        Long userId = getUserIdFromAuth(authorization);
+        return Result.success(courseService.listRecommended(limit, userId));
     }
 
     /**
@@ -175,6 +181,8 @@ public class CourseController {
         course.setStatus(request.getStatus());
         course.setSort(request.getSort());
         course.setIsRequired(request.getIsRequired());
+        course.setVisibility(request.getVisibility() != null ? request.getVisibility() : 1);
+        course.setDepartmentId(request.getDepartmentId());
         courseService.save(course);
         return Result.success();
     }
@@ -195,6 +203,8 @@ public class CourseController {
         course.setStatus(request.getStatus());
         course.setSort(request.getSort());
         course.setIsRequired(request.getIsRequired());
+        course.setVisibility(request.getVisibility() != null ? request.getVisibility() : 1);
+        course.setDepartmentId(request.getDepartmentId());
         courseService.update(course);
         return Result.success();
     }
@@ -218,5 +228,9 @@ public class CourseController {
         private Integer sort;
         /** 是否必修：0-选修，1-必修 */
         private Integer isRequired;
+        /** 可见性：1-公开，0-私有 */
+        private Integer visibility;
+        /** 关联部门（私有时必填） */
+        private Long departmentId;
     }
 }
