@@ -9,8 +9,25 @@
       </template>
 
       <el-form :inline="true" :model="searchForm" class="search-form">
-        <el-form-item label="课程ID">
-          <el-input-number v-model="searchForm.courseId" :min="0" placeholder="请输入课程ID" clearable />
+        <el-form-item label="课程">
+          <el-select
+            v-model="searchForm.courseId"
+            filterable
+            clearable
+            placeholder="搜索选择课程"
+            style="width: 240px"
+            :loading="courseSearchLoading"
+            remote
+            :remote-method="searchCourseOptions"
+            @focus="searchCourseOptions('')"
+          >
+            <el-option
+              v-for="c in courseOptions"
+              :key="c.id"
+              :label="c.title"
+              :value="c.id"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="关键词">
           <el-input v-model="searchForm.keyword" placeholder="请输入视频标题" clearable />
@@ -57,13 +74,45 @@
     </el-card>
 
     <!-- 新增/编辑对话框 -->
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="800px">
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="800px" @opened="onDialogOpened">
       <el-form :model="form" :rules="rules" ref="formRef" label-width="100px">
-        <el-form-item label="课程ID" prop="courseId">
-          <el-input-number v-model="form.courseId" :min="1" placeholder="请输入课程ID" />
+        <el-form-item label="课程" prop="courseId">
+          <el-select
+            v-model="form.courseId"
+            filterable
+            clearable
+            placeholder="搜索选择课程"
+            style="width: 100%"
+            :loading="courseSearchLoading"
+            remote
+            :remote-method="searchCourseOptions"
+            @change="onCourseChange"
+          >
+            <el-option
+              v-for="c in courseOptions"
+              :key="c.id"
+              :label="c.title"
+              :value="c.id"
+            />
+          </el-select>
         </el-form-item>
-        <el-form-item label="章节ID" prop="chapterId">
-          <el-input-number v-model="form.chapterId" :min="0" placeholder="请输入章节ID（可选）" />
+        <el-form-item label="章节" prop="chapterId">
+          <el-select
+            v-model="form.chapterId"
+            clearable
+            placeholder="先选择课程后可选章节"
+            style="width: 100%"
+            :loading="chapterLoading"
+            :disabled="!form.courseId"
+          >
+            <el-option label="无章节" :value="0" />
+            <el-option
+              v-for="ch in chapterOptions"
+              :key="ch.value"
+              :label="ch.label"
+              :value="ch.value"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="视频标题" prop="title">
           <el-input v-model="form.title" placeholder="请输入视频标题" />
@@ -100,6 +149,8 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import ChunkUpload from '@/components/ChunkUpload.vue'
 import { getVideoPage, createVideo, updateVideo, deleteVideo, type Video } from '@/api/video'
+import { getCoursePage, getCourseById, type Course } from '@/api/course'
+import { getChaptersByCourseId } from '@/api/chapter'
 
 const loading = ref(false)
 const videoList = ref<Video[]>([])
@@ -107,8 +158,12 @@ const formRef = ref<FormInstance>()
 const dialogVisible = ref(false)
 const dialogTitle = ref('新增视频')
 const isEdit = ref(false)
+const courseOptions = ref<Course[]>([])
+const chapterOptions = ref<{ label: string; value: number }[]>([])
+const courseSearchLoading = ref(false)
+const chapterLoading = ref(false)
 
-const searchForm = reactive({
+const searchForm = reactive<{ courseId?: number; keyword: string }>({
   courseId: undefined,
   keyword: ''
 })
@@ -129,9 +184,60 @@ const form = reactive<Partial<Video>>({
 })
 
 const rules: FormRules = {
-  courseId: [{ required: true, message: '请输入课程ID', trigger: 'blur' }],
+  courseId: [{ required: true, message: '请选择课程', trigger: 'change' }],
   title: [{ required: true, message: '请输入视频标题', trigger: 'blur' }],
   url: [{ required: true, message: '请上传视频或输入视频URL', trigger: 'blur' }]
+}
+
+const searchCourseOptions = async (query: string) => {
+  courseSearchLoading.value = true
+  try {
+    const res = await getCoursePage({ page: 1, size: 50, keyword: query || undefined })
+    courseOptions.value = res.records || []
+  } catch {
+    courseOptions.value = []
+  } finally {
+    courseSearchLoading.value = false
+  }
+}
+
+const loadChapterOptions = async (courseId: number | undefined) => {
+  if (!courseId) {
+    chapterOptions.value = []
+    return
+  }
+  chapterLoading.value = true
+  try {
+    const list = await getChaptersByCourseId(courseId)
+    chapterOptions.value = (list || []).map((c) => ({ label: c.title, value: c.id }))
+  } catch {
+    chapterOptions.value = []
+  } finally {
+    chapterLoading.value = false
+  }
+}
+
+const onCourseChange = () => {
+  form.chapterId = 0
+  loadChapterOptions(form.courseId)
+}
+
+const onDialogOpened = async () => {
+  await searchCourseOptions('')
+  if (form.courseId) {
+    const inList = courseOptions.value.some((c) => c.id === form.courseId)
+    if (!inList) {
+      try {
+        const course = await getCourseById(form.courseId)
+        if (course) courseOptions.value = [course, ...courseOptions.value]
+      } catch {
+        // ignore
+      }
+    }
+    await loadChapterOptions(form.courseId)
+  } else {
+    chapterOptions.value = []
+  }
 }
 
 const loadData = async () => {
@@ -185,7 +291,10 @@ const handleAdd = () => {
 const handleEdit = (row: Video) => {
   isEdit.value = true
   dialogTitle.value = '编辑视频'
-  Object.assign(form, row)
+  Object.assign(form, {
+    ...row,
+    chapterId: row.chapterId ?? 0
+  })
   dialogVisible.value = true
 }
 
@@ -214,12 +323,16 @@ const handleUploadError = (error: string) => {
 const handleSubmit = async () => {
   if (!formRef.value) return
   await formRef.value.validate()
+  const payload = {
+    ...form,
+    chapterId: form.chapterId === 0 ? undefined : form.chapterId
+  }
   try {
     if (isEdit.value) {
-      await updateVideo(form.id!, form)
+      await updateVideo(form.id!, payload)
       ElMessage.success('更新成功')
     } else {
-      await createVideo(form)
+      await createVideo(payload)
       ElMessage.success('创建成功')
     }
     dialogVisible.value = false
