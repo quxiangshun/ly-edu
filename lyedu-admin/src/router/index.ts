@@ -61,6 +61,54 @@ const routes: RouteRecordRaw[] = [
         meta: {
           title: '视频管理'
         }
+      },
+      {
+        path: 'knowledge',
+        name: 'Knowledge',
+        component: () => import('@/views/Knowledge.vue'),
+        meta: {
+          title: '知识库'
+        }
+      },
+      {
+        path: 'question',
+        name: 'Question',
+        component: () => import('@/views/Question.vue'),
+        meta: {
+          title: '试题管理'
+        }
+      },
+      {
+        path: 'paper',
+        name: 'Paper',
+        component: () => import('@/views/Paper.vue'),
+        meta: {
+          title: '试卷管理'
+        }
+      },
+      {
+        path: 'exam',
+        name: 'Exam',
+        component: () => import('@/views/Exam.vue'),
+        meta: {
+          title: '考试管理'
+        }
+      },
+      {
+        path: 'certificate-template',
+        name: 'CertificateTemplate',
+        component: () => import('@/views/CertificateTemplate.vue'),
+        meta: {
+          title: '证书模板'
+        }
+      },
+      {
+        path: 'certificate',
+        name: 'Certificate',
+        component: () => import('@/views/Certificate.vue'),
+        meta: {
+          title: '证书规则'
+        }
       }
     ]
   }

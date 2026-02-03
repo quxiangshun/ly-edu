@@ -61,6 +61,69 @@ const routes: RouteRecordRaw[] = [
       title: '我的学习',
       requiresAuth: true
     }
+  },
+  {
+    path: '/knowledge',
+    name: 'KnowledgeCenter',
+    component: () => import('@/views/KnowledgeCenter.vue'),
+    meta: {
+      title: '知识中心',
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/preview',
+    name: 'DocumentPreview',
+    component: () => import('@/views/DocumentPreview.vue'),
+    meta: {
+      title: '文档预览',
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/exam',
+    name: 'ExamList',
+    component: () => import('@/views/ExamList.vue'),
+    meta: {
+      title: '考试中心',
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/exam/:id/take',
+    name: 'ExamTake',
+    component: () => import('@/views/ExamTake.vue'),
+    meta: {
+      title: '参加考试',
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/exam/:id/result',
+    name: 'ExamResult',
+    component: () => import('@/views/ExamResult.vue'),
+    meta: {
+      title: '考试成绩',
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/certificates',
+    name: 'MyCertificates',
+    component: () => import('@/views/MyCertificates.vue'),
+    meta: {
+      title: '我的证书',
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/certificate/:id/print',
+    name: 'CertificatePrint',
+    component: () => import('@/views/CertificatePrint.vue'),
+    meta: {
+      title: '证书打印',
+      requiresAuth: true
+    }
   }
 ]
 
