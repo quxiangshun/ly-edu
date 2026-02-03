@@ -149,7 +149,12 @@
           <el-input v-model="form.title" placeholder="请输入课程名称" />
         </el-form-item>
         <el-form-item label="课程封面" prop="cover">
-          <el-input v-model="form.cover" placeholder="请输入封面URL" />
+          <el-input v-model="form.cover" placeholder="请输入封面URL或从图片库选择" class="cover-input">
+            <template #append>
+              <el-button @click="openImageSelect">从图片库选择</el-button>
+            </template>
+          </el-input>
+          <el-image v-if="form.cover" :src="coverDisplayUrl" style="width: 120px; height: 80px; margin-top: 8px; border-radius: 4px" fit="cover" />
         </el-form-item>
         <el-form-item label="课程描述" prop="description">
           <el-input v-model="form.description" type="textarea" :rows="4" placeholder="请输入课程描述" />
@@ -216,6 +221,7 @@ import {
   deleteAttachment,
   type CourseAttachment
 } from '@/api/courseAttachment'
+import { getImagePage, type ImageItem, type ImagePageResult } from '@/api/image'
 
 function flattenDepartments(list: Department[]): Department[] {
   const out: Department[] = []
@@ -291,6 +297,55 @@ const rules: FormRules = {
       trigger: 'change'
     }
   ]
+}
+
+const imageSelectVisible = ref(false)
+const imageKeyword = ref('')
+const imageSelectList = ref<ImageItem[]>([])
+const imageListLoading = ref(false)
+const imageSelectPage = ref(1)
+const imageSelectSize = ref(12)
+const imageSelectTotal = ref(0)
+
+const coverDisplayUrl = computed(() => {
+  const u = form.cover
+  if (!u) return ''
+  return u.startsWith('http') ? u : window.location.origin + u
+})
+
+function imageItemUrl(item: ImageItem) {
+  const u = item.url
+  if (!u) return ''
+  return u.startsWith('http') ? u : window.location.origin + u
+}
+
+function openImageSelect() {
+  imageSelectVisible.value = true
+  imageSelectPage.value = 1
+  loadImageList()
+}
+
+async function loadImageList() {
+  imageListLoading.value = true
+  try {
+    const res = await getImagePage({
+      page: imageSelectPage.value,
+      size: imageSelectSize.value,
+      keyword: imageKeyword.value || undefined
+    })
+    const data = (res as unknown as { data?: ImagePageResult })?.data ?? res
+    imageSelectList.value = data?.records ?? []
+    imageSelectTotal.value = data?.total ?? 0
+  } catch (_e) {
+    imageSelectList.value = []
+  } finally {
+    imageListLoading.value = false
+  }
+}
+
+function chooseCover(item: ImageItem) {
+  form.cover = item.url || ''
+  imageSelectVisible.value = false
 }
 
 const loadData = async () => {
@@ -517,5 +572,43 @@ onMounted(async () => {
 
 .search-form {
   margin-bottom: 20px;
+}
+
+.cover-input {
+  width: 100%;
+}
+
+.image-select-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.image-select-item {
+  border: 1px solid #ebeef5;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.2s;
+  &:hover {
+    border-color: var(--el-color-primary);
+  }
+  .select-thumb {
+    width: 100%;
+    height: 80px;
+    display: block;
+    background: #f5f7fa;
+  }
+  .select-name {
+    display: block;
+    padding: 6px 8px;
+    font-size: 12px;
+    color: #606266;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 </style>

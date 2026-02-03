@@ -33,6 +33,10 @@
           <el-icon><VideoPlay /></el-icon>
           <template #title>视频管理</template>
         </el-menu-item>
+        <el-menu-item index="/image">
+          <el-icon><Picture /></el-icon>
+          <template #title>图片库</template>
+        </el-menu-item>
         <el-menu-item index="/knowledge">
           <el-icon><Collection /></el-icon>
           <template #title>知识库</template>
@@ -109,6 +113,7 @@ import {
   User,
   Notebook,
   VideoPlay,
+  Picture,
   Collection,
   EditPen,
   Medal,
