@@ -4,6 +4,7 @@ import json
 from typing import Any, List, Optional
 
 import db
+from services import point_service
 from services import task_service
 from services import user_certificate_service
 
@@ -127,4 +128,5 @@ def update_progress(task_id: int, user_id: int, progress_json: Optional[str]) ->
         cert_id = task.get("certificateId")
         if cert_id:
             user_certificate_service.issue_if_eligible("task", task_id, user_id)
+        point_service.add_points(user_id, "task_finish", "task", task_id)
     return _get_by_user_and_task(user_id, task_id)

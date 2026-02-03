@@ -58,6 +58,10 @@
           <el-icon><Aim /></el-icon>
           <template #title>周期任务</template>
         </el-menu-item>
+        <el-menu-item index="/point-rule">
+          <el-icon><TrendCharts /></el-icon>
+          <template #title>积分规则</template>
+        </el-menu-item>
         <el-menu-item index="/settings">
           <el-icon><Setting /></el-icon>
           <template #title>系统设置</template>
@@ -108,7 +112,8 @@ import {
   Collection,
   EditPen,
   Medal,
-Aim,
+  Aim,
+  TrendCharts,
   Setting,
   Expand,
   Fold,

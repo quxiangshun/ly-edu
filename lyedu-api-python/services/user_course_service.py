@@ -3,6 +3,7 @@
 from typing import List, Optional
 
 import db
+from services import point_service
 
 
 def _row_to_user_course(row: dict) -> dict:
@@ -51,7 +52,10 @@ def get_by_user_and_course(user_id: int, course_id: int) -> Optional[dict]:
 
 def update_progress(user_id: int, course_id: int, progress: int) -> int:
     status = 1 if progress >= 100 else 0
-    return db.execute(
+    n = db.execute(
         "UPDATE ly_user_course SET progress = %s, status = %s WHERE user_id = %s AND course_id = %s",
         (progress, status, user_id, course_id),
     )
+    if progress >= 100 and user_id and course_id:
+        point_service.add_points(user_id, "course_finish", "course", course_id)
+    return n

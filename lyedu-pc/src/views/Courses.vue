@@ -17,6 +17,7 @@
           <el-menu-item index="exam" @click="$router.push('/exam')">考试中心</el-menu-item>
           <el-menu-item index="certificates" @click="$router.push('/certificates')">我的证书</el-menu-item>
           <el-menu-item index="tasks" @click="$router.push('/tasks')">我的任务</el-menu-item>
+          <el-menu-item index="points" @click="$router.push('/points')">积分</el-menu-item>
           <el-menu-item index="my" @click="$router.push('/my-learning')">我的学习</el-menu-item>
         </el-menu>
       </div>

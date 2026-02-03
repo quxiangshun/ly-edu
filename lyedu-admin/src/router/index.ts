@@ -119,6 +119,14 @@ const routes: RouteRecordRaw[] = [
         }
       },
       {
+        path: 'point-rule',
+        name: 'PointRule',
+        component: () => import('@/views/PointRule.vue'),
+        meta: {
+          title: '积分规则'
+        }
+      },
+      {
         path: 'settings',
         name: 'Settings',
         component: () => import('@/views/Settings.vue'),
