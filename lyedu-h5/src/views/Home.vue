@@ -18,7 +18,7 @@
       <van-grid :column-num="3" :border="false">
         <van-grid-item icon="video-o" text="视频学习" @click="$router.push('/courses')" />
         <van-grid-item icon="orders-o" text="我的课程" @click="$router.push('/my-learning')" />
-        <van-grid-item icon="chart-trending-o" text="学习统计" />
+        <van-grid-item icon="notes-o" text="知识中心" @click="$router.push('/knowledge')" />
       </van-grid>
     </div>
 
