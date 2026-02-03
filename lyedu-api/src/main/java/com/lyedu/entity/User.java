@@ -43,6 +43,11 @@ public class User extends BaseEntity {
     private String avatar;
 
     /**
+     * 飞书 open_id（扫码登录绑定）
+     */
+    private String feishuOpenId;
+
+    /**
      * 部门 ID
      */
     private Long departmentId;
