@@ -2,6 +2,8 @@
 
 本目录存放 **Flyway（Java）** 与 **Alembic（Python）** 的迁移脚本副本，保证无论先启动 Java 还是 Python 服务，都能从同一处执行迁移，避免不同语言启动时缺失版本。
 
+**启动时自动执行**：Java 端（Spring Boot）启动时会自动执行 Flyway 迁移；Python 端（uvicorn 启动 FastAPI）会在应用生命周期开始时自动执行 `alembic upgrade head`，无需手动先跑迁移脚本。
+
 ## 目录结构
 
 ```
