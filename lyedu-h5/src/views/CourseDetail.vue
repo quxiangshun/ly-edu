@@ -121,6 +121,39 @@
         <div v-if="!hasChaptersOrAttachments" class="action-buttons">
           <van-button type="primary" block @click="handleStartLearn">开始学习</van-button>
         </div>
+
+        <!-- 课程评论 -->
+        <div class="comment-section">
+          <div class="comment-title">课程评论</div>
+          <van-field
+            v-if="hasToken"
+            v-model="commentContent"
+            type="textarea"
+            rows="2"
+            placeholder="写下你的评论..."
+            maxlength="500"
+            show-word-limit
+          />
+          <van-button v-if="hasToken" type="primary" size="small" :loading="commentSubmitting" @click="submitComment" class="comment-submit">发表</van-button>
+          <p v-else class="comment-login-tip">登录后可发表评论</p>
+          <div class="comment-list" v-if="commentTree.length > 0">
+            <div v-for="node in commentTree" :key="node.id" class="comment-node">
+              <div class="comment-item">
+                <span class="comment-user">{{ node.userRealName || '用户' }}</span>
+                <span class="comment-time">{{ formatCommentTime(node.createTime) }}</span>
+                <p class="comment-content">{{ node.content }}</p>
+              </div>
+              <div v-if="node.replies?.length" class="comment-replies">
+                <div v-for="r in node.replies" :key="r.id" class="comment-item reply">
+                  <span class="comment-user">{{ r.userRealName || '用户' }}</span>
+                  <span class="comment-time">{{ formatCommentTime(r.createTime) }}</span>
+                  <p class="comment-content">{{ r.content }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <van-empty v-else description="暂无评论" />
+        </div>
       </div>
     </div>
   </div>
@@ -130,7 +163,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { showSuccessToast, showFailToast } from 'vant'
-import { getCourseById, type CourseDetail, type CourseAttachment, type ChapterItem } from '@/api/course'
+import { getCourseById, getCourseComments, addCourseComment, type CourseDetail, type CourseAttachment, type ChapterItem, type CourseCommentDto } from '@/api/course'
 import { joinCourse } from '@/api/learning'
 
 const router = useRouter()
@@ -138,6 +171,10 @@ const route = useRoute()
 const loading = ref(false)
 const courseDetail = ref<CourseDetail | null>(null)
 const activeTab = ref('catalog')
+const comments = ref<CourseCommentDto[]>([])
+const commentContent = ref('')
+const commentSubmitting = ref(false)
+const hasToken = ref(!!localStorage.getItem('token'))
 
 const hasChaptersOrAttachments = computed(() => {
   const d = courseDetail.value
@@ -204,6 +241,9 @@ const loadCourseDetail = async () => {
   try {
     const res = await getCourseById(courseId)
     courseDetail.value = res
+    hasToken.value = !!localStorage.getItem('token')
+    const list = await getCourseComments(courseId)
+    comments.value = list || []
   } catch (e: any) {
     showFailToast(e?.response?.data?.message || '加载课程详情失败')
     router.back()
@@ -381,5 +421,64 @@ onMounted(() => {
 
 .action-buttons {
   padding: 15px 0;
+}
+
+.comment-section {
+  background: #fff;
+  border-radius: 8px;
+  padding: 15px;
+  margin-top: 10px;
+  margin-bottom: 20px;
+
+  .comment-title {
+    font-size: 16px;
+    font-weight: 500;
+    color: #323233;
+    margin-bottom: 12px;
+  }
+  .comment-submit {
+    margin-top: 8px;
+  }
+  .comment-login-tip {
+    font-size: 14px;
+    color: #969799;
+    margin: 0 0 12px;
+  }
+  .comment-list {
+    margin-top: 16px;
+    .comment-node {
+      border-bottom: 1px solid #ebedf0;
+      padding-bottom: 12px;
+      margin-bottom: 12px;
+      &:last-child {
+        border-bottom: none;
+      }
+    }
+    .comment-item {
+      .comment-user {
+        font-weight: 500;
+        color: #323233;
+        margin-right: 8px;
+        font-size: 14px;
+      }
+      .comment-time {
+        font-size: 12px;
+        color: #969799;
+      }
+      .comment-content {
+        margin: 6px 0 0;
+        font-size: 14px;
+        color: #646566;
+        line-height: 1.5;
+        white-space: pre-wrap;
+      }
+      &.reply {
+        margin-left: 16px;
+        padding: 8px 0 0;
+        border-left: 3px solid #ebedf0;
+        padding-left: 10px;
+      }
+    }
+  }
 }
 </style>

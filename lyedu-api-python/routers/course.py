@@ -3,6 +3,7 @@
 from typing import Optional
 
 from fastapi import APIRouter, Header
+from pydantic import BaseModel
 
 from common.result import error, error_result, success
 from models.schemas import CourseRequest
@@ -12,9 +13,16 @@ from services import video_service
 from services import user_video_progress_service
 from services import user_course_service
 from services import course_attachment_service
+from services import course_comment_service
 from util.jwt_util import parse_authorization
 
 router = APIRouter(prefix="/course", tags=["course"])
+
+
+class CommentRequest(BaseModel):
+    chapterId: Optional[int] = None
+    parentId: Optional[int] = None
+    content: str = ""
 
 
 def _user_id(authorization: Optional[str]) -> Optional[int]:
@@ -42,6 +50,44 @@ def recommended(
 ):
     user_id = _user_id(authorization)
     return success(course_service.list_recommended(limit=limit, user_id=user_id))
+
+
+@router.get("/{course_id}/comment")
+def comment_list(course_id: int, chapterId: Optional[int] = None):
+    return success(course_comment_service.list_by_course(course_id, chapterId))
+
+
+@router.post("/{course_id}/comment")
+def comment_add(
+    course_id: int,
+    body: CommentRequest,
+    authorization: Optional[str] = Header(None, alias="Authorization"),
+):
+    user_id = _user_id(authorization)
+    if not user_id:
+        return error(401, "请先登录")
+    content = (body.content or "").strip()
+    if not content:
+        return error(400, "评论内容不能为空")
+    comment = course_comment_service.add(
+        course_id, user_id, content,
+        chapter_id=body.chapterId,
+        parent_id=body.parentId,
+    )
+    if not comment:
+        return error(500, "发表失败")
+    return success(comment)
+
+
+@router.delete("/comment/{comment_id}")
+def comment_delete(
+    comment_id: int,
+    authorization: Optional[str] = Header(None, alias="Authorization"),
+):
+    if not _user_id(authorization):
+        return error(401, "请先登录")
+    course_comment_service.delete(comment_id)
+    return success(None)
 
 
 @router.get("/{id}")
