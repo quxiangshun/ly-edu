@@ -63,6 +63,14 @@ const routes: RouteRecordRaw[] = [
         }
       },
       {
+        path: 'image',
+        name: 'ImageLibrary',
+        component: () => import('@/views/ImageLibrary.vue'),
+        meta: {
+          title: '图片库'
+        }
+      },
+      {
         path: 'knowledge',
         name: 'Knowledge',
         component: () => import('@/views/Knowledge.vue'),
