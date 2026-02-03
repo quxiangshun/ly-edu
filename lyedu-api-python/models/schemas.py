@@ -68,6 +68,7 @@ class UserRequest(BaseModel):
     mobile: Optional[str] = None
     avatar: Optional[str] = None
     department_id: Optional[int] = None
+    entry_date: Optional[str] = None  # YYYY-MM-DD
     role: Optional[str] = "student"
     status: Optional[int] = 1
 

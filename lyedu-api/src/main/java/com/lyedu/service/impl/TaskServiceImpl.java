@@ -138,14 +138,22 @@ public class TaskServiceImpl implements TaskService {
         }
     }
 
+    private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
+
     private boolean canUserSeeTask(Task t, Long userId) {
         if (userId == null) {
+            if ("newcomer".equals(t.getCycleType())) return false;
             List<Long> deptIds = taskDepartmentService.listDepartmentIdsByTaskId(t.getId());
             return deptIds == null || deptIds.isEmpty();
         }
         User user = userService.getById(userId);
         if (user == null) return false;
         if ("admin".equals(user.getRole())) return true;
+        if ("newcomer".equals(t.getCycleType())) {
+            int withinDays = parseWithinDays(t.getCycleConfig());
+            long daysSince = daysSinceEntry(user);
+            if (daysSince > withinDays) return false;
+        }
         List<Long> deptIds = taskDepartmentService.listDepartmentIdsByTaskId(t.getId());
         if (deptIds == null || deptIds.isEmpty()) return true;
         if (user.getDepartmentId() == null) return false;
@@ -153,24 +161,43 @@ public class TaskServiceImpl implements TaskService {
         return taskDepartmentService.taskVisibleToDepartments(t.getId(), allowedDeptIds);
     }
 
+    private int parseWithinDays(String cycleConfig) {
+        if (cycleConfig == null || cycleConfig.isBlank()) return 9999;
+        try {
+            JsonNode node = JSON_MAPPER.readTree(cycleConfig);
+            if (node != null && node.has("within_days")) return node.get("within_days").asInt(9999);
+        } catch (Exception ignored) {}
+        return 9999;
+    }
+
+    private long daysSinceEntry(User user) {
+        java.time.LocalDate ref = user.getEntryDate() != null ? user.getEntryDate() : (user.getCreateTime() != null ? user.getCreateTime().toLocalDate() : null);
+        if (ref == null) return 0;
+        return ChronoUnit.DAYS.between(ref, java.time.LocalDate.now());
+    }
+
     private void appendVisibilityCondition(StringBuilder where, List<Object> params, Long userId) {
         if (userId == null) {
             where.append(" AND (NOT EXISTS (SELECT 1 FROM ly_task_department td WHERE td.task_id = ly_task.id))");
+            appendNewcomerCondition(where, params, null);
             return;
         }
         User user = userService.getById(userId);
         if (user == null) {
             where.append(" AND (NOT EXISTS (SELECT 1 FROM ly_task_department td WHERE td.task_id = ly_task.id))");
+            appendNewcomerCondition(where, params, null);
             return;
         }
         if ("admin".equals(user.getRole())) return;
         if (user.getDepartmentId() == null) {
             where.append(" AND (NOT EXISTS (SELECT 1 FROM ly_task_department td WHERE td.task_id = ly_task.id))");
+            appendNewcomerCondition(where, params, userId);
             return;
         }
         List<Long> allowedDeptIds = departmentService.getDepartmentIdAndDescendantIds(user.getDepartmentId());
         if (allowedDeptIds.isEmpty()) {
             where.append(" AND (NOT EXISTS (SELECT 1 FROM ly_task_department td WHERE td.task_id = ly_task.id))");
+            appendNewcomerCondition(where, params, userId);
             return;
         }
         where.append(" AND (NOT EXISTS (SELECT 1 FROM ly_task_department td WHERE td.task_id = ly_task.id) OR EXISTS (SELECT 1 FROM ly_task_department td WHERE td.task_id = ly_task.id AND td.department_id IN (");
@@ -180,6 +207,17 @@ public class TaskServiceImpl implements TaskService {
             params.add(allowedDeptIds.get(i));
         }
         where.append(")))");
+        appendNewcomerCondition(where, params, userId);
+    }
+
+    /** 新员工任务：仅入职 within_days 天内的用户可见 */
+    private void appendNewcomerCondition(StringBuilder where, List<Object> params, Long userId) {
+        if (userId == null) {
+            where.append(" AND (ly_task.cycle_type IS NULL OR ly_task.cycle_type <> 'newcomer')");
+            return;
+        }
+        where.append(" AND (ly_task.cycle_type IS NULL OR ly_task.cycle_type <> 'newcomer' OR (SELECT DATEDIFF(CURDATE(), COALESCE(u.entry_date, u.create_time)) FROM ly_user u WHERE u.id = ? AND u.deleted = 0) <= CAST(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(ly_task.cycle_config, '$.within_days')), '9999') AS UNSIGNED))");
+        params.add(userId);
     }
 
     private static class TaskRowMapper implements RowMapper<Task> {

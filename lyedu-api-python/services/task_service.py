@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 """周期任务服务，与 Java TaskService 对应"""
+import json
+from datetime import date, datetime
 from typing import Any, List, Optional
 
 import db
@@ -33,23 +35,39 @@ def _row_to_task(row: dict) -> dict:
     }
 
 
+def _append_newcomer_condition(where: List[str], params: List[Any], user_id: Optional[int]) -> None:
+    if user_id is None:
+        where.append(" AND (ly_task.cycle_type IS NULL OR ly_task.cycle_type <> 'newcomer')")
+        return
+    where.append(
+        " AND (ly_task.cycle_type IS NULL OR ly_task.cycle_type <> 'newcomer' OR "
+        "(SELECT DATEDIFF(CURDATE(), COALESCE(u.entry_date, u.create_time)) FROM ly_user u WHERE u.id = %s AND u.deleted = 0) <= "
+        "CAST(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(ly_task.cycle_config, '$.within_days')), '9999') AS UNSIGNED))"
+    )
+    params.append(user_id)
+
+
 def _append_visibility_condition(where: List[str], params: List[Any], user_id: Optional[int]) -> None:
     if user_id is None:
         where.append("(NOT EXISTS (SELECT 1 FROM ly_task_department td WHERE td.task_id = ly_task.id))")
+        _append_newcomer_condition(where, params, None)
         return
     user = user_service.get_by_id(user_id)
     if not user:
         where.append("(NOT EXISTS (SELECT 1 FROM ly_task_department td WHERE td.task_id = ly_task.id))")
+        _append_newcomer_condition(where, params, None)
         return
     if user.get("role") == "admin":
         return
     dept_id = user.get("department_id")
     if dept_id is None:
         where.append("(NOT EXISTS (SELECT 1 FROM ly_task_department td WHERE td.task_id = ly_task.id))")
+        _append_newcomer_condition(where, params, user_id)
         return
     allowed = department_service.get_department_id_and_descendant_ids(dept_id)
     if not allowed:
         where.append("(NOT EXISTS (SELECT 1 FROM ly_task_department td WHERE td.task_id = ly_task.id))")
+        _append_newcomer_condition(where, params, user_id)
         return
     placeholders = ", ".join(["%s"] * len(allowed))
     where.append(
@@ -57,9 +75,55 @@ def _append_visibility_condition(where: List[str], params: List[Any], user_id: O
         "OR EXISTS (SELECT 1 FROM ly_task_department td WHERE td.task_id = ly_task.id AND td.department_id IN (" + placeholders + ")))"
     )
     params.extend(allowed)
+    _append_newcomer_condition(where, params, user_id)
+
+
+def _parse_within_days(cycle_config: Optional[str]) -> int:
+    if not cycle_config or not cycle_config.strip():
+        return 9999
+    try:
+        obj = json.loads(cycle_config)
+        return int(obj.get("within_days", 9999))
+    except Exception:
+        return 9999
+
+
+def _days_since_entry(user: dict) -> int:
+    entry = user.get("entry_date") or user.get("entryDate")
+    if entry:
+        if isinstance(entry, date):
+            return (date.today() - entry).days
+        if isinstance(entry, datetime):
+            return (date.today() - entry.date()).days
+        if isinstance(entry, str):
+            try:
+                d = datetime.fromisoformat(entry.replace("Z", "+00:00")).date() if "T" in entry else datetime.strptime(entry[:10], "%Y-%m-%d").date()
+                return (date.today() - d).days
+            except Exception:
+                pass
+    create_time = user.get("create_time") or user.get("createTime")
+    if create_time:
+        if hasattr(create_time, "date"):
+            return (date.today() - create_time.date()).days
+        if isinstance(create_time, str):
+            try:
+                d = datetime.fromisoformat(create_time.replace("Z", "+00:00")).date() if "T" in create_time else datetime.strptime(create_time[:10], "%Y-%m-%d").date()
+                return (date.today() - d).days
+            except Exception:
+                pass
+    return 0
 
 
 def _can_user_see(task: dict, user_id: Optional[int]) -> bool:
+    if task.get("cycle_type") == "newcomer":
+        if not user_id:
+            return False
+        user = user_service.get_by_id(user_id)
+        if not user or user.get("role") == "admin":
+            return True
+        within_days = _parse_within_days(task.get("cycle_config"))
+        if _days_since_entry(user) > within_days:
+            return False
     dept_ids = task_department_service.list_department_ids_by_task_id(task.get("id"))
     if not dept_ids:
         return True

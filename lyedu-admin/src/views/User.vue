@@ -98,6 +98,9 @@
         <el-form-item label="部门ID" prop="departmentId">
           <el-input-number v-model="form.departmentId" :min="0" placeholder="请输入部门ID" />
         </el-form-item>
+        <el-form-item label="入职日期" prop="entryDate">
+          <el-date-picker v-model="form.entryDate" type="date" value-format="YYYY-MM-DD" placeholder="新员工任务可见性" style="width: 100%" />
+        </el-form-item>
         <el-form-item label="角色" prop="role">
           <el-select v-model="form.role" placeholder="请选择角色">
             <el-option label="管理员" value="admin" />
@@ -270,6 +273,7 @@ const handleEdit = (row: User) => {
     mobile: row.mobile,
     avatar: row.avatar,
     departmentId: row.departmentId,
+    entryDate: row.entryDate ?? '',
     role: row.role,
     status: row.status
   })

@@ -69,6 +69,7 @@ public class UserController {
         user.setMobile(request.getMobile());
         user.setAvatar(request.getAvatar());
         user.setDepartmentId(request.getDepartmentId());
+        user.setEntryDate(request.getEntryDate());
         user.setRole(request.getRole() != null ? request.getRole() : "student");
         user.setStatus(request.getStatus() != null ? request.getStatus() : 1);
         
@@ -158,6 +159,7 @@ public class UserController {
         private String mobile;
         private String avatar;
         private Long departmentId;
+        private java.time.LocalDate entryDate;
         private String role;
         private Integer status;
     }
