@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 """LyEdu API - Python 版本 (FastAPI)"""
+import os
+import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -11,23 +13,30 @@ from routers import auth, course, chapter, video, learning, user, department, st
 
 
 def _run_alembic_upgrade() -> None:
-    """启动时自动执行 Alembic 迁移（alembic upgrade head）"""
+    """启动时自动执行 Alembic 迁移（alembic upgrade head），与 Java 端 Flyway 行为一致。"""
+    base_dir = Path(__file__).resolve().parent
+    script_dir = (base_dir.parent / "db" / "alembic").resolve()
+    if not script_dir.exists():
+        print("[LyEdu] Skip Alembic: db/alembic not found.", file=sys.stderr)
+        return
     try:
         from alembic import command
         from alembic.config import Config
 
-        # 使用与 alembic.ini 一致的 script_location（../db/alembic），需在 lyedu-api-python 目录下解析
-        base_dir = Path(__file__).resolve().parent
-        alembic_cfg = Config(str(base_dir / "alembic.ini"))
-        # 使用绝对路径，避免 cwd 影响
-        script_dir = (base_dir.parent / "db" / "alembic").resolve()
-        if script_dir.exists():
+        # 切换到 lyedu-api-python 目录，保证 env.py 里 import config 时 load_dotenv() 能读到 .env
+        orig_cwd = os.getcwd()
+        try:
+            os.chdir(base_dir)
+            alembic_cfg = Config(str(base_dir / "alembic.ini"))
             alembic_cfg.set_main_option("script_location", str(script_dir))
-        command.upgrade(alembic_cfg, "head")
+            command.upgrade(alembic_cfg, "head")
+            print("[LyEdu] Alembic migrations applied (up to head).")
+        finally:
+            os.chdir(orig_cwd)
     except Exception as e:
-        # 迁移失败不阻塞启动（如数据库未就绪），仅打日志
+        print("[LyEdu] Alembic upgrade failed (app will still start):", e, file=sys.stderr)
         import logging
-        logging.getLogger(__name__).warning("Alembic upgrade on startup skipped or failed: %s", e)
+        logging.getLogger(__name__).warning("Alembic upgrade on startup failed: %s", e)
 
 
 @asynccontextmanager
