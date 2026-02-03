@@ -4,6 +4,8 @@ import json
 from datetime import date, datetime
 from typing import Any, List, Optional
 
+import pymysql
+
 import db
 from models.schemas import page_result
 from services import department_service
@@ -37,10 +39,10 @@ def _row_to_task(row: dict) -> dict:
 
 def _append_newcomer_condition(where: List[str], params: List[Any], user_id: Optional[int]) -> None:
     if user_id is None:
-        where.append(" AND (ly_task.cycle_type IS NULL OR ly_task.cycle_type <> 'newcomer')")
+        where.append("(ly_task.cycle_type IS NULL OR ly_task.cycle_type <> 'newcomer')")
         return
     where.append(
-        " AND (ly_task.cycle_type IS NULL OR ly_task.cycle_type <> 'newcomer' OR "
+        "(ly_task.cycle_type IS NULL OR ly_task.cycle_type <> 'newcomer' OR "
         "(SELECT DATEDIFF(CURDATE(), COALESCE(u.entry_date, u.create_time)) FROM ly_user u WHERE u.id = %s AND u.deleted = 0) <= "
         "CAST(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(ly_task.cycle_config, '$.within_days')), '9999') AS UNSIGNED))"
     )
@@ -144,31 +146,36 @@ def page(
     keyword: Optional[str] = None,
     user_id: Optional[int] = None,
 ) -> dict:
-    offset = (page_num - 1) * size
-    where = ["ly_task.deleted = 0"]
-    params: List[Any] = []
-    _append_visibility_condition(where, params, user_id)
-    if keyword and keyword.strip():
-        where.append("ly_task.title LIKE %s")
-        params.append("%" + keyword.strip() + "%")
-    where_sql = " AND ".join(where)
-    count_sql = "SELECT COUNT(*) AS total FROM ly_task WHERE " + where_sql
-    total_row = db.query_one(count_sql, tuple(params))
-    total = total_row.get("total", 0) or 0
-    query_sql = (
-        "SELECT ly_task.id, ly_task.title, ly_task.description, ly_task.cycle_type, ly_task.cycle_config, "
-        "ly_task.items, ly_task.certificate_id, ly_task.sort, ly_task.status, ly_task.start_time, ly_task.end_time, "
-        "ly_task.create_time, ly_task.update_time, ly_task.deleted FROM ly_task WHERE " + where_sql
-        + " ORDER BY ly_task.sort ASC, ly_task.id DESC LIMIT %s OFFSET %s"
-    )
-    query_params = list(params) + [size, offset]
-    rows = db.query_all(query_sql, tuple(query_params))
-    records = []
-    for r in (rows or []):
-        t = _row_to_task(r)
-        t["departmentIds"] = task_department_service.list_department_ids_by_task_id(t.get("id"))
-        records.append(t)
-    return page_result(records, total, page_num, size)
+    try:
+        offset = (page_num - 1) * size
+        where = ["ly_task.deleted = 0"]
+        params: List[Any] = []
+        _append_visibility_condition(where, params, user_id)
+        if keyword and keyword.strip():
+            where.append("ly_task.title LIKE %s")
+            params.append("%" + keyword.strip() + "%")
+        where_sql = " AND ".join(where)
+        count_sql = "SELECT COUNT(*) AS total FROM ly_task WHERE " + where_sql
+        total_row = db.query_one(count_sql, tuple(params))
+        total = total_row.get("total", 0) or 0
+        query_sql = (
+            "SELECT ly_task.id, ly_task.title, ly_task.description, ly_task.cycle_type, ly_task.cycle_config, "
+            "ly_task.items, ly_task.certificate_id, ly_task.sort, ly_task.status, ly_task.start_time, ly_task.end_time, "
+            "ly_task.create_time, ly_task.update_time, ly_task.deleted FROM ly_task WHERE " + where_sql
+            + " ORDER BY ly_task.sort ASC, ly_task.id DESC LIMIT %s OFFSET %s"
+        )
+        query_params = list(params) + [size, offset]
+        rows = db.query_all(query_sql, tuple(query_params))
+        records = []
+        for r in (rows or []):
+            t = _row_to_task(r)
+            t["departmentIds"] = task_department_service.list_department_ids_by_task_id(t.get("id"))
+            records.append(t)
+        return page_result(records, total, page_num, size)
+    except pymysql.err.MySQLError as e:
+        if getattr(e, "args", (None,))[0] == 1146:
+            return page_result([], 0, page_num, size)
+        raise
 
 
 def get_by_id(task_id: int, user_id: Optional[int]) -> Optional[dict]:
@@ -179,13 +186,18 @@ def get_by_id(task_id: int, user_id: Optional[int]) -> Optional[dict]:
 
 
 def get_by_id_ignore_visibility(task_id: int) -> Optional[dict]:
-    sql = "SELECT " + SELECT_COLS + " FROM ly_task WHERE id = %s AND deleted = 0"
-    row = db.query_one(sql, (task_id,))
-    if not row:
-        return None
-    t = _row_to_task(row)
-    t["departmentIds"] = task_department_service.list_department_ids_by_task_id(t.get("id"))
-    return t
+    try:
+        sql = "SELECT " + SELECT_COLS + " FROM ly_task WHERE id = %s AND deleted = 0"
+        row = db.query_one(sql, (task_id,))
+        if not row:
+            return None
+        t = _row_to_task(row)
+        t["departmentIds"] = task_department_service.list_department_ids_by_task_id(t.get("id"))
+        return t
+    except pymysql.err.MySQLError as e:
+        if getattr(e, "args", (None,))[0] == 1146:
+            return None
+        raise
 
 
 def save(
@@ -201,17 +213,22 @@ def save(
     end_time: Optional[Any] = None,
     department_ids: Optional[List[int]] = None,
 ) -> int:
-    sql = (
-        "INSERT INTO ly_task (title, description, cycle_type, cycle_config, items, certificate_id, sort, status, start_time, end_time) "
-        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
-    )
-    tid = db.execute_insert(
-        sql,
-        (title, description or "", cycle_type, cycle_config, items, certificate_id, sort, status, start_time, end_time),
-    )
-    if tid and department_ids:
-        task_department_service.set_task_departments(tid, department_ids)
-    return tid or 0
+    try:
+        sql = (
+            "INSERT INTO ly_task (title, description, cycle_type, cycle_config, items, certificate_id, sort, status, start_time, end_time) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+        )
+        tid = db.execute_insert(
+            sql,
+            (title, description or "", cycle_type, cycle_config, items, certificate_id, sort, status, start_time, end_time),
+        )
+        if tid and department_ids:
+            task_department_service.set_task_departments(tid, department_ids)
+        return tid or 0
+    except pymysql.err.MySQLError as e:
+        if getattr(e, "args", (None,))[0] == 1146:
+            return 0
+        raise
 
 
 def update(
@@ -228,19 +245,29 @@ def update(
     end_time: Optional[Any] = None,
     department_ids: Optional[List[int]] = None,
 ) -> bool:
-    sql = (
-        "UPDATE ly_task SET title = %s, description = %s, cycle_type = %s, cycle_config = %s, items = %s, "
-        "certificate_id = %s, sort = %s, status = %s, start_time = %s, end_time = %s WHERE id = %s AND deleted = 0"
-    )
-    n = db.execute(
-        sql,
-        (title, description or "", cycle_type, cycle_config, items, certificate_id, sort, status, start_time, end_time, task_id),
-    )
-    task_department_service.set_task_departments(task_id, department_ids or [])
-    return n > 0
+    try:
+        sql = (
+            "UPDATE ly_task SET title = %s, description = %s, cycle_type = %s, cycle_config = %s, items = %s, "
+            "certificate_id = %s, sort = %s, status = %s, start_time = %s, end_time = %s WHERE id = %s AND deleted = 0"
+        )
+        n = db.execute(
+            sql,
+            (title, description or "", cycle_type, cycle_config, items, certificate_id, sort, status, start_time, end_time, task_id),
+        )
+        task_department_service.set_task_departments(task_id, department_ids or [])
+        return n > 0
+    except pymysql.err.MySQLError as e:
+        if getattr(e, "args", (None,))[0] == 1146:
+            return False
+        raise
 
 
 def delete(task_id: int) -> bool:
-    n = db.execute("UPDATE ly_task SET deleted = 1 WHERE id = %s", (task_id,))
-    task_department_service.set_task_departments(task_id, None)
-    return n > 0
+    try:
+        n = db.execute("UPDATE ly_task SET deleted = 1 WHERE id = %s", (task_id,))
+        task_department_service.set_task_departments(task_id, None)
+        return n > 0
+    except pymysql.err.MySQLError as e:
+        if getattr(e, "args", (None,))[0] == 1146:
+            return False
+        raise

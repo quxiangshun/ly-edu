@@ -2,6 +2,8 @@
 """证书模板服务，与 Java CertificateTemplateService 对应"""
 from typing import List, Optional
 
+import pymysql
+
 import db
 
 SELECT_COLS = "id, name, description, config, sort, status, create_time, update_time, deleted"
@@ -24,9 +26,14 @@ def _row_to_template(row: dict) -> dict:
 
 
 def list_all() -> List[dict]:
-    sql = f"SELECT {SELECT_COLS} FROM ly_certificate_template WHERE deleted = 0 ORDER BY sort ASC, id DESC"
-    rows = db.query_all(sql, ())
-    return [_row_to_template(r) for r in (rows or [])]
+    try:
+        sql = f"SELECT {SELECT_COLS} FROM ly_certificate_template WHERE deleted = 0 ORDER BY sort ASC, id DESC"
+        rows = db.query_all(sql, ())
+        return [_row_to_template(r) for r in (rows or [])]
+    except pymysql.err.MySQLError as e:
+        if getattr(e, "args", (None,))[0] == 1146:
+            return []
+        raise
 
 
 def get_by_id(template_id: int) -> Optional[dict]:
@@ -38,15 +45,20 @@ def get_by_id(template_id: int) -> Optional[dict]:
 
 
 def save(entity: dict) -> int:
-    sql = "INSERT INTO ly_certificate_template (name, description, config, sort, status) VALUES (%s, %s, %s, %s, %s)"
-    args = (
-        entity.get("name"),
-        entity.get("description"),
-        entity.get("config"),
-        entity.get("sort", 0),
-        entity.get("status", 1),
-    )
-    return db.execute_insert(sql, args)
+    try:
+        sql = "INSERT INTO ly_certificate_template (name, description, config, sort, status) VALUES (%s, %s, %s, %s, %s)"
+        args = (
+            entity.get("name"),
+            entity.get("description"),
+            entity.get("config"),
+            entity.get("sort", 0),
+            entity.get("status", 1),
+        )
+        return db.execute_insert(sql, args)
+    except pymysql.err.MySQLError as e:
+        if getattr(e, "args", (None,))[0] == 1146:
+            return 0
+        raise
 
 
 def update(entity: dict) -> None:
@@ -69,4 +81,9 @@ def update(entity: dict) -> None:
 def delete(template_id: int) -> None:
     if not template_id:
         return
-    db.execute("UPDATE ly_certificate_template SET deleted = 1 WHERE id = %s", (template_id,))
+    try:
+        db.execute("UPDATE ly_certificate_template SET deleted = 1 WHERE id = %s", (template_id,))
+    except pymysql.err.MySQLError as e:
+        if getattr(e, "args", (None,))[0] == 1146:
+            return
+        raise

@@ -2,6 +2,8 @@
 """知识库服务，与 Java KnowledgeService 对应"""
 from typing import Any, List, Optional
 
+import pymysql
+
 import db
 from models.schemas import page_result
 from services import department_service
@@ -78,33 +80,38 @@ def page(
     category: Optional[str] = None,
     user_id: Optional[int] = None,
 ) -> dict:
-    offset = (page_num - 1) * size
-    where = ["deleted = 0"]
-    params: List[Any] = []
-    _append_visibility_condition(where, params, user_id)
-    if keyword and keyword.strip():
-        where.append("(title LIKE %s OR category LIKE %s)")
-        like = "%" + keyword.strip() + "%"
-        params.append(like)
-        params.append(like)
-    if category and category.strip():
-        where.append("category = %s")
-        params.append(category.strip())
-    where_sql = " AND ".join(where)
-    count_sql = "SELECT COUNT(*) AS total FROM ly_knowledge WHERE " + where_sql
-    total_row = db.query_one(count_sql, tuple(params))
-    total = total_row.get("total", 0) or 0
-    query_sql = (
-        "SELECT " + SELECT_COLS + " FROM ly_knowledge WHERE " + where_sql + " ORDER BY sort ASC, id DESC LIMIT %s OFFSET %s"
-    )
-    query_params = list(params) + [size, offset]
-    rows = db.query_all(query_sql, tuple(query_params))
-    records = []
-    for r in rows or []:
-        k = _row_to_knowledge(r)
-        k["departmentIds"] = knowledge_department_service.list_department_ids_by_knowledge_id(k.get("id"))
-        records.append(k)
-    return page_result(records, total, page_num, size)
+    try:
+        offset = (page_num - 1) * size
+        where = ["deleted = 0"]
+        params: List[Any] = []
+        _append_visibility_condition(where, params, user_id)
+        if keyword and keyword.strip():
+            where.append("(title LIKE %s OR category LIKE %s)")
+            like = "%" + keyword.strip() + "%"
+            params.append(like)
+            params.append(like)
+        if category and category.strip():
+            where.append("category = %s")
+            params.append(category.strip())
+        where_sql = " AND ".join(where)
+        count_sql = "SELECT COUNT(*) AS total FROM ly_knowledge WHERE " + where_sql
+        total_row = db.query_one(count_sql, tuple(params))
+        total = total_row.get("total", 0) or 0
+        query_sql = (
+            "SELECT " + SELECT_COLS + " FROM ly_knowledge WHERE " + where_sql + " ORDER BY sort ASC, id DESC LIMIT %s OFFSET %s"
+        )
+        query_params = list(params) + [size, offset]
+        rows = db.query_all(query_sql, tuple(query_params))
+        records = []
+        for r in rows or []:
+            k = _row_to_knowledge(r)
+            k["departmentIds"] = knowledge_department_service.list_department_ids_by_knowledge_id(k.get("id"))
+            records.append(k)
+        return page_result(records, total, page_num, size)
+    except pymysql.err.MySQLError as e:
+        if getattr(e, "args", (None,))[0] == 1146:  # Table doesn't exist
+            return page_result([], 0, page_num, size)
+        raise
 
 
 def get_by_id(knowledge_id: int, user_id: Optional[int]) -> Optional[dict]:
@@ -115,13 +122,18 @@ def get_by_id(knowledge_id: int, user_id: Optional[int]) -> Optional[dict]:
 
 
 def get_by_id_ignore_visibility(knowledge_id: int) -> Optional[dict]:
-    sql = "SELECT " + SELECT_COLS + " FROM ly_knowledge WHERE id = %s AND deleted = 0"
-    row = db.query_one(sql, (knowledge_id,))
-    if not row:
-        return None
-    k = _row_to_knowledge(row)
-    k["departmentIds"] = knowledge_department_service.list_department_ids_by_knowledge_id(k.get("id"))
-    return k
+    try:
+        sql = "SELECT " + SELECT_COLS + " FROM ly_knowledge WHERE id = %s AND deleted = 0"
+        row = db.query_one(sql, (knowledge_id,))
+        if not row:
+            return None
+        k = _row_to_knowledge(row)
+        k["departmentIds"] = knowledge_department_service.list_department_ids_by_knowledge_id(k.get("id"))
+        return k
+    except pymysql.err.MySQLError as e:
+        if getattr(e, "args", (None,))[0] == 1146:
+            return None
+        raise
 
 
 def save(
@@ -135,17 +147,22 @@ def save(
     visibility: int = 1,
     department_ids: Optional[List[int]] = None,
 ) -> int:
-    sql = (
-        "INSERT INTO ly_knowledge (title, category, file_name, file_url, file_size, file_type, sort, visibility) "
-        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
-    )
-    kid = db.execute_insert(
-        sql,
-        (title, category, file_name, file_url, file_size, file_type, sort, visibility),
-    )
-    if kid and department_ids:
-        knowledge_department_service.set_knowledge_departments(kid, department_ids)
-    return kid or 0
+    try:
+        sql = (
+            "INSERT INTO ly_knowledge (title, category, file_name, file_url, file_size, file_type, sort, visibility) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
+        )
+        kid = db.execute_insert(
+            sql,
+            (title, category, file_name, file_url, file_size, file_type, sort, visibility),
+        )
+        if kid and department_ids:
+            knowledge_department_service.set_knowledge_departments(kid, department_ids)
+        return kid or 0
+    except pymysql.err.MySQLError as e:
+        if getattr(e, "args", (None,))[0] == 1146:
+            return 0
+        raise
 
 
 def update(
@@ -173,6 +190,11 @@ def update(
 
 
 def delete(knowledge_id: int) -> bool:
-    n = db.execute("UPDATE ly_knowledge SET deleted = 1 WHERE id = %s", (knowledge_id,))
-    knowledge_department_service.set_knowledge_departments(knowledge_id, None)
-    return n > 0
+    try:
+        n = db.execute("UPDATE ly_knowledge SET deleted = 1 WHERE id = %s", (knowledge_id,))
+        knowledge_department_service.set_knowledge_departments(knowledge_id, None)
+        return n > 0
+    except pymysql.err.MySQLError as e:
+        if getattr(e, "args", (None,))[0] == 1146:
+            return False
+        raise
