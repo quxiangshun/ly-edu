@@ -8,9 +8,20 @@ from models.schemas import page_result
 
 def find_by_username(username: str) -> Optional[dict]:
     row = db.query_one(
-        "SELECT id, username, password, real_name, email, mobile, avatar, department_id, role, status "
+        "SELECT id, username, password, real_name, email, mobile, avatar, feishu_open_id, department_id, role, status "
         "FROM ly_user WHERE username = %s AND deleted = 0 LIMIT 1",
         (username,),
+    )
+    return row
+
+
+def find_by_feishu_open_id(feishu_open_id: str) -> Optional[dict]:
+    if not (feishu_open_id or feishu_open_id.strip()):
+        return None
+    row = db.query_one(
+        "SELECT id, username, password, real_name, email, mobile, avatar, feishu_open_id, department_id, role, status "
+        "FROM ly_user WHERE feishu_open_id = %s AND deleted = 0 LIMIT 1",
+        (feishu_open_id.strip(),),
     )
     return row
 
@@ -26,6 +37,7 @@ def _row_to_user(row: dict) -> dict:
         "email": row.get("email"),
         "mobile": row.get("mobile"),
         "avatar": row.get("avatar"),
+        "feishu_open_id": row.get("feishu_open_id"),
         "department_id": row.get("department_id"),
         "role": row.get("role"),
         "status": row.get("status"),
@@ -87,6 +99,7 @@ def save(
     email: Optional[str] = None,
     mobile: Optional[str] = None,
     avatar: Optional[str] = None,
+    feishu_open_id: Optional[str] = None,
     department_id: Optional[int] = None,
     role: str = "student",
     status: int = 1,
@@ -95,9 +108,9 @@ def save(
     pwd = (password or "123456").strip()
     encoded = bcrypt.hash(pwd)
     db.execute(
-        "INSERT INTO ly_user (username, password, real_name, email, mobile, avatar, department_id, role, status) "
-        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
-        (username, encoded, real_name, email, mobile, avatar, department_id, role, status),
+        "INSERT INTO ly_user (username, password, real_name, email, mobile, avatar, feishu_open_id, department_id, role, status) "
+        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+        (username, encoded, real_name, email, mobile, avatar, feishu_open_id, department_id, role, status),
     )
 
 

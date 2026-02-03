@@ -5,7 +5,30 @@
         <img src="/icon-192.png" alt="LyEdu" class="login-logo" />
         <h1 class="login-title">LyEdu <span class="login-subtitle">企业培训平台</span></h1>
       </div>
-      <el-form :model="loginForm" :rules="rules" ref="loginFormRef" class="login-form">
+
+      <!-- 飞书扫码登录（扩展点：后续可加企业微信、钉钉等） -->
+      <div v-if="isFeishuEnabled()" class="feishu-login">
+        <el-button
+          type="primary"
+          size="large"
+          :loading="feishuLoading"
+          @click="handleFeishuLogin"
+          class="login-button feishu-btn"
+        >
+          飞书扫码登录
+        </el-button>
+      </div>
+
+      <el-form
+        v-if="!isFeishuOnly()"
+        :model="loginForm"
+        :rules="rules"
+        ref="loginFormRef"
+        class="login-form"
+      >
+        <template v-if="isFeishuEnabled()">
+          <div class="divider"><span>或使用账号密码</span></div>
+        </template>
         <el-form-item prop="username">
           <el-input
             v-model="loginForm.username"
@@ -57,11 +80,14 @@ import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import { View, Hide } from '@element-plus/icons-vue'
 import { login, type LoginParams } from '@/api/user'
+import { getFeishuAuthUrl } from '@/api/auth'
+import { isFeishuEnabled, isFeishuOnly } from '@/utils/auth'
 
 const router = useRouter()
 const route = useRoute()
 const loginFormRef = ref<FormInstance>()
 const loading = ref(false)
+const feishuLoading = ref(false)
 const showPassword = ref(false)
 
 const loginForm = reactive<LoginParams>({
@@ -76,6 +102,35 @@ const rules: FormRules = {
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' }
   ]
+}
+
+const doRedirect = (target: string) => {
+  const url = window.location.origin + target
+  router.push(target).catch(() => {
+    window.location.href = url
+  })
+  setTimeout(() => {
+    if (location.pathname === '/login') window.location.href = url
+  }, 100)
+}
+
+const handleFeishuLogin = async () => {
+  feishuLoading.value = true
+  try {
+    const r = (route.query.redirect as string) || '/'
+    const path = r.startsWith('/') ? r : `/${r}`
+    const fullRedirect = window.location.origin + path
+    const res = await getFeishuAuthUrl(fullRedirect, 'feishu_scan')
+    if (res?.url) {
+      window.location.href = res.url
+      return
+    }
+    ElMessage.error('获取飞书登录地址失败')
+  } catch (e) {
+    ElMessage.error('飞书登录失败，请重试')
+  } finally {
+    feishuLoading.value = false
+  }
 }
 
 const handleLogin = async () => {
@@ -95,18 +150,7 @@ const handleLogin = async () => {
     let redirect = (route.query.redirect as string) || '/'
     if (redirect === '/login') redirect = '/'
     const target = redirect.startsWith('/') ? redirect : `/${redirect}`
-    const url = window.location.origin + target
-    try {
-      await router.push(target)
-    } catch {
-      window.location.href = url
-      return
-    }
-    setTimeout(() => {
-      if (location.pathname === '/login') {
-        window.location.href = url
-      }
-    }, 100)
+    doRedirect(target)
   } catch (e) {
     // 校验或请求失败时，错误提示由 axios 拦截器或 UI 负责
   } finally {
@@ -164,5 +208,19 @@ const handleLogin = async () => {
   .login-button {
     width: 100%;
   }
+}
+
+.feishu-login {
+  margin-bottom: 16px;
+  .feishu-btn {
+    width: 100%;
+  }
+}
+
+.divider {
+  text-align: center;
+  color: #909399;
+  font-size: 12px;
+  margin: 8px 0 16px;
 }
 </style>
