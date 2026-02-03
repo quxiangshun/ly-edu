@@ -9,6 +9,8 @@ from models.schemas import page_result
 
 # 数据库是否包含 entry_date 列（V8 迁移），首次访问时检测
 _has_entry_date: Optional[bool] = None
+# 数据库是否包含 feishu_open_id 列（V2 迁移），首次访问时检测
+_has_feishu_open_id: Optional[bool] = None
 
 
 def _check_entry_date() -> bool:
@@ -18,18 +20,35 @@ def _check_entry_date() -> bool:
     try:
         db.query_one("SELECT entry_date FROM ly_user LIMIT 1")
         _has_entry_date = True
-    except pymysql.err.OperationalError as e:
-        if e.args[0] == 1054:  # Unknown column
+    except (pymysql.err.OperationalError, pymysql.err.ProgrammingError) as e:
+        if getattr(e, "args", (None,))[0] == 1054:  # Unknown column
             _has_entry_date = False
         else:
             raise
     return _has_entry_date
 
 
+def _check_feishu_open_id() -> bool:
+    global _has_feishu_open_id
+    if _has_feishu_open_id is not None:
+        return _has_feishu_open_id
+    try:
+        db.query_one("SELECT feishu_open_id FROM ly_user LIMIT 1")
+        _has_feishu_open_id = True
+    except (pymysql.err.OperationalError, pymysql.err.ProgrammingError) as e:
+        if getattr(e, "args", (None,))[0] == 1054:
+            _has_feishu_open_id = False
+        else:
+            raise
+    return _has_feishu_open_id
+
+
 def find_by_username(username: str) -> Optional[dict]:
+    cols = "id, username, password, real_name, email, mobile, avatar, department_id, role, status"
+    if _check_feishu_open_id():
+        cols = "id, username, password, real_name, email, mobile, avatar, feishu_open_id, department_id, role, status"
     row = db.query_one(
-        "SELECT id, username, password, real_name, email, mobile, avatar, feishu_open_id, department_id, role, status "
-        "FROM ly_user WHERE username = %s AND deleted = 0 LIMIT 1",
+        f"SELECT {cols} FROM ly_user WHERE username = %s AND deleted = 0 LIMIT 1",
         (username,),
     )
     return row
@@ -37,6 +56,8 @@ def find_by_username(username: str) -> Optional[dict]:
 
 def find_by_feishu_open_id(feishu_open_id: str) -> Optional[dict]:
     if not (feishu_open_id or feishu_open_id.strip()):
+        return None
+    if not _check_feishu_open_id():
         return None
     cols = "id, username, password, real_name, email, mobile, avatar, feishu_open_id, department_id, role, status"
     if _check_entry_date():
@@ -72,8 +93,10 @@ def _row_to_user(row: dict) -> dict:
 
 def get_by_id(user_id: int) -> Optional[dict]:
     cols = "id, username, password, real_name, email, mobile, avatar, department_id, role, status, create_time"
+    if _check_feishu_open_id():
+        cols = "id, username, password, real_name, email, mobile, avatar, feishu_open_id, department_id, role, status, create_time"
     if _check_entry_date():
-        cols = "id, username, password, real_name, email, mobile, avatar, department_id, entry_date, role, status, create_time"
+        cols = cols.replace("department_id, role", "department_id, entry_date, role")
     row = db.query_one(
         f"SELECT {cols} FROM ly_user WHERE id = %s AND deleted = 0",
         (user_id,),
@@ -111,8 +134,10 @@ def page(
     )
     total = total_row["cnt"] or 0
     cols = "id, username, password, real_name, email, mobile, avatar, department_id, role, status, create_time"
+    if _check_feishu_open_id():
+        cols = "id, username, password, real_name, email, mobile, avatar, feishu_open_id, department_id, role, status, create_time"
     if _check_entry_date():
-        cols = "id, username, password, real_name, email, mobile, avatar, department_id, entry_date, role, status, create_time"
+        cols = cols.replace("department_id, role", "department_id, entry_date, role")
     sql = (
         f"SELECT {cols} FROM ly_user WHERE " + where_sql + " ORDER BY id DESC LIMIT %s OFFSET %s"
     )
@@ -138,17 +163,29 @@ def save(
     from passlib.hash import bcrypt
     pwd = (password or "123456").strip()
     encoded = bcrypt.hash(pwd)
-    if _check_entry_date():
+    if _check_feishu_open_id() and _check_entry_date():
         db.execute(
             "INSERT INTO ly_user (username, password, real_name, email, mobile, avatar, feishu_open_id, department_id, entry_date, role, status) "
             "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
             (username, encoded, real_name, email, mobile, avatar, feishu_open_id, department_id, entry_date, role, status),
         )
-    else:
+    elif _check_feishu_open_id():
         db.execute(
             "INSERT INTO ly_user (username, password, real_name, email, mobile, avatar, feishu_open_id, department_id, role, status) "
             "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
             (username, encoded, real_name, email, mobile, avatar, feishu_open_id, department_id, role, status),
+        )
+    elif _check_entry_date():
+        db.execute(
+            "INSERT INTO ly_user (username, password, real_name, email, mobile, avatar, department_id, entry_date, role, status) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+            (username, encoded, real_name, email, mobile, avatar, department_id, entry_date, role, status),
+        )
+    else:
+        db.execute(
+            "INSERT INTO ly_user (username, password, real_name, email, mobile, avatar, department_id, role, status) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+            (username, encoded, real_name, email, mobile, avatar, department_id, role, status),
         )
 
 
