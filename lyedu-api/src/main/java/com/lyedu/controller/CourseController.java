@@ -117,7 +117,6 @@ public class CourseController {
         detail.setChapters(chapterItems);
         detail.setAttachments(attachments);
 
-        Long userId = getUserIdFromAuth(authorization);
         if (userId != null && !videos.isEmpty()) {
             List<Long> videoIds = videos.stream().map(Video::getId).collect(Collectors.toList());
             Map<Long, UserVideoProgress> progressMap = userVideoProgressService.getProgressMap(userId, videoIds);
@@ -169,7 +168,7 @@ public class CourseController {
     }
 
     /**
-     * 创建课程
+     * 创建课程（关联部门可为多个）
      */
     @PostMapping
     public Result<Void> create(@RequestBody CourseRequest request) {
@@ -182,17 +181,17 @@ public class CourseController {
         course.setSort(request.getSort());
         course.setIsRequired(request.getIsRequired());
         course.setVisibility(request.getVisibility() != null ? request.getVisibility() : 1);
-        course.setDepartmentId(request.getDepartmentId());
+        course.setDepartmentIds(request.getDepartmentIds());
         courseService.save(course);
         return Result.success();
     }
 
     /**
-     * 更新课程
+     * 更新课程（关联部门可为多个）
      */
     @PutMapping("/{id}")
     public Result<Void> update(@PathVariable Long id, @RequestBody CourseRequest request) {
-        Course course = courseService.getDetailById(id);
+        Course course = courseService.getByIdIgnoreVisibility(id);
         if (course == null) {
             return Result.error(404, "课程不存在");
         }
@@ -204,7 +203,7 @@ public class CourseController {
         course.setSort(request.getSort());
         course.setIsRequired(request.getIsRequired());
         course.setVisibility(request.getVisibility() != null ? request.getVisibility() : 1);
-        course.setDepartmentId(request.getDepartmentId());
+        course.setDepartmentIds(request.getDepartmentIds());
         courseService.update(course);
         return Result.success();
     }
@@ -230,7 +229,7 @@ public class CourseController {
         private Integer isRequired;
         /** 可见性：1-公开，0-私有 */
         private Integer visibility;
-        /** 关联部门（私有时必填） */
-        private Long departmentId;
+        /** 关联部门ID列表（私有时必填，可多选） */
+        private List<Long> departmentIds;
     }
 }

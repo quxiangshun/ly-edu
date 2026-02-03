@@ -24,6 +24,11 @@ public interface CourseService {
     Course getDetailById(Long id, Long userId);
 
     /**
+     * 按ID获取课程（不做可见性校验，管理端用）
+     */
+    Course getByIdIgnoreVisibility(Long id);
+
+    /**
      * 保存课程
      */
     void save(Course course);
