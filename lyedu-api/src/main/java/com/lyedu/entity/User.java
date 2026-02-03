@@ -58,6 +58,11 @@ public class User extends BaseEntity {
     private java.time.LocalDate entryDate;
 
     /**
+     * 累计积分
+     */
+    private Integer totalPoints;
+
+    /**
      * 角色（admin-管理员，teacher-教师，student-学员）
      */
     private String role;

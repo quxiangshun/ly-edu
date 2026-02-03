@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lyedu.common.TaskWithUserProgressDto;
 import com.lyedu.entity.Task;
 import com.lyedu.entity.UserTask;
+import com.lyedu.service.PointService;
 import com.lyedu.service.TaskService;
 import com.lyedu.service.UserCertificateService;
 import com.lyedu.service.UserTaskService;
@@ -40,6 +41,7 @@ public class UserTaskServiceImpl implements UserTaskService {
     private final JdbcTemplate jdbcTemplate;
     private final TaskService taskService;
     private final UserCertificateService userCertificateService;
+    private final PointService pointService;
 
     @Override
     public List<TaskWithUserProgressDto> listMyTasks(Long userId) {
@@ -101,6 +103,7 @@ public class UserTaskServiceImpl implements UserTaskService {
             if (task.getCertificateId() != null) {
                 userCertificateService.issueIfEligible("task", taskId, userId);
             }
+            pointService.addPoints(userId, "task_finish", "task", taskId);
         }
 
         return getByUserAndTask(userId, taskId);
