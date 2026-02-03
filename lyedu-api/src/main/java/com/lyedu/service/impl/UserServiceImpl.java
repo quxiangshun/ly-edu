@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -25,7 +26,7 @@ public class UserServiceImpl implements UserService {
     private final JdbcTemplate jdbcTemplate;
     private final PasswordEncoder passwordEncoder;
 
-    private static final String SELECT_COLS = "id, username, password, real_name, email, mobile, avatar, feishu_open_id, department_id, role, status, deleted";
+    private static final String SELECT_COLS = "id, username, password, real_name, email, mobile, avatar, feishu_open_id, department_id, entry_date, role, status, create_time, update_time, deleted";
 
     private static final String SELECT_BY_USERNAME_SQL =
             "SELECT " + SELECT_COLS + " FROM ly_user WHERE username = ? AND deleted = 0 LIMIT 1";
@@ -37,11 +38,11 @@ public class UserServiceImpl implements UserService {
             "SELECT " + SELECT_COLS + " FROM ly_user WHERE feishu_open_id = ? AND deleted = 0 LIMIT 1";
 
     private static final String INSERT_SQL =
-            "INSERT INTO ly_user (username, password, real_name, email, mobile, avatar, feishu_open_id, department_id, role, status) " +
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            "INSERT INTO ly_user (username, password, real_name, email, mobile, avatar, feishu_open_id, department_id, entry_date, role, status) " +
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
     private static final String UPDATE_SQL =
-            "UPDATE ly_user SET real_name = ?, email = ?, mobile = ?, avatar = ?, department_id = ?, role = ?, status = ? " +
+            "UPDATE ly_user SET real_name = ?, email = ?, mobile = ?, avatar = ?, department_id = ?, entry_date = ?, role = ?, status = ? " +
             "WHERE id = ? AND deleted = 0";
 
     private static final String UPDATE_PASSWORD_SQL =
@@ -123,7 +124,9 @@ public class UserServiceImpl implements UserService {
                 user.getEmail(),
                 user.getMobile(),
                 user.getAvatar(),
+                user.getFeishuOpenId(),
                 user.getDepartmentId(),
+                user.getEntryDate() != null ? java.sql.Date.valueOf(user.getEntryDate()) : null,
                 user.getRole() != null ? user.getRole() : "student",
                 user.getStatus() != null ? user.getStatus() : 1);
     }
@@ -168,6 +171,8 @@ public class UserServiceImpl implements UserService {
             if (!rs.wasNull()) {
                 user.setDepartmentId(deptId);
             }
+            java.sql.Date ed = rs.getDate("entry_date");
+            user.setEntryDate(ed != null ? ed.toLocalDate() : null);
             user.setRole(rs.getString("role"));
             user.setStatus(rs.getInt("status"));
             return user;

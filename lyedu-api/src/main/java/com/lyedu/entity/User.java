@@ -53,6 +53,11 @@ public class User extends BaseEntity {
     private Long departmentId;
 
     /**
+     * 入职日期（新员工任务可见性）
+     */
+    private java.time.LocalDate entryDate;
+
+    /**
      * 角色（admin-管理员，teacher-教师，student-学员）
      */
     private String role;
