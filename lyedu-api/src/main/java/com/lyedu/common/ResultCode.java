@@ -1,15 +1,10 @@
 package com.lyedu.common;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-
 /**
- * 响应码枚举
+ * 响应码枚举（手动构造避免 Lombok 与 Java 25 枚举兼容问题）
  *
  * @author LyEdu Team
  */
-@Getter
-@AllArgsConstructor
 public enum ResultCode {
 
     /**
@@ -81,4 +76,17 @@ public enum ResultCode {
      * 响应消息
      */
     private final String message;
+
+    ResultCode(Integer code, String message) {
+        this.code = code;
+        this.message = message;
+    }
+
+    public Integer getCode() {
+        return code;
+    }
+
+    public String getMessage() {
+        return message;
+    }
 }
