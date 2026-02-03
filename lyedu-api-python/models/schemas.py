@@ -15,7 +15,7 @@ class CourseRequest(BaseModel):
     sort: Optional[int] = 0
     is_required: Optional[int] = 0
     visibility: Optional[int] = 1  # 1-公开，0-私有
-    department_id: Optional[int] = None  # 私有时必填
+    department_ids: Optional[List[int]] = None  # 关联部门ID列表（私有时必填，可多选）
 
 
 class ChapterRequest(BaseModel):

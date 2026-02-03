@@ -111,7 +111,7 @@ def create(body: CourseRequest):
         sort=body.sort or 0,
         is_required=body.is_required or 0,
         visibility=body.visibility if body.visibility is not None else 1,
-        department_id=body.department_id,
+        department_ids=body.department_ids,
     )
     return success()
 
@@ -131,7 +131,7 @@ def update(id: int, body: CourseRequest):
         sort=body.sort,
         is_required=body.is_required,
         visibility=body.visibility if body.visibility is not None else 1,
-        department_id=body.department_id,
+        department_ids=body.department_ids,
     )
     return success()
 
