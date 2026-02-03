@@ -6,6 +6,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, List, Optional
 
+import pymysql
+
 import db
 from config import UPLOAD_PATH
 
@@ -53,41 +55,56 @@ def upload(file) -> Optional[dict]:
         file_size = len(content)
     except Exception:
         return None
-    db.execute(
-        "INSERT INTO ly_image (name, path, file_size) VALUES (%s, %s, %s)",
-        (name, relative_path, file_size),
-    )
-    row = db.query_one("SELECT id, name, path, file_size, create_time FROM ly_image ORDER BY id DESC LIMIT 1")
-    return _row_to_image(row) if row else None
+    try:
+        db.execute(
+            "INSERT INTO ly_image (name, path, file_size) VALUES (%s, %s, %s)",
+            (name, relative_path, file_size),
+        )
+        row = db.query_one("SELECT id, name, path, file_size, create_time FROM ly_image ORDER BY id DESC LIMIT 1")
+        return _row_to_image(row) if row else None
+    except pymysql.err.MySQLError as e:
+        if getattr(e, "args", (None,))[0] == 1146:
+            return None
+        raise
 
 
 def page(page_num: int = 1, size: int = 20, keyword: Optional[str] = None) -> dict:
-    where = " WHERE 1=1 "
-    params: List[Any] = []
-    if keyword and keyword.strip():
-        where += " AND name LIKE %s "
-        params.append("%" + keyword.strip() + "%")
-    total_row = db.query_one("SELECT COUNT(*) AS cnt FROM ly_image " + where, tuple(params))
-    total = total_row["cnt"] or 0
-    offset = (page_num - 1) * size
-    params.extend([size, offset])
-    rows = db.query_all(
-        "SELECT id, name, path, file_size, create_time FROM ly_image " + where + " ORDER BY id DESC LIMIT %s OFFSET %s",
-        tuple(params),
-    )
-    records = [_row_to_image(r) for r in (rows or [])]
     from models.schemas import page_result
-    return page_result(records, total, page_num, size)
+    try:
+        where = " WHERE 1=1 "
+        params: List[Any] = []
+        if keyword and keyword.strip():
+            where += " AND name LIKE %s "
+            params.append("%" + keyword.strip() + "%")
+        total_row = db.query_one("SELECT COUNT(*) AS cnt FROM ly_image " + where, tuple(params))
+        total = total_row["cnt"] or 0
+        offset = (page_num - 1) * size
+        params.extend([size, offset])
+        rows = db.query_all(
+            "SELECT id, name, path, file_size, create_time FROM ly_image " + where + " ORDER BY id DESC LIMIT %s OFFSET %s",
+            tuple(params),
+        )
+        records = [_row_to_image(r) for r in (rows or [])]
+        return page_result(records, total, page_num, size)
+    except pymysql.err.MySQLError as e:
+        if getattr(e, "args", (None,))[0] == 1146:  # Table doesn't exist
+            return page_result([], 0, page_num, size)
+        raise
 
 
 def delete_by_id(image_id: int) -> None:
     if not image_id:
         return
-    row = db.query_one("SELECT id, path FROM ly_image WHERE id = %s", (image_id,))
-    if row and row.get("path"):
-        full = UPLOAD_PATH / "images" / row["path"]
-        try:
-            full.unlink(missing_ok=True)
-        except Exception:
-            pass
-    db.execute("DELETE FROM ly_image WHERE id = %s", (image_id,))
+    try:
+        row = db.query_one("SELECT id, path FROM ly_image WHERE id = %s", (image_id,))
+        if row and row.get("path"):
+            full = UPLOAD_PATH / "images" / row["path"]
+            try:
+                full.unlink(missing_ok=True)
+            except Exception:
+                pass
+        db.execute("DELETE FROM ly_image WHERE id = %s", (image_id,))
+    except pymysql.err.MySQLError as e:
+        if getattr(e, "args", (None,))[0] == 1146:
+            return
+        raise

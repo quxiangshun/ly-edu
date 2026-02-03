@@ -2,6 +2,8 @@
 """考试任务服务，与 Java ExamService 对应"""
 from typing import Any, List, Optional
 
+import pymysql
+
 import db
 from models.schemas import page_result
 from services import department_service
@@ -77,26 +79,31 @@ def page(
     keyword: Optional[str] = None,
     user_id: Optional[int] = None,
 ) -> dict:
-    offset = (page_num - 1) * size
-    where = ["deleted = 0"]
-    params: List[Any] = []
-    _append_visibility_condition(where, params, user_id)
-    if keyword and keyword.strip():
-        where.append("title LIKE %s")
-        params.append("%" + keyword.strip() + "%")
-    where_sql = " AND ".join(where)
-    count_sql = "SELECT COUNT(*) AS total FROM ly_exam WHERE " + where_sql
-    total_row = db.query_one(count_sql, tuple(params))
-    total = total_row.get("total", 0) or 0
-    query_sql = "SELECT " + SELECT_COLS + " FROM ly_exam WHERE " + where_sql + " ORDER BY id DESC LIMIT %s OFFSET %s"
-    query_params = list(params) + [size, offset]
-    rows = db.query_all(query_sql, tuple(query_params))
-    records = []
-    for r in (rows or []):
-        e = _row_to_exam(r)
-        e["departmentIds"] = exam_department_service.list_department_ids_by_exam_id(e.get("id"))
-        records.append(e)
-    return page_result(records, total, page_num, size)
+    try:
+        offset = (page_num - 1) * size
+        where = ["deleted = 0"]
+        params: List[Any] = []
+        _append_visibility_condition(where, params, user_id)
+        if keyword and keyword.strip():
+            where.append("title LIKE %s")
+            params.append("%" + keyword.strip() + "%")
+        where_sql = " AND ".join(where)
+        count_sql = "SELECT COUNT(*) AS total FROM ly_exam WHERE " + where_sql
+        total_row = db.query_one(count_sql, tuple(params))
+        total = total_row.get("total", 0) or 0
+        query_sql = "SELECT " + SELECT_COLS + " FROM ly_exam WHERE " + where_sql + " ORDER BY id DESC LIMIT %s OFFSET %s"
+        query_params = list(params) + [size, offset]
+        rows = db.query_all(query_sql, tuple(query_params))
+        records = []
+        for r in (rows or []):
+            e = _row_to_exam(r)
+            e["departmentIds"] = exam_department_service.list_department_ids_by_exam_id(e.get("id"))
+            records.append(e)
+        return page_result(records, total, page_num, size)
+    except pymysql.err.MySQLError as e:
+        if getattr(e, "args", (None,))[0] == 1146:
+            return page_result([], 0, page_num, size)
+        raise
 
 
 def get_by_id(exam_id: int, user_id: Optional[int]) -> Optional[dict]:
@@ -107,13 +114,18 @@ def get_by_id(exam_id: int, user_id: Optional[int]) -> Optional[dict]:
 
 
 def get_by_id_ignore_visibility(exam_id: int) -> Optional[dict]:
-    sql = "SELECT " + SELECT_COLS + " FROM ly_exam WHERE id = %s AND deleted = 0"
-    row = db.query_one(sql, (exam_id,))
-    if not row:
-        return None
-    e = _row_to_exam(row)
-    e["departmentIds"] = exam_department_service.list_department_ids_by_exam_id(e.get("id"))
-    return e
+    try:
+        sql = "SELECT " + SELECT_COLS + " FROM ly_exam WHERE id = %s AND deleted = 0"
+        row = db.query_one(sql, (exam_id,))
+        if not row:
+            return None
+        e = _row_to_exam(row)
+        e["departmentIds"] = exam_department_service.list_department_ids_by_exam_id(e.get("id"))
+        return e
+    except pymysql.err.MySQLError as e:
+        if getattr(e, "args", (None,))[0] == 1146:
+            return None
+        raise
 
 
 def save(
@@ -127,17 +139,22 @@ def save(
     status: int = 1,
     department_ids: Optional[List[int]] = None,
 ) -> int:
-    sql = (
-        "INSERT INTO ly_exam (title, paper_id, start_time, end_time, duration_minutes, pass_score, visibility, status) "
-        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
-    )
-    eid = db.execute_insert(
-        sql,
-        (title, paper_id, start_time, end_time, duration_minutes, pass_score, visibility, status),
-    )
-    if eid and department_ids:
-        exam_department_service.set_exam_departments(eid, department_ids)
-    return eid or 0
+    try:
+        sql = (
+            "INSERT INTO ly_exam (title, paper_id, start_time, end_time, duration_minutes, pass_score, visibility, status) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
+        )
+        eid = db.execute_insert(
+            sql,
+            (title, paper_id, start_time, end_time, duration_minutes, pass_score, visibility, status),
+        )
+        if eid and department_ids:
+            exam_department_service.set_exam_departments(eid, department_ids)
+        return eid or 0
+    except pymysql.err.MySQLError as e:
+        if getattr(e, "args", (None,))[0] == 1146:
+            return 0
+        raise
 
 
 def update(
@@ -152,19 +169,29 @@ def update(
     status: int = 1,
     department_ids: Optional[List[int]] = None,
 ) -> bool:
-    sql = (
-        "UPDATE ly_exam SET title = %s, paper_id = %s, start_time = %s, end_time = %s, duration_minutes = %s, pass_score = %s, visibility = %s, status = %s "
-        "WHERE id = %s AND deleted = 0"
-    )
-    n = db.execute(
-        sql,
-        (title, paper_id, start_time, end_time, duration_minutes, pass_score, visibility, status, exam_id),
-    )
-    exam_department_service.set_exam_departments(exam_id, department_ids or [])
-    return n > 0
+    try:
+        sql = (
+            "UPDATE ly_exam SET title = %s, paper_id = %s, start_time = %s, end_time = %s, duration_minutes = %s, pass_score = %s, visibility = %s, status = %s "
+            "WHERE id = %s AND deleted = 0"
+        )
+        n = db.execute(
+            sql,
+            (title, paper_id, start_time, end_time, duration_minutes, pass_score, visibility, status, exam_id),
+        )
+        exam_department_service.set_exam_departments(exam_id, department_ids or [])
+        return n > 0
+    except pymysql.err.MySQLError as e:
+        if getattr(e, "args", (None,))[0] == 1146:
+            return False
+        raise
 
 
 def delete(exam_id: int) -> bool:
-    n = db.execute("UPDATE ly_exam SET deleted = 1 WHERE id = %s", (exam_id,))
-    exam_department_service.set_exam_departments(exam_id, None)
-    return n > 0
+    try:
+        n = db.execute("UPDATE ly_exam SET deleted = 1 WHERE id = %s", (exam_id,))
+        exam_department_service.set_exam_departments(exam_id, None)
+        return n > 0
+    except pymysql.err.MySQLError as e:
+        if getattr(e, "args", (None,))[0] == 1146:
+            return False
+        raise
