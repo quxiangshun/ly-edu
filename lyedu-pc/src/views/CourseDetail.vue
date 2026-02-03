@@ -9,6 +9,9 @@
         <el-menu mode="horizontal" default-active="courses" class="header-menu">
           <el-menu-item index="home" @click="$router.push('/')">首页</el-menu-item>
           <el-menu-item index="courses" @click="$router.push('/courses')">课程中心</el-menu-item>
+          <el-menu-item index="knowledge" @click="$router.push('/knowledge')">知识中心</el-menu-item>
+          <el-menu-item index="exam" @click="$router.push('/exam')">考试中心</el-menu-item>
+          <el-menu-item index="certificates" @click="$router.push('/certificates')">我的证书</el-menu-item>
           <el-menu-item index="my" @click="$router.push('/my-learning')">我的学习</el-menu-item>
         </el-menu>
       </div>
@@ -119,11 +122,13 @@
                   v-for="att in courseDetail.attachments"
                   :key="att.id"
                   class="attachment-item"
-                  @click="handleDownloadAttachment(att)"
                 >
                   <el-icon class="att-icon"><Document /></el-icon>
                   <span class="att-name">{{ att.name }}</span>
-                  <el-icon class="att-download"><Download /></el-icon>
+                  <span class="att-actions">
+                    <el-button v-if="isAttachmentPdf(att)" type="primary" link size="small" @click.stop="handlePreviewAttachment(att)">预览</el-button>
+                    <el-button type="primary" link size="small" @click.stop="handleDownloadAttachment(att)">下载</el-button>
+                  </span>
                 </div>
               </div>
               <el-empty v-else description="暂无附件" />
@@ -166,6 +171,50 @@
         </el-card>
 
         <el-empty v-else-if="!hasChaptersOrAttachments" description="暂无视频" />
+
+        <!-- 课程评论（独立卡片，始终展示） -->
+        <el-card class="tabs-card comment-card" v-if="courseDetail">
+          <template #header><span>课程评论</span></template>
+          <div class="comment-section">
+            <div class="comment-form" v-if="hasToken">
+              <el-input
+                v-model="commentContent"
+                type="textarea"
+                :rows="3"
+                placeholder="写下你的评论或提问..."
+                maxlength="500"
+                show-word-limit
+              />
+              <el-button type="primary" style="margin-top:8px" :loading="commentSubmitting" @click="submitComment(null)">
+                发表评论
+              </el-button>
+            </div>
+            <p v-else class="comment-login-tip">登录后可发表评论</p>
+            <div class="comment-list" v-if="commentTree.length > 0">
+              <div v-for="node in commentTree" :key="node.id" class="comment-node">
+                <div class="comment-item">
+                  <span class="comment-user">{{ node.userRealName || '用户' }}</span>
+                  <span class="comment-time">{{ formatCommentTime(node.createTime) }}</span>
+                  <p class="comment-content">{{ node.content }}</p>
+                  <el-button v-if="hasToken" link type="primary" size="small" @click="replyTo(node)">回复</el-button>
+                </div>
+                <div v-if="node.replies?.length" class="comment-replies">
+                  <div v-for="r in node.replies" :key="r.id" class="comment-item reply">
+                    <span class="comment-user">{{ r.userRealName || '用户' }}</span>
+                    <span class="comment-time">{{ formatCommentTime(r.createTime) }}</span>
+                    <p class="comment-content">{{ r.content }}</p>
+                  </div>
+                </div>
+                <div v-if="replyingTo === node.id" class="comment-form reply-form">
+                  <el-input v-model="replyContent" type="textarea" :rows="2" placeholder="回复..." />
+                  <el-button type="primary" size="small" style="margin-top:6px" :loading="commentSubmitting" @click="submitComment(node.id)">发送</el-button>
+                  <el-button size="small" style="margin-top:6px; margin-left:6px" @click="replyingTo = null; replyContent = ''">取消</el-button>
+                </div>
+              </div>
+            </div>
+            <el-empty v-else description="暂无评论，快来抢沙发" />
+          </div>
+        </el-card>
       </div>
     </el-main>
   </div>
@@ -176,7 +225,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Clock, VideoPlay, Document, Download } from '@element-plus/icons-vue'
-import { getCourseById, type CourseDetail, type CourseAttachment, type ChapterItem } from '@/api/course'
+import { getCourseById, getCourseComments, addCourseComment, type CourseDetail, type CourseAttachment, type ChapterItem, type CourseCommentDto } from '@/api/course'
 import { joinCourse } from '@/api/learning'
 
 const router = useRouter()
@@ -184,6 +233,12 @@ const route = useRoute()
 const loading = ref(false)
 const courseDetail = ref<CourseDetail | null>(null)
 const activeTab = ref('catalog')
+const comments = ref<CourseCommentDto[]>([])
+const commentContent = ref('')
+const replyContent = ref('')
+const replyingTo = ref<number | null>(null)
+const commentSubmitting = ref(false)
+const hasToken = ref(!!localStorage.getItem('token'))
 
 const hasChaptersOrAttachments = computed(() => {
   const d = courseDetail.value
@@ -200,6 +255,20 @@ const chaptersWithVideos = computed<ChapterItem[]>(() => {
   return d.chapters.filter((ch) => ch.hours && ch.hours.length > 0)
 })
 
+/** 评论树：一级评论 + replies */
+interface CommentNode extends CourseCommentDto {
+  replies?: CommentNode[]
+}
+const commentTree = computed<CommentNode[]>(() => {
+  const list = comments.value
+  const top = list.filter((c) => c.parentId == null || c.parentId === 0)
+  const children = list.filter((c) => c.parentId != null && c.parentId !== 0)
+  return top.map((t) => ({
+    ...t,
+    replies: children.filter((r) => r.parentId === t.id).map((r) => ({ ...r, replies: [] }))
+  }))
+})
+
 function getLearnRecord(videoId: number) {
   const d = courseDetail.value
   if (!d?.learnRecord) return null
@@ -213,6 +282,23 @@ function formatLearnRecord(videoId: number): string {
   const d = rec.duration ?? 0
   if (d <= 0) return ''
   return `已看 ${formatDuration(p)} / ${formatDuration(d)}`
+}
+
+function isAttachmentPdf(att: CourseAttachment) {
+  const t = (att.type || '').toLowerCase()
+  const name = (att.name || '').toLowerCase()
+  return t === 'pdf' || name.endsWith('.pdf')
+}
+
+function handlePreviewAttachment(att: CourseAttachment) {
+  if (!att.fileUrl) {
+    ElMessage.warning('附件地址无效')
+    return
+  }
+  router.push({
+    path: '/preview',
+    query: { url: att.fileUrl, title: att.name || '附件', type: 'pdf' }
+  })
 }
 
 function handleDownloadAttachment(att: CourseAttachment) {
@@ -250,11 +336,62 @@ const loadCourseDetail = async () => {
   try {
     const res = await getCourseById(courseId)
     courseDetail.value = res
+    hasToken.value = !!localStorage.getItem('token')
+    const list = await getCourseComments(courseId)
+    comments.value = list || []
   } catch (e: any) {
     ElMessage.error(e?.response?.data?.message || '加载课程详情失败')
     router.push('/courses')
   } finally {
     loading.value = false
+  }
+}
+
+function formatCommentTime(t?: string): string {
+  if (!t) return ''
+  try {
+    const d = new Date(t)
+    const now = new Date()
+    const diff = (now.getTime() - d.getTime()) / 1000
+    if (diff < 60) return '刚刚'
+    if (diff < 3600) return `${Math.floor(diff / 60)} 分钟前`
+    if (diff < 86400) return `${Math.floor(diff / 3600)} 小时前`
+    if (diff < 604800) return `${Math.floor(diff / 86400)} 天前`
+    return d.toLocaleDateString()
+  } catch {
+    return t
+  }
+}
+
+function replyTo(node: CommentNode) {
+  replyingTo.value = node.id
+  replyContent.value = ''
+}
+
+async function submitComment(parentId: number | null) {
+  const courseId = Number(route.params.id)
+  if (!courseId) return
+  const content = parentId == null ? commentContent.value : replyContent.value
+  if (!content?.trim()) {
+    ElMessage.warning('请输入评论内容')
+    return
+  }
+  commentSubmitting.value = true
+  try {
+    await addCourseComment(courseId, { parentId: parentId ?? undefined, content: content.trim() })
+    ElMessage.success(parentId == null ? '评论成功' : '回复成功')
+    if (parentId == null) {
+      commentContent.value = ''
+    } else {
+      replyingTo.value = null
+      replyContent.value = ''
+    }
+    const list = await getCourseComments(courseId)
+    comments.value = list || []
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message || '发表失败')
+  } finally {
+    commentSubmitting.value = false
   }
 }
 
@@ -552,10 +689,70 @@ onMounted(() => {
         color: #303133;
       }
 
-      .att-download {
-        color: #409eff;
-        font-size: 18px;
+      .att-actions {
+        display: flex;
+        gap: 4px;
+        flex-shrink: 0;
       }
+    }
+  }
+}
+
+.comment-card {
+  margin-top: 20px;
+}
+
+.comment-section {
+  .comment-login-tip {
+    color: #909399;
+    font-size: 14px;
+    margin: 0 0 16px;
+  }
+  .comment-form {
+    margin-bottom: 20px;
+    &.reply-form {
+      margin-left: 24px;
+      margin-top: 8px;
+      padding: 12px;
+      background: #f5f7fa;
+      border-radius: 8px;
+    }
+  }
+  .comment-list {
+    .comment-node {
+      border-bottom: 1px solid #ebeef5;
+      padding-bottom: 16px;
+      margin-bottom: 16px;
+      &:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+      }
+    }
+    .comment-item {
+      .comment-user {
+        font-weight: 500;
+        color: #303133;
+        margin-right: 12px;
+      }
+      .comment-time {
+        font-size: 12px;
+        color: #909399;
+      }
+      .comment-content {
+        margin: 8px 0 4px;
+        color: #606266;
+        line-height: 1.5;
+        white-space: pre-wrap;
+      }
+      &.reply {
+        margin-left: 24px;
+        padding: 8px 0;
+        border-left: 3px solid #e4e7ed;
+        padding-left: 12px;
+      }
+    }
+    .comment-replies {
+      margin-top: 4px;
     }
   }
 }
