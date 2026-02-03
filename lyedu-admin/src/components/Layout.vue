@@ -199,14 +199,38 @@ const handleLogout = () => {
     border-right: none;
     background-color: #304156;
 
-    :deep(.el-menu-item) {
+    :deep(.el-menu-item),
+    :deep(.el-sub-menu__title) {
       color: rgba(255, 255, 255, 0.7);
 
       &:hover {
         background-color: rgba(255, 255, 255, 0.1);
         color: #fff;
       }
+    }
 
+    :deep(.el-menu-item) {
+      &.is-active {
+        background-color: #409eff;
+        color: #fff;
+      }
+    }
+
+    :deep(.el-sub-menu.is-opened > .el-sub-menu__title) {
+      color: #fff;
+    }
+
+    /* 考试中心/证书中心 子菜单：背景与文字与侧栏一致 */
+    :deep(.el-sub-menu .el-menu) {
+      background-color: rgba(0, 0, 0, 0.15);
+    }
+    :deep(.el-sub-menu .el-menu .el-menu-item) {
+      color: rgba(255, 255, 255, 0.7);
+      background-color: transparent;
+      &:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+        color: #fff;
+      }
       &.is-active {
         background-color: #409eff;
         color: #fff;
