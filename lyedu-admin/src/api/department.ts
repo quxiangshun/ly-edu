@@ -28,3 +28,16 @@ export const updateDepartment = (id: number, data: Partial<Department>) => {
 export const deleteDepartment = (id: number) => {
   return request.delete(`/department/${id}`)
 }
+
+/** 部门关联的课程（多对多） */
+export const getDepartmentCourses = (departmentId: number) => {
+  return request.get<import('@/api/course').Course[]>(`/department/${departmentId}/courses`)
+}
+
+export const addCoursesToDepartment = (departmentId: number, courseIds: number[]) => {
+  return request.post(`/department/${departmentId}/courses`, { courseIds })
+}
+
+export const removeCourseFromDepartment = (departmentId: number, courseId: number) => {
+  return request.delete(`/department/${departmentId}/courses/${courseId}`)
+}
