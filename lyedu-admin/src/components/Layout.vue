@@ -33,6 +33,27 @@
           <el-icon><VideoPlay /></el-icon>
           <template #title>视频管理</template>
         </el-menu-item>
+        <el-menu-item index="/knowledge">
+          <el-icon><Collection /></el-icon>
+          <template #title>知识库</template>
+        </el-menu-item>
+        <el-sub-menu index="exam-center">
+          <template #title>
+            <el-icon><EditPen /></el-icon>
+            <span>考试中心</span>
+          </template>
+          <el-menu-item index="/question">试题管理</el-menu-item>
+          <el-menu-item index="/paper">试卷管理</el-menu-item>
+          <el-menu-item index="/exam">考试管理</el-menu-item>
+        </el-sub-menu>
+        <el-sub-menu index="certificate-center">
+          <template #title>
+            <el-icon><Medal /></el-icon>
+            <span>证书中心</span>
+          </template>
+          <el-menu-item index="/certificate-template">证书模板</el-menu-item>
+          <el-menu-item index="/certificate">证书规则</el-menu-item>
+        </el-sub-menu>
       </el-menu>
     </el-aside>
     <el-container>
@@ -76,6 +97,9 @@ import {
   User,
   Notebook,
   VideoPlay,
+  Collection,
+  EditPen,
+  Medal,
   Expand,
   Fold,
   ArrowDown

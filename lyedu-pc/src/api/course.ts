@@ -71,3 +71,29 @@ export const getCourseById = (id: number) => {
 export const getRecommendedCourses = (limit: number = 6) => {
   return request.get<Course[]>('/course/recommended', { params: { limit } })
 }
+
+/** 课程评论 DTO（含评论人姓名） */
+export interface CourseCommentDto {
+  id: number
+  courseId: number
+  chapterId?: number
+  userId: number
+  userRealName?: string
+  parentId?: number
+  content: string
+  status: number
+  createTime?: string
+}
+
+export const getCourseComments = (courseId: number, chapterId?: number) => {
+  return request.get<CourseCommentDto[]>(\`/course/\${courseId}/comment\`, {
+    params: chapterId != null ? { chapterId } : {}
+  })
+}
+
+export const addCourseComment = (
+  courseId: number,
+  body: { chapterId?: number; parentId?: number; content: string }
+) => {
+  return request.post(\`/course/\${courseId}/comment\`, body)
+}
