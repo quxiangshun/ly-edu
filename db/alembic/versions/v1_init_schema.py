@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
-"""初始化基础表结构（对应 Flyway V1__init_schema.sql）
+"""完整初始化（合并原 v1～v13，与 Flyway V1 一致）
 
 Revision ID: v1
 Revises:
 Create Date: 2025-01-28
-
-对应 Flyway: V1__init_schema.sql
 """
 from typing import Sequence, Union
 
@@ -76,12 +74,25 @@ def upgrade() -> None:
             category_id BIGINT DEFAULT NULL,
             status TINYINT DEFAULT 1,
             sort INT DEFAULT 0,
+            is_required TINYINT DEFAULT 0 COMMENT '是否必修',
+            visibility TINYINT DEFAULT 1 COMMENT '可见性：1-公开，0-私有',
             create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
             update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             deleted TINYINT DEFAULT 0,
             PRIMARY KEY (id),
             KEY idx_category_id (category_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='课程表'
+    """)
+    op.execute("""
+        CREATE TABLE IF NOT EXISTS ly_course_department (
+            id BIGINT NOT NULL AUTO_INCREMENT,
+            course_id BIGINT NOT NULL,
+            department_id BIGINT NOT NULL,
+            PRIMARY KEY (id),
+            UNIQUE KEY uk_course_department (course_id, department_id),
+            KEY idx_course_id (course_id),
+            KEY idx_department_id (department_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='课程-部门关联表'
     """)
     op.execute("""
         CREATE TABLE IF NOT EXISTS ly_course_chapter (
@@ -95,6 +106,21 @@ def upgrade() -> None:
             PRIMARY KEY (id),
             KEY idx_course_id (course_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='课程章节表'
+    """)
+    op.execute("""
+        CREATE TABLE IF NOT EXISTS ly_course_attachment (
+            id BIGINT NOT NULL AUTO_INCREMENT,
+            course_id BIGINT NOT NULL,
+            name VARCHAR(200) NOT NULL,
+            type VARCHAR(50) DEFAULT NULL,
+            file_url VARCHAR(500) NOT NULL,
+            sort INT DEFAULT 0,
+            create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+            update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            deleted TINYINT DEFAULT 0,
+            PRIMARY KEY (id),
+            KEY idx_course_id (course_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='课程附件表'
     """)
     op.execute("""
         CREATE TABLE IF NOT EXISTS ly_video (
@@ -136,6 +162,7 @@ def upgrade() -> None:
             progress INT DEFAULT 0,
             duration INT DEFAULT 0,
             is_finished TINYINT DEFAULT 0,
+            last_play_ping_at DATETIME NULL COMMENT '最近播放心跳时间',
             create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
             update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY (id),
@@ -144,13 +171,74 @@ def upgrade() -> None:
             KEY idx_video_id (video_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户视频学习进度表'
     """)
+    op.execute("""
+        CREATE TABLE IF NOT EXISTS ly_file_upload (
+            id BIGINT NOT NULL AUTO_INCREMENT,
+            file_id VARCHAR(64) NOT NULL,
+            file_name VARCHAR(255) NOT NULL,
+            file_size BIGINT NOT NULL,
+            file_type VARCHAR(50) DEFAULT NULL,
+            chunk_size BIGINT NOT NULL,
+            total_chunks INT NOT NULL,
+            uploaded_chunks INT DEFAULT 0,
+            upload_path VARCHAR(500) DEFAULT NULL,
+            status TINYINT DEFAULT 0,
+            create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+            update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY uk_file_id (file_id),
+            KEY idx_status (status)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='文件上传进度表'
+    """)
+    op.execute("""
+        CREATE TABLE IF NOT EXISTS ly_file_chunk (
+            id BIGINT NOT NULL AUTO_INCREMENT,
+            file_id VARCHAR(64) NOT NULL,
+            chunk_index INT NOT NULL,
+            chunk_size BIGINT NOT NULL,
+            chunk_path VARCHAR(500) NOT NULL,
+            upload_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY uk_file_chunk (file_id, chunk_index),
+            KEY idx_file_id (file_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='文件分片上传记录表'
+    """)
+    op.execute("""
+        INSERT INTO ly_user (username, password, real_name, email, role, status)
+        VALUES ('admin', '$2a$10$YORpsv2uYZQNNt5hxVNrw.KyeVMcn.fjWYyX3CWGXSwdpL6hRpVSy', '管理员', 'admin@lyedu.com', 'admin', 1)
+        ON DUPLICATE KEY UPDATE password = VALUES(password), real_name = VALUES(real_name)
+    """)
+    op.execute("""
+        INSERT INTO ly_department (name, parent_id, sort, status) VALUES
+        ('技术部', 0, 1, 1),
+        ('产品部', 0, 2, 1),
+        ('运营部', 0, 3, 1)
+        ON DUPLICATE KEY UPDATE name = VALUES(name)
+    """)
+    op.execute("""
+        INSERT INTO ly_course (title, cover, description, status, sort) VALUES
+        ('Java 基础教程', 'https://via.placeholder.com/300x200?text=Java', 'Java 编程语言基础入门课程，适合零基础学员', 1, 1),
+        ('Vue3 前端开发', 'https://via.placeholder.com/300x200?text=Vue3', 'Vue3 框架学习，包含组合式 API 和 TypeScript', 1, 2),
+        ('SpringBoot 实战', 'https://via.placeholder.com/300x200?text=SpringBoot', 'SpringBoot 企业级应用开发实战', 1, 3),
+        ('MySQL 数据库', 'https://via.placeholder.com/300x200?text=MySQL', 'MySQL 数据库设计与优化', 1, 4),
+        ('Docker 容器化', 'https://via.placeholder.com/300x200?text=Docker', 'Docker 容器化部署实践', 1, 5),
+        ('Linux 系统管理', 'https://via.placeholder.com/300x200?text=Linux', 'Linux 系统管理与运维', 1, 6)
+        ON DUPLICATE KEY UPDATE title = VALUES(title)
+    """)
 
 
 def downgrade() -> None:
+    op.execute("DELETE FROM ly_course WHERE title IN ('Java 基础教程', 'Vue3 前端开发', 'SpringBoot 实战', 'MySQL 数据库', 'Docker 容器化', 'Linux 系统管理')")
+    op.execute("DELETE FROM ly_department WHERE name IN ('技术部', '产品部', '运营部')")
+    op.execute("DELETE FROM ly_user WHERE username = 'admin'")
+    op.execute("DROP TABLE IF EXISTS ly_file_chunk")
+    op.execute("DROP TABLE IF EXISTS ly_file_upload")
     op.execute("DROP TABLE IF EXISTS ly_user_video_progress")
     op.execute("DROP TABLE IF EXISTS ly_user_course")
     op.execute("DROP TABLE IF EXISTS ly_video")
+    op.execute("DROP TABLE IF EXISTS ly_course_attachment")
     op.execute("DROP TABLE IF EXISTS ly_course_chapter")
+    op.execute("DROP TABLE IF EXISTS ly_course_department")
     op.execute("DROP TABLE IF EXISTS ly_course")
     op.execute("DROP TABLE IF EXISTS ly_course_category")
     op.execute("DROP TABLE IF EXISTS ly_department")

@@ -53,7 +53,7 @@ public class Course extends BaseEntity {
     private Integer visibility;
 
     /**
-     * 关联部门（私有时必填，仅本部门及子部门用户可见）
+     * 关联部门ID列表（私有时必填，多对多；不持久化到 ly_course，来自 ly_course_department）
      */
-    private Long departmentId;
+    private java.util.List<Long> departmentIds;
 }

@@ -146,7 +146,7 @@ public class LearningController {
             for (Long courseId : seen) {
                 if (courseId == null || courseId <= 0) continue;
                 try {
-                    Course c = courseService.getDetailById(courseId);
+                    Course c = courseService.getDetailById(courseId, userId);
                     if (c == null) continue;
                     List<Video> videos = videoService.listByCourseId(courseId);
                     int progressPercent = 0;

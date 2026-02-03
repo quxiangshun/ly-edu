@@ -34,9 +34,9 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="departmentId" label="关联部门" width="120">
+        <el-table-column prop="departmentIds" label="关联部门" width="180">
           <template #default="{ row }">
-            {{ row.visibility === 0 && row.departmentId ? departmentNameMap.get(row.departmentId) ?? row.departmentId : '-' }}
+            {{ row.visibility === 0 && row.departmentIds?.length ? (row.departmentIds as number[]).map(d => departmentNameMap.get(d) ?? d).join('、') : '-' }}
           </template>
         </el-table-column>
         <el-table-column prop="status" label="状态" width="100">
@@ -172,15 +172,16 @@
             <el-radio :label="0">私有</el-radio>
           </el-radio-group>
         </el-form-item>
-        <el-form-item v-if="form.visibility === 0" label="关联部门" prop="departmentId">
+        <el-form-item v-if="form.visibility === 0" label="关联部门" prop="departmentIds">
           <el-tree-select
-            v-model="form.departmentId"
+            v-model="form.departmentIds"
             :data="departmentTreeOptions"
             :props="{ label: 'name', value: 'id' }"
-            placeholder="请选择关联部门"
+            placeholder="可多选关联部门"
             clearable
             check-strictly
             default-expand-all
+            multiple
             style="width: 100%"
           />
         </el-form-item>
@@ -273,16 +274,16 @@ const form = reactive<Partial<Course>>({
   sort: 0,
   isRequired: 0,
   visibility: 1,
-  departmentId: undefined
+  departmentIds: []
 })
 
 const rules: FormRules = {
   title: [{ required: true, message: '请输入课程名称', trigger: 'blur' }],
-  departmentId: [
+  departmentIds: [
     {
       validator: (_rule: unknown, value: unknown, callback: (err?: Error) => void) => {
-        if (form.visibility === 0 && (value === undefined || value === null || value === '')) {
-          callback(new Error('私有课程请选择关联部门'))
+        if (form.visibility === 0 && (!Array.isArray(value) || value.length === 0)) {
+          callback(new Error('私有课程请至少选择一个关联部门'))
         } else {
           callback()
         }
@@ -330,7 +331,7 @@ const handleAdd = () => {
     sort: 0,
     isRequired: 0,
     visibility: 1,
-    departmentId: undefined
+    departmentIds: []
   })
   dialogVisible.value = true
 }
