@@ -117,6 +117,14 @@ const routes: RouteRecordRaw[] = [
         meta: {
           title: '周期任务'
         }
+      },
+      {
+        path: 'settings',
+        name: 'Settings',
+        component: () => import('@/views/Settings.vue'),
+        meta: {
+          title: '系统设置'
+        }
       }
     ]
   }
