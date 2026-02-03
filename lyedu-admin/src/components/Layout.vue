@@ -54,6 +54,10 @@
           <el-menu-item index="/certificate-template">证书模板</el-menu-item>
           <el-menu-item index="/certificate">证书规则</el-menu-item>
         </el-sub-menu>
+        <el-menu-item index="/task">
+          <el-icon><Aim /></el-icon>
+          <template #title>周期任务</template>
+        </el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>
@@ -100,6 +104,7 @@ import {
   Collection,
   EditPen,
   Medal,
+  Aim,
   Expand,
   Fold,
   ArrowDown
