@@ -23,7 +23,7 @@
         <el-table-column prop="title" label="任务名称" min-width="180" show-overflow-tooltip />
         <el-table-column prop="cycleType" label="周期" width="90">
           <template #default="{ row }">
-            {{ row.cycleType === 'once' ? '一次性' : row.cycleType === 'daily' ? '每日' : row.cycleType === 'weekly' ? '每周' : row.cycleType === 'monthly' ? '每月' : row.cycleType }}
+            {{ row.cycleType === 'once' ? '一次性' : row.cycleType === 'daily' ? '每日' : row.cycleType === 'weekly' ? '每周' : row.cycleType === 'monthly' ? '每月' : row.cycleType === 'newcomer' ? '新员工' : row.cycleType }}
           </template>
         </el-table-column>
         <el-table-column label="闯关项" width="100">
@@ -78,7 +78,12 @@
             <el-option label="每日" value="daily" />
             <el-option label="每周" value="weekly" />
             <el-option label="每月" value="monthly" />
+            <el-option label="新员工（按入职时间）" value="newcomer" />
           </el-select>
+        </el-form-item>
+        <el-form-item v-if="form.cycleType === 'newcomer'" label="入职多少天内可见" prop="withinDays">
+          <el-input-number v-model="form.withinDays" :min="1" :max="365" placeholder="如 30 表示入职30天内可见" style="width: 100%" />
+          <div class="form-tip">仅入职日期（或创建时间）在此天数内的用户可见此任务</div>
         </el-form-item>
         <el-form-item label="闯关项(JSON)" prop="items">
           <el-input v-model="form.items" type="textarea" :rows="4" placeholder='[{"type":"course","id":1},{"type":"exam","id":2}] 按顺序完成' />
@@ -190,6 +195,7 @@ const form = reactive({
   title: '',
   description: '',
   cycleType: 'once',
+  withinDays: 30,
   items: '[]',
   certificateId: undefined as number | undefined,
   sort: 0,
@@ -250,6 +256,12 @@ async function handleEdit(row: Task) {
     form.title = t.title ?? ''
     form.description = t.description ?? ''
     form.cycleType = t.cycleType ?? 'once'
+    try {
+      const cc = t.cycleConfig ? JSON.parse(t.cycleConfig) : {}
+      form.withinDays = cc.within_days ?? 30
+    } catch {
+      form.withinDays = 30
+    }
     form.items = t.items ?? '[]'
     form.certificateId = t.certificateId
     form.sort = t.sort ?? 0
@@ -285,6 +297,7 @@ async function handleSubmit() {
         title: form.title,
         description: form.description || undefined,
         cycleType: form.cycleType,
+        cycleConfig: cycleConfig,
         items: form.items,
         certificateId: form.certificateId,
         sort: form.sort,
