@@ -2,8 +2,28 @@
 """用户服务，与 Java UserService 对应"""
 from typing import Any, List, Optional
 
+import pymysql
+
 import db
 from models.schemas import page_result
+
+# 数据库是否包含 entry_date 列（V8 迁移），首次访问时检测
+_has_entry_date: Optional[bool] = None
+
+
+def _check_entry_date() -> bool:
+    global _has_entry_date
+    if _has_entry_date is not None:
+        return _has_entry_date
+    try:
+        db.query_one("SELECT entry_date FROM ly_user LIMIT 1")
+        _has_entry_date = True
+    except pymysql.err.OperationalError as e:
+        if e.args[0] == 1054:  # Unknown column
+            _has_entry_date = False
+        else:
+            raise
+    return _has_entry_date
 
 
 def find_by_username(username: str) -> Optional[dict]:
@@ -18,9 +38,11 @@ def find_by_username(username: str) -> Optional[dict]:
 def find_by_feishu_open_id(feishu_open_id: str) -> Optional[dict]:
     if not (feishu_open_id or feishu_open_id.strip()):
         return None
+    cols = "id, username, password, real_name, email, mobile, avatar, feishu_open_id, department_id, role, status"
+    if _check_entry_date():
+        cols = "id, username, password, real_name, email, mobile, avatar, feishu_open_id, department_id, entry_date, role, status"
     row = db.query_one(
-        "SELECT id, username, password, real_name, email, mobile, avatar, feishu_open_id, department_id, entry_date, role, status "
-        "FROM ly_user WHERE feishu_open_id = %s AND deleted = 0 LIMIT 1",
+        f"SELECT {cols} FROM ly_user WHERE feishu_open_id = %s AND deleted = 0 LIMIT 1",
         (feishu_open_id.strip(),),
     )
     return row
@@ -49,9 +71,11 @@ def _row_to_user(row: dict) -> dict:
 
 
 def get_by_id(user_id: int) -> Optional[dict]:
+    cols = "id, username, password, real_name, email, mobile, avatar, department_id, role, status, create_time"
+    if _check_entry_date():
+        cols = "id, username, password, real_name, email, mobile, avatar, department_id, entry_date, role, status, create_time"
     row = db.query_one(
-        "SELECT id, username, password, real_name, email, mobile, avatar, department_id, entry_date, role, status, create_time "
-        "FROM ly_user WHERE id = %s AND deleted = 0",
+        f"SELECT {cols} FROM ly_user WHERE id = %s AND deleted = 0",
         (user_id,),
     )
     return _row_to_user(row) if row else None
@@ -86,9 +110,11 @@ def page(
         "SELECT COUNT(*) AS cnt FROM ly_user WHERE " + where_sql, tuple(params)
     )
     total = total_row["cnt"] or 0
+    cols = "id, username, password, real_name, email, mobile, avatar, department_id, role, status, create_time"
+    if _check_entry_date():
+        cols = "id, username, password, real_name, email, mobile, avatar, department_id, entry_date, role, status, create_time"
     sql = (
-        "SELECT id, username, password, real_name, email, mobile, avatar, department_id, entry_date, role, status, create_time "
-        "FROM ly_user WHERE " + where_sql + " ORDER BY id DESC LIMIT %s OFFSET %s"
+        f"SELECT {cols} FROM ly_user WHERE " + where_sql + " ORDER BY id DESC LIMIT %s OFFSET %s"
     )
     params.extend([size, offset])
     rows = db.query_all(sql, tuple(params))
@@ -112,11 +138,18 @@ def save(
     from passlib.hash import bcrypt
     pwd = (password or "123456").strip()
     encoded = bcrypt.hash(pwd)
-    db.execute(
-        "INSERT INTO ly_user (username, password, real_name, email, mobile, avatar, feishu_open_id, department_id, entry_date, role, status) "
-        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
-        (username, encoded, real_name, email, mobile, avatar, feishu_open_id, department_id, entry_date, role, status),
-    )
+    if _check_entry_date():
+        db.execute(
+            "INSERT INTO ly_user (username, password, real_name, email, mobile, avatar, feishu_open_id, department_id, entry_date, role, status) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+            (username, encoded, real_name, email, mobile, avatar, feishu_open_id, department_id, entry_date, role, status),
+        )
+    else:
+        db.execute(
+            "INSERT INTO ly_user (username, password, real_name, email, mobile, avatar, feishu_open_id, department_id, role, status) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+            (username, encoded, real_name, email, mobile, avatar, feishu_open_id, department_id, role, status),
+        )
 
 
 def update(
@@ -133,7 +166,7 @@ def update(
 ) -> int:
     set_parts: List[str] = []
     params: List[Any] = []
-    if entry_date is not None:
+    if entry_date is not None and _check_entry_date():
         set_parts.append("entry_date = %s")
         params.append(entry_date)
     if real_name is not None:
