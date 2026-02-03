@@ -27,6 +27,7 @@
                 class="video-element"
                 @loadedmetadata="handleLoadedMetadata"
                 @timeupdate="handleTimeUpdate"
+                @seeking="handleSeeking"
                 @ended="handleVideoEnded"
               >
                 您的浏览器不支持视频播放
@@ -104,6 +105,9 @@ const videoListRef = ref<HTMLElement | null>(null)
 const currentTime = ref(0)
 const lastProgressSaveAt = ref(0)
 const hasSavedMinProgress = ref(false)
+const lastValidCurrentTime = ref(0)
+const playerDisableSeek = ref(false)
+const playerDisableSpeed = ref(false)
 const PROGRESS_SAVE_INTERVAL_MS = 5000
 const MIN_PROGRESS_TO_COUNT_AS_WATCHED = 1
 const PLAY_PING_INTERVAL_MS = 30000
@@ -232,8 +236,17 @@ const saveProgressIfNeeded = () => {
 const handleTimeUpdate = () => {
   if (videoPlayer.value) {
     currentTime.value = videoPlayer.value.currentTime
+    lastValidCurrentTime.value = videoPlayer.value.currentTime
+    if (playerDisableSpeed.value && videoPlayer.value.playbackRate !== 1) {
+      videoPlayer.value.playbackRate = 1
+    }
     saveProgressIfNeeded()
   }
+}
+
+const handleSeeking = () => {
+  if (!videoPlayer.value || !playerDisableSeek.value) return
+  videoPlayer.value.currentTime = lastValidCurrentTime.value
 }
 
 const handleVideoEnded = async () => {
