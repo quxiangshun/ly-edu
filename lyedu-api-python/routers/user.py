@@ -66,6 +66,12 @@ def create(body: UserRequest):
     existing = user_service.find_by_username(body.username.strip())
     if existing:
         return error(400, "用户名已存在")
+    entry_d = None
+    if body.entry_date and body.entry_date.strip():
+        try:
+            entry_d = dt.strptime(body.entry_date.strip()[:10], "%Y-%m-%d").date()
+        except Exception:
+            pass
     user_service.save(
         username=body.username.strip(),
         password=body.password,
@@ -74,6 +80,7 @@ def create(body: UserRequest):
         mobile=body.mobile,
         avatar=body.avatar,
         department_id=body.department_id,
+        entry_date=entry_d,
         role=body.role or "student",
         status=body.status if body.status is not None else 1,
     )
@@ -89,6 +96,12 @@ def update(id: int, body: UserRequest):
         existing = user_service.find_by_username(body.username.strip())
         if existing:
             return error(400, "用户名已存在")
+    entry_d = None
+    if body.entry_date is not None and body.entry_date and str(body.entry_date).strip():
+        try:
+            entry_d = dt.strptime(str(body.entry_date).strip()[:10], "%Y-%m-%d").date()
+        except Exception:
+            pass
     user_service.update(
         id,
         username=body.username.strip() if body.username else None,
@@ -97,6 +110,7 @@ def update(id: int, body: UserRequest):
         mobile=body.mobile,
         avatar=body.avatar,
         department_id=body.department_id,
+        entry_date=entry_d,
         role=body.role,
         status=body.status,
     )
