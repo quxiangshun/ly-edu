@@ -2,6 +2,7 @@
 # Python 3.14 需使用较新 pydantic 才有预编译 wheel，故未严格锁版
 fastapi>=0.115.0
 uvicorn[standard]>=0.34.0
+requests>=2.28.0
 pymysql>=1.1.0
 cryptography>=42.0.0
 PyJWT>=2.10.0
