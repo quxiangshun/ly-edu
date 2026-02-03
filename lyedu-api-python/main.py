@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 import config
-from routers import auth, course, chapter, video, learning, user, department, stats, knowledge, question, paper, exam, exam_record, certificate_template, certificate, user_certificate, task, user_task
+from routers import auth, course, chapter, video, learning, user, department, stats, knowledge, question, paper, exam, exam_record, certificate_template, certificate, user_certificate, task, user_task, config
 
 
 def _run_alembic_upgrade() -> None:
@@ -59,6 +59,7 @@ app.include_router(certificate.router, prefix=API_PREFIX)
 app.include_router(user_certificate.router, prefix=API_PREFIX)
 app.include_router(task.router, prefix=API_PREFIX)
 app.include_router(user_task.router, prefix=API_PREFIX)
+app.include_router(config_router.router, prefix=API_PREFIX)
 
 
 @app.get('/')
