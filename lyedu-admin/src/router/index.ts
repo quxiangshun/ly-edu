@@ -109,6 +109,14 @@ const routes: RouteRecordRaw[] = [
         meta: {
           title: '证书规则'
         }
+      },
+      {
+        path: 'task',
+        name: 'Task',
+        component: () => import('@/views/Task.vue'),
+        meta: {
+          title: '周期任务'
+        }
       }
     ]
   }
