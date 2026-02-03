@@ -126,6 +126,15 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/points',
+    name: 'MyPoints',
+    component: () => import('@/views/MyPoints.vue'),
+    meta: {
+      title: '我的积分',
+      requiresAuth: true
+    }
+  },
+  {
     path: '/task/:id',
     name: 'TaskDetail',
     component: () => import('@/views/TaskDetail.vue'),

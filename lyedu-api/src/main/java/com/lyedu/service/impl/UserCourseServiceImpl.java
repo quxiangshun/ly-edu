@@ -1,6 +1,7 @@
 package com.lyedu.service.impl;
 
 import com.lyedu.entity.UserCourse;
+import com.lyedu.service.PointService;
 import com.lyedu.service.UserCourseService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -21,6 +22,7 @@ import java.util.List;
 public class UserCourseServiceImpl implements UserCourseService {
 
     private final JdbcTemplate jdbcTemplate;
+    private final PointService pointService;
 
     @Override
     public void joinCourse(Long userId, Long courseId) {
@@ -53,6 +55,9 @@ public class UserCourseServiceImpl implements UserCourseService {
         String sql = "UPDATE ly_user_course SET progress = ?, `status` = ? WHERE user_id = ? AND course_id = ?";
         Integer status = progress >= 100 ? 1 : 0;
         jdbcTemplate.update(sql, progress, status, userId, courseId);
+        if (progress != null && progress >= 100 && userId != null && courseId != null) {
+            pointService.addPoints(userId, "course_finish", "course", courseId);
+        }
     }
 
     private static class UserCourseRowMapper implements RowMapper<UserCourse> {
