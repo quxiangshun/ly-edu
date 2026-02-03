@@ -8,7 +8,22 @@
         <h1 class="login-title">LyEdu <span class="login-subtitle">企业培训平台</span></h1>
       </div>
 
-      <van-form @submit="handleLogin">
+      <!-- 飞书扫码登录（扩展点：后续可加企业微信、钉钉等） -->
+      <div v-if="isFeishuEnabled()" class="feishu-login">
+        <van-button
+          round
+          block
+          type="primary"
+          :loading="feishuLoading"
+          @click="handleFeishuLogin"
+          class="feishu-btn"
+        >
+          飞书扫码登录
+        </van-button>
+      </div>
+
+      <van-form v-if="!isFeishuOnly()" @submit="handleLogin">
+        <div v-if="isFeishuEnabled()" class="divider">或使用账号密码</div>
         <van-cell-group inset>
           <van-field
             v-model="loginForm.username"
@@ -50,16 +65,38 @@ import { ref, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { showSuccessToast } from 'vant'
 import request from '@/utils/request'
+import { getFeishuAuthUrl } from '@/api/auth'
+import { isFeishuEnabled, isFeishuOnly } from '@/utils/auth'
 
 const router = useRouter()
 const route = useRoute()
 const loading = ref(false)
+const feishuLoading = ref(false)
 const showPassword = ref(false)
 
 const loginForm = reactive({
   username: '',
   password: ''
 })
+
+const handleFeishuLogin = async () => {
+  feishuLoading.value = true
+  try {
+    const r = (route.query.redirect as string) || '/'
+    const path = r.startsWith('/') ? r : `/${r}`
+    const fullRedirect = window.location.origin + path
+    const res = await getFeishuAuthUrl(fullRedirect, 'feishu_scan')
+    if (res?.url) {
+      window.location.href = res.url
+      return
+    }
+    showSuccessToast('获取飞书登录地址失败')
+  } catch (e) {
+    showSuccessToast('飞书登录失败，请重试')
+  } finally {
+    feishuLoading.value = false
+  }
+}
 
 const handleLogin = async () => {
   loading.value = true
@@ -128,6 +165,18 @@ const handleLogin = async () => {
   .login-button {
     margin-top: 30px;
     padding: 0 16px;
+  }
+
+  .feishu-login {
+    margin-bottom: 16px;
+    padding: 0 16px;
+  }
+
+  .divider {
+    text-align: center;
+    color: #969799;
+    font-size: 12px;
+    margin: 8px 0 16px;
   }
 }
 </style>
