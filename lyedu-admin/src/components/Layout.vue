@@ -17,30 +17,24 @@
           <el-icon><DataBoard /></el-icon>
           <template #title>仪表盘</template>
         </el-menu-item>
-        <el-menu-item index="/department">
-          <el-icon><OfficeBuilding /></el-icon>
-          <template #title>部门管理</template>
-        </el-menu-item>
-        <el-menu-item index="/user">
-          <el-icon><User /></el-icon>
-          <template #title>用户管理</template>
-        </el-menu-item>
-        <el-menu-item index="/course">
-          <el-icon><Notebook /></el-icon>
-          <template #title>课程管理</template>
-        </el-menu-item>
-        <el-menu-item index="/video">
-          <el-icon><VideoPlay /></el-icon>
-          <template #title>视频管理</template>
-        </el-menu-item>
-        <el-menu-item index="/image">
-          <el-icon><Picture /></el-icon>
-          <template #title>图片库</template>
-        </el-menu-item>
-        <el-menu-item index="/knowledge">
-          <el-icon><Collection /></el-icon>
-          <template #title>知识库</template>
-        </el-menu-item>
+        <el-sub-menu index="org">
+          <template #title>
+            <el-icon><OfficeBuilding /></el-icon>
+            <span>组织与人员</span>
+          </template>
+          <el-menu-item index="/department">部门管理</el-menu-item>
+          <el-menu-item index="/user">用户管理</el-menu-item>
+        </el-sub-menu>
+        <el-sub-menu index="course-resource">
+          <template #title>
+            <el-icon><Notebook /></el-icon>
+            <span>课程与资源</span>
+          </template>
+          <el-menu-item index="/course">课程管理</el-menu-item>
+          <el-menu-item index="/video">视频管理</el-menu-item>
+          <el-menu-item index="/image">图片库</el-menu-item>
+          <el-menu-item index="/knowledge">知识库</el-menu-item>
+        </el-sub-menu>
         <el-sub-menu index="exam-center">
           <template #title>
             <el-icon><EditPen /></el-icon>
@@ -50,22 +44,22 @@
           <el-menu-item index="/paper">试卷管理</el-menu-item>
           <el-menu-item index="/exam">考试管理</el-menu-item>
         </el-sub-menu>
-        <el-sub-menu index="certificate-center">
+        <el-sub-menu index="training">
+          <template #title>
+            <el-icon><Aim /></el-icon>
+            <span>培训任务</span>
+          </template>
+          <el-menu-item index="/task">周期任务</el-menu-item>
+        </el-sub-menu>
+        <el-sub-menu index="reward">
           <template #title>
             <el-icon><Medal /></el-icon>
-            <span>证书中心</span>
+            <span>证书与激励</span>
           </template>
           <el-menu-item index="/certificate-template">证书模板</el-menu-item>
           <el-menu-item index="/certificate">证书规则</el-menu-item>
+          <el-menu-item index="/point-rule">积分规则</el-menu-item>
         </el-sub-menu>
-<el-menu-item index="/task">
-          <el-icon><Aim /></el-icon>
-          <template #title>周期任务</template>
-        </el-menu-item>
-        <el-menu-item index="/point-rule">
-          <el-icon><TrendCharts /></el-icon>
-          <template #title>积分规则</template>
-        </el-menu-item>
         <el-menu-item index="/settings">
           <el-icon><Setting /></el-icon>
           <template #title>系统设置</template>
@@ -118,7 +112,6 @@ import {
   EditPen,
   Medal,
   Aim,
-  TrendCharts,
   Setting,
   Expand,
   Fold,
