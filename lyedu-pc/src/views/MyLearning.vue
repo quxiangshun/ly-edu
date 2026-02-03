@@ -13,6 +13,9 @@
         >
           <el-menu-item index="home" @click="$router.push('/')">首页</el-menu-item>
           <el-menu-item index="courses" @click="$router.push('/courses')">课程中心</el-menu-item>
+          <el-menu-item index="knowledge" @click="$router.push('/knowledge')">知识中心</el-menu-item>
+          <el-menu-item index="exam" @click="$router.push('/exam')">考试中心</el-menu-item>
+          <el-menu-item index="certificates" @click="$router.push('/certificates')">我的证书</el-menu-item>
           <el-menu-item index="my">我的学习</el-menu-item>
         </el-menu>
         <div class="header-right">

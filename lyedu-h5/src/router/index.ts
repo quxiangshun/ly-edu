@@ -70,6 +70,15 @@ const routes: RouteRecordRaw[] = [
       title: '我的学习',
       requiresAuth: true
     }
+  },
+  {
+    path: '/knowledge',
+    name: 'KnowledgeCenter',
+    component: () => import('@/views/KnowledgeCenter.vue'),
+    meta: {
+      title: '知识中心',
+      requiresAuth: true
+    }
   }
 ]
 
