@@ -26,7 +26,7 @@ public class UserServiceImpl implements UserService {
     private final JdbcTemplate jdbcTemplate;
     private final PasswordEncoder passwordEncoder;
 
-    private static final String SELECT_COLS = "id, username, password, real_name, email, mobile, avatar, feishu_open_id, department_id, entry_date, role, status, create_time, update_time, deleted";
+    private static final String SELECT_COLS = "id, username, password, real_name, email, mobile, avatar, feishu_open_id, department_id, entry_date, total_points, role, status, create_time, update_time, deleted";
 
     private static final String SELECT_BY_USERNAME_SQL =
             "SELECT " + SELECT_COLS + " FROM ly_user WHERE username = ? AND deleted = 0 LIMIT 1";
@@ -173,6 +173,7 @@ public class UserServiceImpl implements UserService {
             }
             java.sql.Date ed = rs.getDate("entry_date");
             user.setEntryDate(ed != null ? ed.toLocalDate() : null);
+            user.setTotalPoints(rs.getObject("total_points", Integer.class));
             user.setRole(rs.getString("role"));
             user.setStatus(rs.getInt("status"));
             return user;

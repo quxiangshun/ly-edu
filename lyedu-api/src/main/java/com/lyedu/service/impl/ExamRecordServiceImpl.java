@@ -9,6 +9,7 @@ import com.lyedu.entity.Paper;
 import com.lyedu.service.ExamRecordService;
 import com.lyedu.service.ExamService;
 import com.lyedu.service.PaperService;
+import com.lyedu.service.PointService;
 import com.lyedu.service.UserCertificateService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -40,6 +41,8 @@ public class ExamRecordServiceImpl implements ExamRecordService {
     private final JdbcTemplate jdbcTemplate;
     private final ExamService examService;
     private final PaperService paperService;
+    private final UserCertificateService userCertificateService;
+    private final PointService pointService;
 
     @Override
     public ExamRecord submit(Long examId, Long userId, String answersJson) {
@@ -99,6 +102,7 @@ public class ExamRecordServiceImpl implements ExamRecordService {
         r.setSubmitTime(LocalDateTime.now());
         if (passed == 1) {
             userCertificateService.issueIfEligible("exam", examId, userId);
+            pointService.addPoints(userId, "exam_pass", "exam", examId);
         }
         return r;
     }
