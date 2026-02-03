@@ -165,6 +165,18 @@ lyedu/
 
 欢迎提交 Issue 和 Pull Request！
 
+## 支持我们
+
+LyEdu 开源免费使用。若对您有帮助，欢迎 [Star](https://github.com/quxiangshun/ly-edu) 或通过下方打赏支持我们，感谢您的鼓励与认可。
+
+感谢每一位使用、反馈和推荐 LyEdu 的朋友；以爱之名，为教育赋能。
+
+| 支付宝 | 微信 |
+|--------|------|
+| ![支付宝收款码](docs/支付宝收款码.jpg) | ![微信收款码](docs/微信收款码.jpg) |
+
+更多感谢与说明见 [用户支持说明](docs/SUPPORT.md)。
+
 ## 关于
 
 LyEdu - 以爱之名，为教育赋能 💝
