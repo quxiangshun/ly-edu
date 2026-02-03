@@ -25,17 +25,20 @@ public class UserServiceImpl implements UserService {
     private final JdbcTemplate jdbcTemplate;
     private final PasswordEncoder passwordEncoder;
 
+    private static final String SELECT_COLS = "id, username, password, real_name, email, mobile, avatar, feishu_open_id, department_id, role, status, deleted";
+
     private static final String SELECT_BY_USERNAME_SQL =
-            "SELECT id, username, password, CONVERT(real_name USING utf8mb4) as real_name, email, mobile, avatar, department_id, role, status, deleted " +
-            "FROM ly_user WHERE username = ? AND deleted = 0 LIMIT 1";
+            "SELECT " + SELECT_COLS + " FROM ly_user WHERE username = ? AND deleted = 0 LIMIT 1";
 
     private static final String SELECT_BY_ID_SQL =
-            "SELECT id, username, password, CONVERT(real_name USING utf8mb4) as real_name, email, mobile, avatar, department_id, role, status, deleted " +
-            "FROM ly_user WHERE id = ? AND deleted = 0";
+            "SELECT " + SELECT_COLS + " FROM ly_user WHERE id = ? AND deleted = 0";
+
+    private static final String SELECT_BY_FEISHU_OPEN_ID_SQL =
+            "SELECT " + SELECT_COLS + " FROM ly_user WHERE feishu_open_id = ? AND deleted = 0 LIMIT 1";
 
     private static final String INSERT_SQL =
-            "INSERT INTO ly_user (username, password, real_name, email, mobile, avatar, department_id, role, status) " +
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            "INSERT INTO ly_user (username, password, real_name, email, mobile, avatar, feishu_open_id, department_id, role, status) " +
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
     private static final String UPDATE_SQL =
             "UPDATE ly_user SET real_name = ?, email = ?, mobile = ?, avatar = ?, department_id = ?, role = ?, status = ? " +
@@ -88,8 +91,7 @@ public class UserServiceImpl implements UserService {
         Integer totalInt = jdbcTemplate.queryForObject(countSql, params.toArray(), Integer.class);
         Long total = totalInt != null ? totalInt.longValue() : 0L;
         
-        String querySql = "SELECT id, username, password, CONVERT(real_name USING utf8mb4) as real_name, email, mobile, avatar, department_id, role, status, deleted " +
-                "FROM ly_user " + whereClause + " ORDER BY id DESC LIMIT ? OFFSET ?";
+        String querySql = "SELECT " + SELECT_COLS + " FROM ly_user " + whereClause + " ORDER BY id DESC LIMIT ? OFFSET ?";
         List<Object> queryParams = new java.util.ArrayList<>(params);
         queryParams.add(size);
         queryParams.add(offset);
@@ -161,6 +163,7 @@ public class UserServiceImpl implements UserService {
             user.setEmail(rs.getString("email"));
             user.setMobile(rs.getString("mobile"));
             user.setAvatar(rs.getString("avatar"));
+            user.setFeishuOpenId(rs.getString("feishu_open_id"));
             long deptId = rs.getLong("department_id");
             if (!rs.wasNull()) {
                 user.setDepartmentId(deptId);
