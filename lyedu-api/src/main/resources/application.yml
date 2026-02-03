@@ -74,6 +74,11 @@ lyedu:
   jwt:
     secret: ${JWT_SECRET:lyedu_jwt_secret_key_please_change_in_production}
     expire: ${JWT_EXPIRE:86400}
+  feishu:
+    app-id: ${FEISHU_APP_ID:}
+    app-secret: ${FEISHU_APP_SECRET:}
+    # 飞书授权后回调到前端的地址（需在飞书开放平台配置一致），如 https://your-domain.com/login/feishu-callback
+    redirect-uri: ${FEISHU_REDIRECT_URI:}
   upload:
     path: ${UPLOAD_PATH:./uploads}
     max-size: ${MAX_FILE_SIZE:10737418240}

@@ -1,5 +1,13 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
+import {
+  getFeishuCodeFromUrl,
+  clearFeishuCodeInUrl,
+  getFeishuRedirectUri,
+  isFeishuEnabled,
+  isInFeishuEmbed
+} from '@/utils/auth'
+import { feishuCallback, getFeishuAuthUrl } from '@/api/auth'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -61,11 +69,47 @@ const router = createRouter({
   routes
 })
 
-// 课程中心、我的学习等需登录
-router.beforeEach((to, _from, next) => {
+// 飞书回调：URL 带 code 时先换 token 再继续
+router.beforeEach(async (to, _from, next) => {
+  const feishuPayload = getFeishuCodeFromUrl()
+  if (feishuPayload) {
+    try {
+      const redirectUri = getFeishuRedirectUri()
+      const res = await feishuCallback(feishuPayload.code, redirectUri)
+      if (res?.token) {
+        localStorage.setItem('token', res.token)
+        localStorage.setItem('user', JSON.stringify(res.userInfo ?? {}))
+      }
+    } catch (_e) {
+      // 错误由 API 拦截器提示
+    }
+    clearFeishuCodeInUrl()
+    const path = to.path + (to.hash || '')
+    const query = { ...to.query }
+    delete query.code
+    delete query.state
+    next({ path, query, replace: true })
+    return
+  }
+
   const requiresAuth = to.matched.some(r => r.meta?.requiresAuth)
   const token = localStorage.getItem('token')
   if (requiresAuth && !token) {
+    if (isFeishuEnabled() && isInFeishuEmbed()) {
+      try {
+        const redirectUri = getFeishuRedirectUri()
+        const fullRedirect = window.location.origin + to.fullPath
+        const res = await getFeishuAuthUrl(fullRedirect, 'feishu_embed')
+        if (res?.url) {
+          window.location.href = res.url
+          return
+        }
+      } catch (_e) {
+        // 降级到登录页
+      }
+      next({ path: '/login', query: { redirect: to.fullPath } })
+      return
+    }
     next({ path: '/login', query: { redirect: to.fullPath } })
   } else {
     next()

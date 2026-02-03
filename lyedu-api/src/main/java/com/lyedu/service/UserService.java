@@ -19,6 +19,14 @@ public interface UserService {
     User findByUsername(String username);
 
     /**
+     * 根据飞书 open_id 查询用户
+     *
+     * @param feishuOpenId 飞书 open_id
+     * @return 用户实体，未找到返回 null
+     */
+    User findByFeishuOpenId(String feishuOpenId);
+
+    /**
      * 分页查询用户
      *
      * @param page 页码（从1开始）
