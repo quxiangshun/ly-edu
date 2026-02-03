@@ -117,6 +117,24 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/tasks',
+    name: 'TaskList',
+    component: () => import('@/views/TaskList.vue'),
+    meta: {
+      title: '我的任务',
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/task/:id',
+    name: 'TaskDetail',
+    component: () => import('@/views/TaskDetail.vue'),
+    meta: {
+      title: '任务详情',
+      requiresAuth: true
+    }
+  },
+  {
     path: '/certificate/:id/print',
     name: 'CertificatePrint',
     component: () => import('@/views/CertificatePrint.vue'),

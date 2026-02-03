@@ -6,6 +6,7 @@ from typing import Any, List, Optional
 import db
 from services import exam_service
 from services import paper_service
+from services import user_certificate_service
 
 SELECT_COLS = "id, exam_id, user_id, paper_id, score, passed, answers, submit_time, create_time"
 
@@ -57,10 +58,10 @@ def submit(exam_id: int, user_id: int, answers_json: Optional[str]) -> Optional[
 
     sql = "INSERT INTO ly_exam_record (exam_id, user_id, paper_id, score, passed, answers, submit_time) VALUES (%s, %s, %s, %s, %s, %s, NOW())"
     db.execute(sql, (exam_id, user_id, paper.get("id"), total_score, passed, answers_json))
-    if passed == 1:
-        user_certificate_service.issue_if_eligible("exam", exam_id, user_id)
     row = db.query_one("SELECT LAST_INSERT_ID() AS id", ())
     rid = row.get("id") if row else None
+    if passed == 1:
+        user_certificate_service.issue_if_eligible("exam", exam_id, user_id)
     if not rid:
         return None
     r = {
