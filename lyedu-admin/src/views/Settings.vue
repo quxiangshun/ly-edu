@@ -30,6 +30,18 @@
                 <el-radio label="1">是</el-radio>
               </el-radio-group>
             </el-form-item>
+            <el-form-item label="禁止拖拽进度条">
+              <el-radio-group v-model="form.player_disable_seek">
+                <el-radio label="0">否（允许拖拽）</el-radio>
+                <el-radio label="1">是（防拖拽）</el-radio>
+              </el-radio-group>
+            </el-form-item>
+            <el-form-item label="禁止倍速播放">
+              <el-radio-group v-model="form.player_disable_speed">
+                <el-radio label="0">否（允许倍速）</el-radio>
+                <el-radio label="1">是（仅 1x）</el-radio>
+              </el-radio-group>
+            </el-form-item>
           </el-form>
         </el-tab-pane>
         <el-tab-pane label="学员端设置" name="student">
@@ -56,6 +68,8 @@ const form = reactive({
   site_keywords: '',
   site_description: '',
   player_allow_download: '0',
+  player_disable_seek: '0',
+  player_disable_speed: '0',
   student_default_page_size: 20
 })
 
@@ -96,6 +110,8 @@ async function handleSave() {
       'site.keywords': form.site_keywords,
       'site.description': form.site_description,
       'player.allow_download': String(form.player_allow_download),
+      'player.disable_seek': String(form.player_disable_seek),
+      'player.disable_speed': String(form.player_disable_speed),
       'student.default_page_size': String(form.student_default_page_size)
     })
     ElMessage.success('保存成功')
