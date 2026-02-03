@@ -2,33 +2,50 @@
 """积分规则服务，与 Java PointRuleService 对应"""
 from typing import List, Optional
 
+import pymysql
+
 import db
 
 
 def list_all() -> List[dict]:
-    rows = db.query_all(
-        "SELECT id, rule_key, rule_name, points, enabled, remark, create_time, update_time FROM ly_point_rule ORDER BY id"
-    )
-    return [_row_to_rule(r) for r in (rows or [])]
+    try:
+        rows = db.query_all(
+            "SELECT id, rule_key, rule_name, points, enabled, remark, create_time, update_time FROM ly_point_rule ORDER BY id"
+        )
+        return [_row_to_rule(r) for r in (rows or [])]
+    except pymysql.err.MySQLError as e:
+        if getattr(e, "args", (None,))[0] == 1146:
+            return []
+        raise
 
 
 def get_by_key(rule_key: str) -> Optional[dict]:
     if not (rule_key and rule_key.strip()):
         return None
-    row = db.query_one(
-        "SELECT id, rule_key, rule_name, points, enabled, remark, create_time, update_time FROM ly_point_rule WHERE rule_key = %s",
-        (rule_key.strip(),),
-    )
-    return _row_to_rule(row) if row else None
+    try:
+        row = db.query_one(
+            "SELECT id, rule_key, rule_name, points, enabled, remark, create_time, update_time FROM ly_point_rule WHERE rule_key = %s",
+            (rule_key.strip(),),
+        )
+        return _row_to_rule(row) if row else None
+    except pymysql.err.MySQLError as e:
+        if getattr(e, "args", (None,))[0] == 1146:
+            return None
+        raise
 
 
 def update(rule_key: str, rule_name: Optional[str], points: Optional[int], enabled: Optional[int], remark: Optional[str]) -> None:
     if not (rule_key and rule_key.strip()):
         return
-    db.execute(
-        "UPDATE ly_point_rule SET rule_name = %s, points = %s, enabled = %s, remark = %s WHERE rule_key = %s",
-        (rule_name, points, enabled, remark, rule_key.strip()),
-    )
+    try:
+        db.execute(
+            "UPDATE ly_point_rule SET rule_name = %s, points = %s, enabled = %s, remark = %s WHERE rule_key = %s",
+            (rule_name, points, enabled, remark, rule_key.strip()),
+        )
+    except pymysql.err.MySQLError as e:
+        if getattr(e, "args", (None,))[0] == 1146:
+            return
+        raise
 
 
 def _row_to_rule(row: dict) -> dict:
