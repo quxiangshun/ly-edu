@@ -4,8 +4,8 @@
     
     <div class="login-content">
       <div class="logo">
-        <img src="/icon-192.png" alt="LyEdu" class="login-logo" />
-        <h1 class="login-title">LyEdu <span class="login-subtitle">企业培训平台</span></h1>
+        <img :src="logoSrc" :alt="siteTitle" class="login-logo" />
+        <h1 class="login-title">{{ siteTitle }} <span class="login-subtitle">企业培训平台</span></h1>
       </div>
 
       <!-- 飞书扫码登录（扩展点：后续可加企业微信、钉钉等） -->
@@ -61,18 +61,30 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { showSuccessToast } from 'vant'
 import request from '@/utils/request'
 import { getFeishuAuthUrl } from '@/api/auth'
 import { isFeishuEnabled, isFeishuOnly } from '@/utils/auth'
+import { getConfigByKey } from '@/api/config'
+import { applyThemeFromConfig, applyDefaultTheme } from '@/utils/theme'
 
 const router = useRouter()
 const route = useRoute()
 const loading = ref(false)
 const feishuLoading = ref(false)
 const showPassword = ref(false)
+
+const siteTitle = ref('LyEdu')
+const siteLogo = ref('')
+
+const logoSrc = computed(() => {
+  const raw = siteLogo.value || '/icon-192.png'
+  if (raw.startsWith('http://') || raw.startsWith('https://')) return raw
+  if (raw.startsWith('/')) return window.location.origin + raw
+  return raw
+})
 
 const loginForm = reactive({
   username: '',
@@ -124,6 +136,34 @@ const handleLogin = async () => {
     loading.value = false
   }
 }
+
+async function loadBranding() {
+  try {
+    const title = await getConfigByKey('site.title')
+    if (title) {
+      siteTitle.value = title
+      document.title = title
+    }
+  } catch (_e) {}
+
+  try {
+    const logo = await getConfigByKey('site.logo')
+    if (logo) siteLogo.value = logo
+  } catch (_e) {}
+
+  try {
+    const mode = (await getConfigByKey('site.theme_mode')) ?? 'auto'
+    const color = (await getConfigByKey('site.theme_color')) ?? ''
+    const logoUrl = siteLogo.value
+    await applyThemeFromConfig(String(mode), String(color), logoUrl ? logoSrc.value : '')
+  } catch (_e) {
+    applyDefaultTheme()
+  }
+}
+
+onMounted(() => {
+  loadBranding()
+})
 </script>
 
 <style scoped lang="scss">
@@ -150,7 +190,7 @@ const handleLogin = async () => {
 
     .login-title {
       font-size: 28px;
-      color: #667eea;
+      color: var(--van-primary-color);
       margin: 0;
       font-weight: 600;
     }
