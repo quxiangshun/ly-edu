@@ -2,8 +2,8 @@
   <div class="login-container">
     <div class="login-box">
       <div class="login-header">
-        <img src="/icon-192.png" alt="LyEdu" class="login-logo" />
-        <h1 class="login-title">LyEdu <span class="login-subtitle">企业培训系统 - 管理后台</span></h1>
+        <img :src="logoSrc" alt="LyEdu" class="login-logo" />
+        <h1 class="login-title">{{ siteTitle }} <span class="login-subtitle">企业培训系统 - 管理后台</span></h1>
       </div>
       <el-form :model="loginForm" :rules="rules" ref="loginFormRef" class="login-form">
         <el-form-item prop="username">
@@ -51,18 +51,28 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import { View, Hide } from '@element-plus/icons-vue'
 import { login, type LoginParams } from '@/api/user'
+import { getConfigByKey } from '@/api/config'
 
 const router = useRouter()
 const route = useRoute()
 const loginFormRef = ref<FormInstance>()
 const loading = ref(false)
 const showPassword = ref(false)
+const siteTitle = ref('LyEdu')
+const siteLogo = ref('')
+
+const logoSrc = computed(() => {
+  const raw = siteLogo.value || '/icon-192.png'
+  if (raw.startsWith('http://') || raw.startsWith('https://')) return raw
+  if (raw.startsWith('/')) return window.location.origin + raw
+  return raw
+})
 
 const loginForm = reactive<LoginParams>({
   username: '',
@@ -109,6 +119,21 @@ const handleLogin = async () => {
     loading.value = false
   }
 }
+
+async function loadBranding() {
+  try {
+    const title = await getConfigByKey('site.title')
+    if (title) siteTitle.value = title
+  } catch (_e) {}
+  try {
+    const logo = await getConfigByKey('site.logo')
+    if (logo) siteLogo.value = logo
+  } catch (_e) {}
+}
+
+onMounted(() => {
+  loadBranding()
+})
 </script>
 
 <style scoped lang="scss">

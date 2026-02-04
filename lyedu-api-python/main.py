@@ -9,6 +9,7 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 import config
 from routers import auth, course, chapter, video, learning, user, department, stats, knowledge, question, paper, exam, exam_record, certificate_template, certificate, user_certificate, task, user_task, config as config_router, point, point_rule, image
@@ -93,6 +94,15 @@ app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=True, 
 
 # 与前端 baseURL: '/api' 一致，所有接口挂到 /api 下
 API_PREFIX = '/api'
+
+# 静态资源：上传文件访问（前端会将 /uploads 代理重写到 /api/uploads）
+try:
+    Path(config.UPLOAD_PATH).mkdir(parents=True, exist_ok=True)
+    app.mount(API_PREFIX + '/uploads', StaticFiles(directory=str(config.UPLOAD_PATH)), name='uploads')
+except Exception:
+    # 不影响主服务启动（仅影响静态资源访问）
+    pass
+
 app.include_router(auth.router, prefix=API_PREFIX)
 app.include_router(course.router, prefix=API_PREFIX)
 app.include_router(chapter.router, prefix=API_PREFIX)
