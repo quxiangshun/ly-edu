@@ -4,7 +4,7 @@
 
     <div class="user-info">
       <van-cell-group inset>
-        <van-cell :is-link="!isLoggedIn" @click="isLoggedIn ? undefined : goLogin">
+        <van-cell is-link @click="handleUserCellClick">
           <template #title>
             <div class="user-avatar">
               <van-image
@@ -18,9 +18,6 @@
                 <div class="user-desc">{{ userInfo.desc }}</div>
               </div>
             </div>
-          </template>
-          <template v-if="isLoggedIn" #right-icon>
-            <van-icon name="arrow" />
           </template>
         </van-cell>
       </van-cell-group>
@@ -47,7 +44,7 @@
         </van-grid-item>
         <van-grid-item @click="$router.push('/my-tasks')">
           <div class="stat-value">{{ personalStats.taskCompletedCount }}</div>
-          <div class="stat-label">已完成任务</div>
+          <div class="stat-label">已完成</div>
         </van-grid-item>
       </van-grid>
     </div>
@@ -98,7 +95,7 @@ const userInfo = computed(() => {
     return { displayName: '学员', desc: '点击登录', avatar: '' }
   }
   const u = user.value
-  const name = (u.realName as string) || (u.username as string) || '学员'
+  const name = (u.nickname as string) || (u.realName as string) || (u.username as string) || '学员'
   const role = (u.role as string) === 'admin' ? '管理员' : '学员'
   return {
     displayName: name,
@@ -109,6 +106,14 @@ const userInfo = computed(() => {
 
 function goLogin() {
   router.push({ path: '/login', query: { redirect: '/my' } })
+}
+
+function handleUserCellClick() {
+  if (!token.value) {
+    goLogin()
+    return
+  }
+  router.push('/profile')
 }
 
 function loadUser() {
@@ -193,6 +198,10 @@ onUnmounted(() => {
   .stat-label {
     font-size: 12px;
     color: #969799;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
   }
 }
 

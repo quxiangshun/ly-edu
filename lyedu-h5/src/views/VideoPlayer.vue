@@ -15,6 +15,7 @@
           <video
             ref="videoPlayer"
             :src="videoUrl"
+            :poster="videoPosterUrl"
             controls
             preload="metadata"
             class="video-element"
@@ -87,6 +88,7 @@ const route = useRoute()
 const loading = ref(false)
 const video = ref<Video | null>(null)
 const relatedVideos = ref<Video[]>([])
+const courseCover = ref<string>('')
 const videoPlayer = ref<HTMLVideoElement | null>(null)
 const videoListRef = ref<HTMLElement | null>(null)
 const currentTime = ref(0)
@@ -125,6 +127,26 @@ const videoUrl = computed(() => {
   }
 })
 
+const videoPosterUrl = computed(() => {
+  if (!courseCover.value) return ''
+  let url = courseCover.value
+  const apiBase = window.location.origin + '/api'
+  if (url.startsWith('/')) {
+    url = apiBase + url
+  } else if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    url = apiBase + (url.startsWith('/') ? url : '/' + url)
+  }
+  try {
+    const urlObj = new URL(url)
+    const pathParts = urlObj.pathname.split('/').filter(p => p)
+    const encodedPath = '/' + pathParts.map(part => encodeURIComponent(part)).join('/')
+    urlObj.pathname = encodedPath
+    return urlObj.toString()
+  } catch (e) {
+    return encodeURI(url)
+  }
+})
+
 const loadVideo = async () => {
   const videoId = Number(route.params.id)
   if (!videoId) {
@@ -146,6 +168,7 @@ const loadVideo = async () => {
     if (res.courseId) {
       const courseRes = await getCourseById(res.courseId)
       relatedVideos.value = courseRes.videos || []
+      courseCover.value = courseRes.course?.cover || ''
       
       // 等待DOM更新后，滚动到当前视频项
       await nextTick()
