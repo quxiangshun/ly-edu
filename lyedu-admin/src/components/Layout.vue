@@ -193,8 +193,9 @@ onMounted(() => {
 }
 
 .aside {
-  background-color: #304156;
+  background-color: var(--sidebar-bg-color, #304156);
   transition: width 0.3s;
+  overflow: hidden;
 
   .logo {
     height: 60px;
@@ -228,13 +229,23 @@ onMounted(() => {
       white-space: nowrap;
       font-size: 16px;
       line-height: 32px;
-      color: #409eff;
+      color: var(--el-color-primary);
     }
   }
 
   .menu {
+    height: calc(100vh - 60px);
+    overflow-y: auto;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE 10+ */
+
+    &::-webkit-scrollbar {
+      width: 0;
+      height: 0;
+    }
+
     border-right: none;
-    background-color: #304156;
+    background-color: var(--sidebar-bg-color, #304156);
 
     :deep(.el-menu-item),
     :deep(.el-sub-menu__title) {
@@ -295,7 +306,7 @@ onMounted(() => {
       color: #606266;
 
       &:hover {
-        color: #409eff;
+        color: var(--el-color-primary);
       }
     }
   }
@@ -309,7 +320,7 @@ onMounted(() => {
       color: #606266;
 
       &:hover {
-        color: #409eff;
+        color: var(--el-color-primary);
       }
     }
   }
