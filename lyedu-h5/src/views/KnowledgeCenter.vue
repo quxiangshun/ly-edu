@@ -23,7 +23,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import { showToast } from 'vant'
 import { getKnowledgePage, type Knowledge } from '@/api/knowledge'
 
@@ -34,8 +34,10 @@ const page = ref(1)
 const size = 20
 
 async function loadList() {
-  if (loading.value) return
-  loading.value = true
+  // 注意：van-list 使用 v-model:loading 时，触发 @load 时 loading 可能已被置为 true
+  // 此处不要因为 loading=true 直接 return，否则会导致一直 loading
+  if (finished.value) return
+  if (!loading.value) loading.value = true
   try {
     const res = await getKnowledgePage({ page: page.value, size })
     const list = res?.records ?? []
@@ -48,6 +50,7 @@ async function loadList() {
     }
   } catch (_e) {
     finished.value = true
+    showToast('加载失败，请稍后重试')
   } finally {
     loading.value = false
   }

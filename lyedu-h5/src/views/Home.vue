@@ -57,12 +57,16 @@
           :desc="course.description || '暂无描述'"
           :thumb="course.cover || 'https://via.placeholder.com/200x120'"
           @click="handleCourseClick(course)"
+          class="course-card"
         >
           <template #tags>
             <van-tag type="primary">热门</van-tag>
           </template>
           <template #footer>
-            <van-button size="mini" type="primary" @click.stop="handleCourseClick(course)">开始学习</van-button>
+            <div class="card-footer-row">
+              <span class="card-footer-left"> </span>
+              <van-button size="small" type="primary" round @click.stop="handleCourseClick(course)">开始学习</van-button>
+            </div>
           </template>
         </van-card>
         <van-empty v-if="recommendedCourses.length === 0" description="暂无推荐课程" />
@@ -196,5 +200,25 @@ onMounted(() => {
   height: 24px;
   display: block;
   object-fit: contain;
+}
+
+/* 课程卡片：统一更清爽的 footer 操作区 */
+.course-card :deep(.van-card__desc) {
+  color: #646566;
+  line-height: 1.5;
+}
+.course-card :deep(.van-card__title) {
+  font-weight: 600;
+  color: #323233;
+}
+.card-footer-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.card-footer-left {
+  flex: 1;
 }
 </style>

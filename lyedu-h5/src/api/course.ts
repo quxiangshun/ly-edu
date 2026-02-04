@@ -8,6 +8,7 @@ export interface Course {
   categoryId?: number
   status: number
   sort: number
+  isRequired?: number
 }
 
 export interface Video {
@@ -41,6 +42,8 @@ export interface CourseDetail {
   videos: Video[]
   chapters?: ChapterItem[]
   attachments?: CourseAttachment[]
+  courseProgress?: number
+  learnRecord?: Record<string, { progress?: number; duration?: number }>
 }
 
 export interface PageResult<T> {
