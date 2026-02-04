@@ -3,6 +3,8 @@ type BrandTheme = {
   onPrimary: string
 }
 
+type RGB = { r: number; g: number; b: number }
+
 function clamp01(n: number) {
   return Math.max(0, Math.min(1, n))
 }
@@ -10,6 +12,26 @@ function clamp01(n: number) {
 function rgbToHex(r: number, g: number, b: number) {
   const to = (x: number) => Math.max(0, Math.min(255, Math.round(x))).toString(16).padStart(2, '0')
   return `#${to(r)}${to(g)}${to(b)}`
+}
+
+function hexToRgb(hex: string): RGB | null {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex)
+  if (!m) return null
+  const n = parseInt(m[1], 16)
+  return {
+    r: (n >> 16) & 255,
+    g: (n >> 8) & 255,
+    b: n & 255
+  }
+}
+
+function mixRgb(a: RGB, b: RGB, weight: number): RGB {
+  const w = clamp01(weight)
+  return {
+    r: a.r * (1 - w) + b.r * w,
+    g: a.g * (1 - w) + b.g * w,
+    b: a.b * (1 - w) + b.b * w
+  }
 }
 
 function relativeLuminance(r: number, g: number, b: number) {
@@ -94,6 +116,15 @@ function applyThemeVars(t: BrandTheme) {
 
   // Element Plus 主题主色
   root.style.setProperty('--el-color-primary', t.primary)
+
+  // 侧边栏背景色：根据主色生成较深的背景，避免太刺眼
+  const rgb = hexToRgb(t.primary)
+  if (rgb) {
+    const dark = mixRgb(rgb, { r: 0, g: 0, b: 0 }, 0.65)
+    root.style.setProperty('--sidebar-bg-color', rgbToHex(dark.r, dark.g, dark.b))
+  } else {
+    root.style.setProperty('--sidebar-bg-color', '#304156')
+  }
 }
 
 export function applyDefaultTheme() {
