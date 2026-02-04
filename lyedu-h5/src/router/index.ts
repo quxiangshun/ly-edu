@@ -12,11 +12,27 @@ import { feishuCallback, getFeishuAuthUrl } from '@/api/auth'
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
-    name: 'Home',
-    component: () => import('@/views/Home.vue'),
-    meta: {
-      title: '首页'
-    }
+    component: () => import('@/views/MainLayout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'Home',
+        component: () => import('@/views/Home.vue'),
+        meta: { title: '首页' }
+      },
+      {
+        path: 'courses',
+        name: 'Courses',
+        component: () => import('@/views/Courses.vue'),
+        meta: { title: '课程中心', requiresAuth: true }
+      },
+      {
+        path: 'my',
+        name: 'My',
+        component: () => import('@/views/My.vue'),
+        meta: { title: '我的', requiresAuth: true }
+      }
+    ]
   },
   {
     path: '/login',
@@ -24,15 +40,6 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/Login.vue'),
     meta: {
       title: '登录'
-    }
-  },
-  {
-    path: '/courses',
-    name: 'Courses',
-    component: () => import('@/views/Courses.vue'),
-    meta: {
-      title: '课程中心',
-      requiresAuth: true
     }
   },
   {
@@ -50,15 +57,6 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/VideoPlayer.vue'),
     meta: {
       title: '视频播放',
-      requiresAuth: true
-    }
-  },
-  {
-    path: '/my',
-    name: 'My',
-    component: () => import('@/views/My.vue'),
-    meta: {
-      title: '我的',
       requiresAuth: true
     }
   },

@@ -1,6 +1,6 @@
 <template>
   <div class="courses-container">
-    <van-nav-bar title="课程中心" left-arrow @click-left="$router.back()" fixed placeholder />
+    <van-nav-bar title="课程中心" fixed placeholder />
     
     <van-tabs v-model:active="activeTab" sticky>
       <van-tab title="全部" name="all">
