@@ -69,11 +69,6 @@
       </template>
     </div>
 
-    <van-tabbar v-model="active" fixed placeholder>
-      <van-tabbar-item icon="home-o" to="/">首页</van-tabbar-item>
-      <van-tabbar-item icon="apps-o" to="/courses">课程</van-tabbar-item>
-      <van-tabbar-item icon="user-o" to="/my">我的</van-tabbar-item>
-    </van-tabbar>
   </div>
 </template>
 
@@ -86,7 +81,6 @@ import { getRecommendedCourses } from '@/api/course'
 import { getWatchedCourses, joinCourse } from '@/api/learning'
 
 const router = useRouter()
-const active = ref(0)
 const token = ref<string | null>(localStorage.getItem('token'))
 const recommendedCourses = ref<Course[]>([])
 const recentCourses = ref<Course[]>([])
@@ -138,7 +132,7 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .home-container {
-  padding-bottom: 50px;
+  min-height: 100%;
 }
 
 .banner {
