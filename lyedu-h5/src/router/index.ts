@@ -98,6 +98,24 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '我的任务', requiresAuth: true }
   },
   {
+    path: '/exam',
+    name: 'ExamList',
+    component: () => import('@/views/ExamList.vue'),
+    meta: { title: '考试中心', requiresAuth: true }
+  },
+  {
+    path: '/exam/:id/take',
+    name: 'ExamTake',
+    component: () => import('@/views/ExamTake.vue'),
+    meta: { title: '答题', requiresAuth: true }
+  },
+  {
+    path: '/exam/:id/result',
+    name: 'ExamResult',
+    component: () => import('@/views/ExamResult.vue'),
+    meta: { title: '考试成绩', requiresAuth: true }
+  },
+  {
     path: '/profile',
     name: 'Profile',
     component: () => import('@/views/Profile.vue'),

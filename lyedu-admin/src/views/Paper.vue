@@ -55,7 +55,8 @@
           <el-input v-model="form.title" placeholder="试卷名称" />
         </el-form-item>
         <el-form-item label="总分" prop="totalScore">
-          <el-input-number v-model="form.totalScore" :min="1" :max="1000" />
+          <span class="total-score-text">{{ computedTotalScore }} 分</span>
+          <span class="total-score-tip">（根据题目分值自动计算）</span>
         </el-form-item>
         <el-form-item label="及格分" prop="passScore">
           <el-input-number v-model="form.passScore" :min="0" :max="1000" />
@@ -179,6 +180,11 @@ const form = reactive({
 const formRules: FormRules = {
   title: [{ required: true, message: '请输入试卷名称', trigger: 'blur' }]
 }
+
+/** 根据当前题目列表的分值自动计算总分 */
+const computedTotalScore = computed(() =>
+  form.questions.reduce((sum, q) => sum + (q.score ?? 10), 0)
+)
 
 const questionPickerVisible = ref(false)
 const pickerKeyword = ref('')
@@ -352,5 +358,14 @@ onMounted(loadList)
 }
 .question-list-actions {
   margin-bottom: 8px;
+}
+.total-score-text {
+  font-weight: 600;
+  color: var(--el-color-primary);
+  margin-right: 8px;
+}
+.total-score-tip {
+  font-size: 12px;
+  color: #909399;
 }
 </style>
