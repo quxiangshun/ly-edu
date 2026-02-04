@@ -3,7 +3,7 @@
     <el-card>
       <template #header>
         <div class="card-header">
-          <span>部门管理</span>
+          <span>公司架构</span>
           <el-button type="primary" @click="handleAdd">新增部门</el-button>
         </div>
       </template>
