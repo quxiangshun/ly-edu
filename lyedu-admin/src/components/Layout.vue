@@ -102,6 +102,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getConfigByKey } from '@/api/config'
+import { applyCustomTheme, applyDefaultTheme, applyThemeFromLogoUrl } from '@/utils/theme'
 import {
   DataBoard,
   OfficeBuilding,
@@ -165,6 +166,19 @@ async function loadBranding() {
   try {
     const logo = await getConfigByKey('site.logo')
     if (logo) siteLogo.value = logo
+  } catch (_e) {}
+
+  try {
+    const mode = (await getConfigByKey('site.theme_mode')) ?? 'auto'
+    const modeStr = String(mode).toLowerCase()
+    if (modeStr === 'custom') {
+      const color = (await getConfigByKey('site.theme_color')) ?? '#409eff'
+      applyCustomTheme(color)
+    } else if (modeStr === 'default') {
+      applyDefaultTheme()
+    } else {
+      await applyThemeFromLogoUrl(logoSrc.value)
+    }
   } catch (_e) {}
 }
 
@@ -234,8 +248,8 @@ onMounted(() => {
 
     :deep(.el-menu-item) {
       &.is-active {
-        background-color: #409eff;
-        color: #fff;
+        background-color: var(--el-color-primary);
+        color: var(--brand-on-primary, #fff);
       }
     }
 
@@ -255,8 +269,8 @@ onMounted(() => {
         color: #fff;
       }
       &.is-active {
-        background-color: #409eff;
-        color: #fff;
+        background-color: var(--el-color-primary);
+        color: var(--brand-on-primary, #fff);
       }
     }
 
