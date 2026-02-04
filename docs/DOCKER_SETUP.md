@@ -24,7 +24,19 @@
 
 ## 启动步骤
 
-### 方式一：完整启动（推荐）
+### 方式一：仅 MySQL + Redis（开发环境直连）
+
+仅启动数据库，本地跑 API 和前端：
+
+```powershell
+docker compose -f compose-mysql-redis.yml up -d
+```
+
+- **MySQL**：localhost:3306（root / lyedu123456，库 lyedu）  
+- **Redis**：localhost:6379  
+- 本地启动 Python API、lyedu-admin、lyedu-pc、lyedu-h5 直连上述地址；Python 启动时会自动执行 Alembic 迁移。
+
+### 方式二：完整启动（MySQL + Redis + Java API + 前端全部容器化）
 
 ```powershell
 # 1. 确保在项目根目录
@@ -58,6 +70,10 @@ Start-Sleep -Seconds 60
 # 5. 启动前端服务
 docker-compose up -d admin pc h5
 ```
+
+### 方式四：仅 MySQL + Redis，本地跑 Python 后端
+
+即方式一：`docker compose -f compose-mysql-redis.yml up -d` 后，在 `lyedu-api-python` 下复制 `.env.example` 为 `.env`（可选），再本地运行 `uvicorn main:app --reload --host 0.0.0.0 --port 9700`。启动时会自动执行 Alembic 迁移。
 
 ## 常见问题
 

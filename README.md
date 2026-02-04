@@ -60,15 +60,18 @@ cd lyedu-api
 
 **方式 B：Python**
 ```bash
+# 1. 仅用 Docker 起 MySQL + Redis（开发直连 localhost）
+docker compose -f compose-mysql-redis.yml up -d
+
+# 2. 本地启动 Python（可复制 .env.example 为 .env，启动时会自动执行 Alembic 迁移）
 cd lyedu-api-python
 python -m venv venv
 .\venv\Scripts\activate   # Windows
 # source venv/bin/activate  # Linux/Mac
 pip install -r requirements.txt
-# 配置数据库等环境后启动即可（启动时会自动执行 Alembic 迁移）
 uvicorn main:app --reload --host 0.0.0.0 --port 9700
 ```
-也可使用脚本（先迁移再启动）：`.\start.ps1`（Windows）或 `./start.sh`（Linux/Mac）。
+也可使用脚本（先迁移再启动）：`.\start.ps1`（Windows）或 `./start.sh`（Linux/Mac）。若自动迁移未执行，可手动：`cd lyedu-api-python && alembic -c alembic.ini upgrade head`。
 
 #### 3. 启动前端
 ```bash
