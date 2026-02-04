@@ -25,7 +25,7 @@ export const getUserInfo = () => {
   return request.get('/user/info')
 }
 
-// 用户管理
+// 员工管理
 export interface User {
   id: number
   username: string
@@ -76,4 +76,11 @@ export const deleteUser = (id: number) => {
 
 export const resetUserPassword = (id: number, password: string) => {
   return request.post(`/user/${id}/reset-password`, { password })
+}
+
+/** 员工导入：上传 Excel 文件，返回成功数、失败数及错误信息 */
+export const importUsersByExcel = (file: File) => {
+  const form = new FormData()
+  form.append('file', file)
+  return request.post<{ successCount: number; failCount: number; messages: string[] }>('/user/import', form)
 }

@@ -3,8 +3,13 @@
     <el-card>
       <template #header>
         <div class="card-header">
-          <span>用户管理</span>
-          <el-button type="primary" @click="handleAdd">新增用户</el-button>
+          <span>员工管理</span>
+          <div>
+            <el-button @click="handleDownloadTemplate">下载员工导入模板</el-button>
+            <el-button @click="importDialogVisible = true">导入员工</el-button>
+            <el-button @click="syncDialogVisible = true">从第三方同步</el-button>
+            <el-button type="primary" @click="handleAdd">新增员工</el-button>
+          </div>
         </div>
       </template>
 
@@ -138,6 +143,58 @@
       </template>
     </el-dialog>
 
+    <!-- 导入员工对话框 -->
+    <el-dialog v-model="importDialogVisible" title="导入员工" width="520px" :close-on-click-modal="false">
+      <p class="import-tip">请先<a href="javascript:;" @click="handleDownloadTemplate">下载员工导入模板</a>，按模板填写后上传 Excel 文件。</p>
+      <el-upload
+        ref="importUploadRef"
+        :auto-upload="false"
+        :limit="1"
+        accept=".xlsx"
+        :on-change="onImportFileChange"
+        :on-exceed="() => ElMessage.warning('仅支持单文件上传')"
+      >
+        <el-button type="primary">选择 Excel 文件</el-button>
+      </el-upload>
+      <div v-if="importResult" class="import-result">
+        <p>导入完成：成功 <strong>{{ importResult.successCount }}</strong> 条，失败 <strong>{{ importResult.failCount }}</strong> 条。</p>
+        <ul v-if="importResult.messages?.length" class="import-errors">
+          <li v-for="(msg, idx) in importResult.messages" :key="idx">{{ msg }}</li>
+        </ul>
+      </div>
+      <template #footer>
+        <el-button @click="closeImportDialog">关闭</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 从第三方同步对话框 -->
+    <el-dialog v-model="syncDialogVisible" title="从第三方同步" width="480px">
+      <p class="sync-tip">可将飞书、企业微信、钉钉等通讯录同步至本系统员工。请先在「系统设置」中配置对应平台的应用与权限。</p>
+      <div class="sync-options">
+        <el-card shadow="hover" class="sync-card" @click="handleSyncPlatform('feishu')">
+          <div class="sync-card-body">
+            <span class="sync-label">飞书</span>
+            <el-tag size="small" type="info">即将支持</el-tag>
+          </div>
+        </el-card>
+        <el-card shadow="hover" class="sync-card" @click="handleSyncPlatform('wecom')">
+          <div class="sync-card-body">
+            <span class="sync-label">企业微信</span>
+            <el-tag size="small" type="info">即将支持</el-tag>
+          </div>
+        </el-card>
+        <el-card shadow="hover" class="sync-card" @click="handleSyncPlatform('dingtalk')">
+          <div class="sync-card-body">
+            <span class="sync-label">钉钉</span>
+            <el-tag size="small" type="info">即将支持</el-tag>
+          </div>
+        </el-card>
+      </div>
+      <template #footer>
+        <el-button @click="syncDialogVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
+
     <!-- 重置密码对话框 -->
     <el-dialog v-model="passwordDialogVisible" title="重置密码" width="400px">
       <el-form :model="passwordForm" :rules="passwordRules" ref="passwordFormRef" label-width="100px">
@@ -157,12 +214,14 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
+import * as XLSX from 'xlsx'
 import {
   getUserPage,
   createUser,
   updateUser,
   deleteUser,
   resetUserPassword,
+  importUsersByExcel,
   type User
 } from '@/api/user'
 import { getDepartmentTree, type Department } from '@/api/department'
@@ -173,7 +232,11 @@ const formRef = ref<FormInstance>()
 const passwordFormRef = ref<FormInstance>()
 const dialogVisible = ref(false)
 const passwordDialogVisible = ref(false)
-const dialogTitle = ref('新增用户')
+const importDialogVisible = ref(false)
+const syncDialogVisible = ref(false)
+const importUploadRef = ref()
+const importResult = ref<{ successCount: number; failCount: number; messages?: string[] } | null>(null)
+const dialogTitle = ref('新增员工')
 const isEdit = ref(false)
 const currentUserId = ref<number>()
 
@@ -297,7 +360,7 @@ const handlePageChange = () => {
 
 const handleAdd = () => {
   isEdit.value = false
-  dialogTitle.value = '新增用户'
+  dialogTitle.value = '新增员工'
   Object.assign(form, {
     username: '',
     password: '',
@@ -314,7 +377,7 @@ const handleAdd = () => {
 
 const handleEdit = (row: User) => {
   isEdit.value = true
-  dialogTitle.value = '编辑用户'
+  dialogTitle.value = '编辑员工'
   Object.assign(form, {
     username: row.username,
     real_name: row.real_name,
@@ -332,7 +395,7 @@ const handleEdit = (row: User) => {
 
 const handleDelete = async (row: User) => {
   try {
-    await ElMessageBox.confirm('确定要删除该用户吗？', '提示', {
+    await ElMessageBox.confirm('确定要删除该员工吗？', '提示', {
       type: 'warning'
     })
     await deleteUser(row.id)
@@ -341,6 +404,47 @@ const handleDelete = async (row: User) => {
   } catch (e) {
     // 用户取消或删除失败
   }
+}
+
+const EMPLOYEE_IMPORT_HEADERS = ['用户名', '密码', '真实姓名', '邮箱', '手机号', '部门ID', '角色', '状态', '入职日期']
+const EMPLOYEE_IMPORT_EXAMPLE = ['zhangsan', '123456', '张三', 'zhangsan@example.com', '13800138000', 1, 'student', 1, '2024-01-01']
+
+const handleDownloadTemplate = () => {
+  const ws = XLSX.utils.aoa_to_sheet([EMPLOYEE_IMPORT_HEADERS, EMPLOYEE_IMPORT_EXAMPLE])
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, '员工导入')
+  XLSX.writeFile(wb, '员工导入模板.xlsx')
+}
+
+const onImportFileChange = async (uploadFile: { raw?: File }) => {
+  const file = uploadFile?.raw
+  if (!file) return
+  importResult.value = null
+  try {
+    const res = await importUsersByExcel(file)
+    importResult.value = res
+    if (res.successCount > 0) {
+      ElMessage.success(`成功导入 ${res.successCount} 条员工`)
+      loadData()
+    }
+    if (res.failCount > 0 && res.messages?.length) {
+      ElMessage.warning(`部分失败：${res.messages.length} 条`)
+    }
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message || '导入失败')
+  }
+}
+
+const closeImportDialog = () => {
+  importDialogVisible.value = false
+  importResult.value = null
+  importUploadRef.value?.clearFiles?.()
+  loadData()
+}
+
+const handleSyncPlatform = (platform: string) => {
+  const names: Record<string, string> = { feishu: '飞书', wecom: '企业微信', dingtalk: '钉钉' }
+  ElMessage.info(`${names[platform] || platform} 同步功能即将上线，请先在「系统设置」中配置应用`)
 }
 
 const handleResetPassword = (row: User) => {
@@ -398,5 +502,48 @@ onMounted(() => {
 
 .search-form {
   margin-bottom: 20px;
+}
+
+.import-tip {
+  margin-bottom: 16px;
+  color: var(--el-text-color-regular);
+  a { color: var(--el-color-primary); }
+}
+.import-result {
+  margin-top: 16px;
+  padding: 12px;
+  background: var(--el-fill-color-light);
+  border-radius: 4px;
+  .import-errors {
+    margin: 8px 0 0;
+    padding-left: 20px;
+    max-height: 160px;
+    overflow-y: auto;
+    font-size: 12px;
+    color: var(--el-color-danger);
+  }
+}
+.sync-tip {
+  margin-bottom: 16px;
+  color: var(--el-text-color-regular);
+  font-size: 13px;
+}
+.sync-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.sync-card {
+  flex: 1;
+  min-width: 120px;
+  cursor: pointer;
+  .sync-card-body {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .sync-label {
+    font-weight: 500;
+  }
 }
 </style>

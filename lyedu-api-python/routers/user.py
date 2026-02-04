@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
 """用户路由，与 Java UserController 对应"""
+import io
+from datetime import datetime as dt
 from typing import Optional
 
-from fastapi import APIRouter, Header
+from fastapi import APIRouter, File, Header, UploadFile
+from openpyxl import load_workbook
 
 from common.result import ResultCode, error, error_result, success
 from models.schemas import UserRequest, ResetPasswordRequest
@@ -133,3 +136,92 @@ def reset_password(id: int, body: ResetPasswordRequest):
         return error(404, "用户不存在")
     user_service.update_password(id, body.password)
     return success()
+
+
+# 员工导入模板表头（与前端下载模板一致）
+ROLE_MAP = {"admin": "admin", "管理员": "admin", "teacher": "teacher", "教师": "teacher", "student": "student", "学员": "student"}
+
+
+def _val_str(v) -> str:
+    """从 Excel 单元格值转为字符串，支持数字、日期等"""
+    if v is None:
+        return ""
+    if hasattr(v, "strftime"):
+        return v.strftime("%Y-%m-%d")
+    return str(v).strip()
+
+
+@router.post("/import")
+def import_users(file: UploadFile = File(...)):
+    """上传 Excel 文件（.xlsx）批量导入员工。表头：用户名, 密码, 真实姓名, 邮箱, 手机号, 部门ID, 角色, 状态, 入职日期"""
+    if not file.filename or not file.filename.lower().endswith(".xlsx"):
+        return error(400, "请上传 Excel 文件（.xlsx）")
+    try:
+        content = file.file.read()
+        wb = load_workbook(io.BytesIO(content), read_only=True, data_only=True)
+    except Exception as e:
+        return error(400, f"文件读取失败: {str(e)}")
+    try:
+        ws = wb.active
+        if not ws:
+            return error(400, "文件为空")
+        rows = list(ws.iter_rows(values_only=True))
+    finally:
+        wb.close()
+    if not rows:
+        return error(400, "文件为空")
+    # 首行为表头，数据从第 2 行起
+    data_rows = rows[1:]
+    success_count = 0
+    messages = []
+    for i, row in enumerate(data_rows):
+        row_list = list(row) if row else []
+        if not row_list or all(_val_str(v) == "" for v in row_list):
+            continue
+        while len(row_list) < 9:
+            row_list.append("")
+        row_num = i + 2
+        username = _val_str(row_list[0])
+        password = _val_str(row_list[1])
+        real_name = _val_str(row_list[2]) or None
+        email = _val_str(row_list[3]) or None
+        mobile = _val_str(row_list[4]) or None
+        dept_id = _val_str(row_list[5])
+        role_str = (_val_str(row_list[6]) or "student").lower()
+        status_str = _val_str(row_list[7])
+        entry_date_str = _val_str(row_list[8])[:10]
+        if not username:
+            messages.append(f"第{row_num}行：用户名为空，已跳过")
+            continue
+        if user_service.find_by_username(username):
+            messages.append(f"第{row_num}行：用户名「{username}」已存在，已跳过")
+            continue
+        department_id = None
+        if dept_id and str(dept_id).replace(".0", "").isdigit():
+            department_id = int(float(dept_id))
+        role = ROLE_MAP.get(role_str) or ROLE_MAP.get(role_str.title()) or "student"
+        status = 1
+        if status_str in ("0", "禁用", "停用"):
+            status = 0
+        entry_d = None
+        if entry_date_str:
+            try:
+                entry_d = dt.strptime(entry_date_str, "%Y-%m-%d").date()
+            except Exception:
+                pass
+        try:
+            user_service.save(
+                username=username,
+                password=password if password else None,
+                real_name=real_name or None,
+                email=email or None,
+                mobile=mobile or None,
+                department_id=department_id,
+                entry_date=entry_d,
+                role=role,
+                status=status,
+            )
+            success_count += 1
+        except Exception as e:
+            messages.append(f"第{row_num}行：{username} 导入失败 - {str(e)}")
+    return success({"successCount": success_count, "failCount": len(messages), "messages": messages})

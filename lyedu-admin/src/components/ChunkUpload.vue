@@ -32,14 +32,7 @@
         style="margin-top: 10px"
       />
       
-      <div class="upload-actions" style="margin-top: 10px">
-        <el-button
-          v-if="!isUploading && uploadProgress === 0"
-          type="primary"
-          @click="startUpload"
-        >
-          开始上传
-        </el-button>
+      <div v-if="uploadProgress < 100" class="upload-actions" style="margin-top: 10px">
         <el-button
           v-if="isUploading"
           type="warning"
@@ -48,17 +41,13 @@
           暂停
         </el-button>
         <el-button
-          v-if="!isUploading && uploadProgress > 0 && uploadProgress < 100"
+          v-if="!isUploading && uploadProgress > 0"
           type="primary"
           @click="resumeUpload"
         >
           继续上传
         </el-button>
-        <el-button
-          v-if="uploadProgress < 100"
-          type="danger"
-          @click="cancelUpload"
-        >
+        <el-button type="danger" @click="cancelUpload">
           取消
         </el-button>
       </div>
@@ -94,6 +83,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'success', url: string): void
   (e: 'error', error: string): void
+  (e: 'file-select', file: File): void
 }>()
 
 const uploadRef = ref<UploadInstance>()
@@ -125,6 +115,9 @@ const handleFileChange = (file: UploadFile) => {
     fileUrl.value = ''
     uploadedChunks.value = []
     shouldPause.value = false
+    emit('file-select', file.raw)
+    // 选择/拖入后自动开始上传
+    startUpload()
   }
 }
 
