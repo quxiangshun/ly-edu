@@ -1,41 +1,41 @@
 <template>
   <div class="course-detail-container">
     <van-nav-bar title="课程详情" left-arrow @click-left="$router.back()" fixed placeholder />
-    
-    <div v-loading="loading" class="content">
+
+    <van-loading v-if="loading" class="page-loading" size="24px" vertical>加载中...</van-loading>
+    <div v-else class="content">
       <div v-if="courseDetail">
-        <!-- 课程信息 -->
-        <div class="course-header">
-          <img
-            :src="courseDetail.course.cover || 'https://via.placeholder.com/400x250'"
-            class="course-cover"
-            :alt="courseDetail.course.title"
-          />
-          <div class="course-info">
-            <h1>{{ courseDetail.course.title }}</h1>
-            <div class="course-tags">
-              <van-tag v-if="courseDetail.course.isRequired === 1" type="danger" plain>必修</van-tag>
-              <van-tag v-else-if="courseDetail.course.isRequired === 0" type="primary" plain>选修</van-tag>
-            </div>
-            <p class="course-description">{{ courseDetail.course.description || '暂无描述' }}</p>
-            <div class="course-meta-row">
+        <!-- 标题区（课程封面用于视频页作为封面，不在此单独展示） -->
+        <div class="course-card title-card">
+          <h1 class="course-title">{{ courseDetail.course.title }}</h1>
+          <div class="course-meta">
+            <van-tag v-if="courseDetail.course.isRequired === 1" type="danger" plain size="medium">必修</van-tag>
+            <van-tag v-else-if="courseDetail.course.isRequired === 0" type="primary" plain size="medium">选修</van-tag>
+            <span v-if="videoCount > 0" class="meta-text">{{ videoCount }} 节视频</span>
+          </div>
+        </div>
+
+        <!-- 描述与进度 -->
+        <div class="course-card info-card">
+          <p v-if="courseDetail.course.description" class="course-desc">{{ courseDetail.course.description }}</p>
+          <p v-else class="course-desc placeholder">暂无描述</p>
+          <div class="progress-row">
+            <div v-if="courseDetail.courseProgress != null" class="progress-wrap">
               <van-circle
-                v-if="courseDetail.courseProgress != null"
                 :rate="(courseDetail.courseProgress ?? 0) / 100"
-                :size="72"
-                :stroke-width="6"
+                :size="56"
+                :stroke-width="5"
                 layer-color="#ebedf0"
                 color="#1989fa"
-                class="progress-ring"
               />
-              <van-button type="primary" block @click="handleStartLearn" class="start-btn">开始学习</van-button>
+              <span class="progress-text">已学 {{ Math.round(courseDetail.courseProgress ?? 0) }}%</span>
             </div>
           </div>
         </div>
 
-        <!-- 标签：课程目录 / 课程附件 -->
-        <div v-if="hasChaptersOrAttachments" class="tabs-section">
-          <van-tabs v-model:active="activeTab">
+        <!-- 课程目录 / 附件 -->
+        <div v-if="hasChaptersOrAttachments" class="course-card tabs-card">
+          <van-tabs v-model:active="activeTab" shrink>
             <van-tab title="课程目录" name="catalog">
               <div v-if="chaptersWithVideos.length > 0" class="chapter-list">
                 <div v-for="(chapter, chIndex) in chaptersWithVideos" :key="chapter.id ?? 'uncat-' + chIndex" class="chapter-block">
@@ -96,10 +96,10 @@
           </van-tabs>
         </div>
 
-        <!-- 无章节/附件时保留原扁平视频列表 -->
-        <div v-else-if="courseDetail.videos && courseDetail.videos.length > 0" class="videos-section">
-          <div class="section-title">课程视频 ({{ courseDetail.videos.length }})</div>
-          <van-cell-group>
+        <!-- 无章节/附件时扁平视频列表 -->
+        <div v-else-if="courseDetail.videos && courseDetail.videos.length > 0" class="course-card">
+          <div class="card-title">课程视频 ({{ courseDetail.videos.length }})</div>
+          <van-cell-group inset>
             <van-cell
               v-for="(video, index) in courseDetail.videos"
               :key="video.id"
@@ -115,16 +115,11 @@
           </van-cell-group>
         </div>
 
-        <van-empty v-else-if="!hasChaptersOrAttachments" description="暂无视频" />
-
-        <!-- 操作按钮（无 tabs 时显示） -->
-        <div v-if="!hasChaptersOrAttachments" class="action-buttons">
-          <van-button type="primary" block @click="handleStartLearn">开始学习</van-button>
-        </div>
+        <van-empty v-else-if="!hasChaptersOrAttachments" description="暂无视频" class="empty-block" />
 
         <!-- 课程评论 -->
-        <div class="comment-section">
-          <div class="comment-title">课程评论</div>
+        <div class="course-card comment-card">
+          <div class="card-title">课程评论</div>
           <van-field
             v-if="hasToken"
             v-model="commentContent"
@@ -134,8 +129,9 @@
             maxlength="500"
             show-word-limit
           />
-          <van-button v-if="hasToken" type="primary" size="small" :loading="commentSubmitting" @click="submitComment" class="comment-submit">发表</van-button>
+          <van-button v-if="hasToken" type="primary" size="small" round :loading="commentSubmitting" @click="submitComment" class="comment-submit">发表</van-button>
           <p v-else class="comment-login-tip">登录后可发表评论</p>
+          <van-divider v-if="commentTree.length > 0" :style="{ margin: '16px 0 12px' }" />
           <div class="comment-list" v-if="commentTree.length > 0">
             <div v-for="node in commentTree" :key="node.id" class="comment-node">
               <div class="comment-item">
@@ -152,9 +148,16 @@
               </div>
             </div>
           </div>
-          <van-empty v-else description="暂无评论" />
+          <van-empty v-else description="暂无评论" class="empty-block" />
         </div>
       </div>
+    </div>
+
+    <!-- 底部固定操作栏：开始学习 -->
+    <div v-if="courseDetail" class="bottom-action-bar">
+      <van-button type="primary" block round @click="handleStartLearn" class="bottom-start-btn">
+        {{ startButtonText }}
+      </van-button>
     </div>
   </div>
 </template>
@@ -175,6 +178,60 @@ const comments = ref<CourseCommentDto[]>([])
 const commentContent = ref('')
 const commentSubmitting = ref(false)
 const hasToken = ref(!!localStorage.getItem('token'))
+
+/** 评论树：根评论 + replies */
+const commentTree = computed(() => {
+  const list = comments.value || []
+  const roots = list.filter((c) => !c.parentId || c.parentId === 0)
+  return roots.map((r) => ({
+    ...r,
+    replies: list.filter((c) => c.parentId === r.id)
+  }))
+})
+
+function formatCommentTime(t?: string): string {
+  if (!t) return ''
+  const d = new Date(t)
+  const now = new Date()
+  const diff = now.getTime() - d.getTime()
+  if (diff < 60000) return '刚刚'
+  if (diff < 3600000) return `${Math.floor(diff / 60000)} 分钟前`
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)} 小时前`
+  if (diff < 604800000) return `${Math.floor(diff / 86400000)} 天前`
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+async function submitComment() {
+  const courseId = Number(route.params.id)
+  const content = commentContent.value?.trim()
+  if (!courseId || !content) {
+    showFailToast('请输入评论内容')
+    return
+  }
+  commentSubmitting.value = true
+  try {
+    await addCourseComment(courseId, { content })
+    commentContent.value = ''
+    showSuccessToast('发表成功')
+    const list = await getCourseComments(courseId)
+    comments.value = list || []
+  } catch (e: unknown) {
+    showFailToast((e as { response?: { data?: { message?: string } } })?.response?.data?.message || '发表失败')
+  } finally {
+    commentSubmitting.value = false
+  }
+}
+
+const videoCount = computed(() => {
+  const d = courseDetail.value
+  if (!d?.videos) return 0
+  return d.videos.length
+})
+
+const startButtonText = computed(() => {
+  const p = courseDetail.value?.courseProgress ?? 0
+  return p > 0 ? '继续学习' : '开始学习'
+})
 
 const hasChaptersOrAttachments = computed(() => {
   const d = courseDetail.value
@@ -276,15 +333,18 @@ const handleStartLearn = async () => {
   try {
     await joinCourse(courseDetail.value.course.id)
     showSuccessToast('已加入课程')
-    const vids = courseDetail.value.videos
+    const vids = courseDetail.value.videos || []
     const firstInChapter = courseDetail.value.chapters?.[0]?.hours?.[0]
-    if (firstInChapter) {
-      handlePlayVideo(firstInChapter)
-    } else if (vids && vids.length > 0) {
-      handlePlayVideo(vids[0])
+    const firstVideo = firstInChapter || (vids.length > 0 ? vids[0] : null)
+    if (firstVideo) {
+      router.push(`/video/${firstVideo.id}`)
+    } else {
+      showFailToast('课程暂无视频')
+      router.push('/my-learning')
     }
-  } catch (e: any) {
-    showFailToast(e?.response?.data?.message || '加入课程失败')
+  } catch (e: unknown) {
+    const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+    showFailToast(msg || '加入课程失败')
   }
 }
 
@@ -300,158 +360,166 @@ onMounted(() => {
 <style scoped lang="scss">
 .course-detail-container {
   min-height: 100vh;
-  background: #f7f8fa;
+  background: #f2f3f5;
+  padding-bottom: calc(76px + env(safe-area-inset-bottom)); /* 预留底部固定按钮高度 */
+}
+
+.page-loading {
+  display: flex;
+  justify-content: center;
+  padding: 60px 0;
 }
 
 .content {
-  padding: 10px;
+  padding: 12px 16px;
 }
 
-.course-header {
-  background: #fff;
-  border-radius: 8px;
-  padding: 15px;
-  margin-bottom: 10px;
-
-  .course-cover {
-    width: 100%;
-    height: 200px;
-    object-fit: cover;
-    border-radius: 8px;
-    margin-bottom: 15px;
+/* 标题区 */
+.title-card {
+  padding: 14px 16px;
+  .course-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: #323233;
+    line-height: 1.4;
+    margin: 0 0 10px;
   }
-
-  .course-info {
-    h1 {
-      font-size: 20px;
-      color: #323233;
-      margin-bottom: 6px;
-    }
-
-    .course-tags {
-      margin-bottom: 8px;
-    }
-
-    .course-description {
-      font-size: 14px;
+  .course-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    .meta-text {
+      font-size: 13px;
       color: #969799;
-      line-height: 1.6;
-      margin-bottom: 10px;
     }
+  }
+}
 
-    .course-meta-row {
+/* 通用卡片 */
+.course-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  .card-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #323233;
+    margin-bottom: 14px;
+  }
+}
+
+.info-card {
+  .course-desc {
+    font-size: 14px;
+    color: #646566;
+    line-height: 1.6;
+    margin: 0 0 16px;
+    &.placeholder {
+      color: #c8c9cc;
+    }
+  }
+  .progress-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    justify-content: flex-start;
+    .progress-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      .progress-text {
+        font-size: 12px;
+        color: #969799;
+      }
+    }
+  }
+}
+
+.bottom-action-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 10px 16px calc(12px + env(safe-area-inset-bottom));
+  background: rgba(242, 243, 245, 0.92);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid #ebedf0;
+  z-index: 20;
+}
+
+.bottom-start-btn {
+  height: 44px;
+  font-size: 16px;
+}
+
+.tabs-card {
+  padding: 0 16px 16px;
+  :deep(.van-tabs__wrap) {
+    padding: 0 16px;
+  }
+  .chapter-list .chapter-block {
+    margin-bottom: 14px;
+    background: #f7f8fa;
+    border-radius: 10px;
+    overflow: hidden;
+    .chapter-header {
       display: flex;
       align-items: center;
-      gap: 16px;
-      margin-top: 12px;
-
-      .progress-ring {
+      gap: 8px;
+      padding: 12px 14px;
+      background: linear-gradient(135deg, #e8f4ff 0%, #dcebff 100%);
+      border-left: 4px solid #1989fa;
+      .chapter-num {
+        font-size: 12px;
+        color: #1989fa;
+        font-weight: 600;
         flex-shrink: 0;
       }
-
-      .start-btn {
-        flex: 1;
+      .chapter-title {
+        font-size: 15px;
+        font-weight: 600;
+        color: #323233;
       }
     }
-  }
-}
-
-.tabs-section {
-  background: #fff;
-  border-radius: 8px;
-  padding: 0 15px 15px;
-  margin-bottom: 10px;
-
-  .chapter-list {
-    .chapter-block {
-      margin-bottom: 16px;
-      background: #f7f8fa;
+    :deep(.van-cell-group--inset) {
+      margin: 0 10px 10px;
       border-radius: 8px;
       overflow: hidden;
-      padding-bottom: 8px;
-
-      .chapter-header {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 12px 16px;
-        background: linear-gradient(135deg, #e8f3ff 0%, #dcebff 100%);
-        border-left: 4px solid #1989fa;
-
-        .chapter-num {
-          font-size: 12px;
-          color: #1989fa;
-          font-weight: 600;
-          flex-shrink: 0;
-        }
-
-        .chapter-title {
-          font-size: 15px;
-          font-weight: 600;
-          color: #323233;
-        }
-      }
-
-      :deep(.van-cell-group--inset) {
-        margin: 0 12px;
-        border-radius: 8px;
-        overflow: hidden;
-      }
     }
   }
-
   .attachment-list {
-    margin-top: 10px;
+    padding-top: 8px;
   }
 }
 
-.videos-section {
-  background: #fff;
-  border-radius: 8px;
-  padding: 15px;
-  margin-bottom: 10px;
-
-  .section-title {
-    font-size: 16px;
-    font-weight: 500;
-    color: #323233;
-    margin-bottom: 15px;
-  }
+.empty-block {
+  padding: 24px 0;
 }
 
-.action-buttons {
-  padding: 15px 0;
-}
-
-.comment-section {
-  background: #fff;
-  border-radius: 8px;
-  padding: 15px;
-  margin-top: 10px;
-  margin-bottom: 20px;
-
-  .comment-title {
-    font-size: 16px;
-    font-weight: 500;
-    color: #323233;
+.comment-card {
+  .card-title {
     margin-bottom: 12px;
   }
   .comment-submit {
-    margin-top: 8px;
+    margin-top: 10px;
   }
   .comment-login-tip {
-    font-size: 14px;
+    font-size: 13px;
     color: #969799;
     margin: 0 0 12px;
   }
   .comment-list {
-    margin-top: 16px;
     .comment-node {
       border-bottom: 1px solid #ebedf0;
-      padding-bottom: 12px;
-      margin-bottom: 12px;
+      padding-bottom: 14px;
+      margin-bottom: 14px;
       &:last-child {
         border-bottom: none;
+        margin-bottom: 0;
       }
     }
     .comment-item {
@@ -474,9 +542,8 @@ onMounted(() => {
       }
       &.reply {
         margin-left: 16px;
-        padding: 8px 0 0;
+        padding: 8px 0 0 10px;
         border-left: 3px solid #ebedf0;
-        padding-left: 10px;
       }
     }
   }

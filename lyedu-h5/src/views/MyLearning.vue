@@ -1,7 +1,7 @@
 <template>
   <div class="my-learning-container">
     <van-nav-bar title="我的学习" left-arrow @click-left="$router.back()" />
-    <div class="desc">仅展示您已观看过视频的课程</div>
+    <div class="desc">展示您已加入的课程</div>
     <template v-if="!token">
       <van-empty description="请先登录后查看学习记录">
         <van-button type="primary" round @click="$router.push('/login')">去登录</van-button>
@@ -10,7 +10,7 @@
     <template v-else>
       <van-loading v-if="loading" class="loading" size="24px">加载中...</van-loading>
       <div v-else-if="courseList.length === 0" class="empty-wrap">
-        <van-empty description="暂无学习记录，去课程中心看看吧">
+        <van-empty description="暂无已加入课程，去课程中心看看吧">
           <van-button type="primary" round @click="$router.push('/courses')">去选课</van-button>
         </van-empty>
       </div>
@@ -37,18 +37,45 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { getWatchedCourses, type WatchedCourseItem } from '@/api/learning'
+import { getMyCourses } from '@/api/learning'
+import { getCourseById, type Course } from '@/api/course'
 
 const token = ref<string | null>(localStorage.getItem('token'))
 const loading = ref(false)
-const courseList = ref<WatchedCourseItem[]>([])
+const courseList = ref<{ course: Course; progress: number }[]>([])
 
-const loadWatchedCourses = async () => {
+const loadMyCourses = async () => {
   if (!token.value) return
   loading.value = true
   try {
-    const list = await getWatchedCourses()
-    courseList.value = Array.isArray(list) ? list : []
+    const res = await getMyCourses()
+    const rows = Array.isArray(res) ? res : []
+    const courseIds = rows
+      .map((r: any) => Number(r.courseId ?? r.course_id))
+      .filter((id: number) => Number.isFinite(id) && id > 0)
+    const uniqIds = Array.from(new Set(courseIds))
+    const details = await Promise.all(
+      uniqIds.map(async (id) => {
+        try {
+          const d = await getCourseById(id)
+          return d?.course ? d.course : null
+        } catch {
+          return null
+        }
+      })
+    )
+    const idToCourse = new Map<number, Course>()
+    details.forEach((c) => {
+      if (c?.id) idToCourse.set(c.id, c)
+    })
+    courseList.value = rows
+      .map((r: any) => {
+        const cid = Number(r.courseId ?? r.course_id)
+        const course = idToCourse.get(cid)
+        if (!course) return null
+        return { course, progress: Number(r.progress ?? 0) }
+      })
+      .filter(Boolean) as { course: Course; progress: number }[]
   } catch {
     courseList.value = []
   } finally {
@@ -58,7 +85,7 @@ const loadWatchedCourses = async () => {
 
 onMounted(() => {
   token.value = localStorage.getItem('token')
-  loadWatchedCourses()
+  loadMyCourses()
 })
 </script>
 

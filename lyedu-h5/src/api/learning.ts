@@ -2,7 +2,7 @@ import request from '@/utils/request'
 import type { Course } from '@/api/course'
 
 export const joinCourse = (courseId: number) => {
-  return request.post('/learning/join', { courseId })
+  return request.post('/learning/join', { course_id: courseId })
 }
 
 export const getMyCourses = () => {
