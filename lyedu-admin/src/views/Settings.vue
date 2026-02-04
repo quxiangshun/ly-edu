@@ -4,7 +4,10 @@
       <template #header>
         <div class="card-header">
           <span>系统配置</span>
-          <el-button type="primary" @click="handleSave" :loading="saving">保存</el-button>
+          <div class="card-actions">
+            <el-button type="default" @click="handleRestoreTheme">恢复默认</el-button>
+            <el-button type="primary" @click="handleSave" :loading="saving">保存</el-button>
+          </div>
         </div>
       </template>
 
@@ -25,6 +28,18 @@
                 <el-button v-if="form.site_logo" type="default" @click="form.site_logo = ''">恢复默认</el-button>
               </div>
               <div class="logo-tip">默认显示系统图标，上传后会覆盖。建议比例 1:1（系统会压缩为 256×256 PNG），支持 jpg/png/gif/webp</div>
+            </el-form-item>
+            <el-form-item label="主题色">
+              <el-radio-group v-model="form.site_theme_mode">
+                <el-radio label="auto">自适应</el-radio>
+                <el-radio label="default">默认</el-radio>
+                <el-radio label="custom">自定义</el-radio>
+              </el-radio-group>
+              <div v-if="form.site_theme_mode === 'custom'" class="theme-color-row">
+                <el-color-picker v-model="form.site_theme_color" />
+                <span class="theme-color-value">{{ form.site_theme_color || '#409eff' }}</span>
+              </div>
+              <div class="logo-tip">更改选项或 Logo/颜色会立即预览主题；“恢复默认”还原为已保存的样式。</div>
             </el-form-item>
             <el-form-item label="网站标题">
               <el-input v-model="form.site_title" placeholder="如：LyEdu 学习平台" />
@@ -72,15 +87,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { getConfigAll, batchSetConfig, type ConfigItem } from '@/api/config'
+import { getConfigAll, batchSetConfig, getConfigByKey, type ConfigItem } from '@/api/config'
 import { uploadImage } from '@/api/image'
+import { applyThemeFromConfig, applyDefaultTheme, applyCustomTheme, applyThemeFromLogoUrl } from '@/utils/theme'
 
 const activeTab = ref('site')
 const saving = ref(false)
 const form = reactive({
   site_logo: '',
+  site_theme_mode: 'auto' as 'auto' | 'default' | 'custom',
+  site_theme_color: '#409eff',
   site_title: '',
   site_keywords: '',
   site_description: '',
@@ -92,6 +110,8 @@ const form = reactive({
 
 const keyToForm: Record<string, string> = {
   'site.logo': 'site_logo',
+  'site.theme_mode': 'site_theme_mode',
+  'site.theme_color': 'site_theme_color',
   'site.title': 'site_title',
   'site.keywords': 'site_keywords',
   'site.description': 'site_description',
@@ -177,11 +197,41 @@ async function handleLogoUpload({ file }: { file: File }) {
     if (url) {
       form.site_logo = url
       ElMessage.success('上传成功')
+      if (form.site_theme_mode === 'auto') {
+        await applyThemeFromLogoUrl(toAbsUrl(url))
+      }
     } else {
       ElMessage.error('上传失败：未返回 URL')
     }
   } catch (_e) {
     ElMessage.error('上传失败')
+  }
+}
+
+function applyPreviewTheme() {
+  const mode = form.site_theme_mode
+  if (mode === 'default') {
+    applyDefaultTheme()
+    return
+  }
+  if (mode === 'custom') {
+    applyCustomTheme(form.site_theme_color || '#409eff')
+    return
+  }
+  applyThemeFromLogoUrl(logoPreviewSrc.value).catch(() => applyDefaultTheme())
+}
+
+async function handleRestoreTheme() {
+  try {
+    const mode = (await getConfigByKey('site.theme_mode')) ?? 'auto'
+    const color = (await getConfigByKey('site.theme_color')) ?? ''
+    const logo = (await getConfigByKey('site.logo')) ?? ''
+    const logoUrl = logo ? (logo.startsWith('http') ? logo : window.location.origin + logo) : ''
+    await applyThemeFromConfig(mode, color, logoUrl)
+    ElMessage.success('已恢复为已保存的主题')
+  } catch (_e) {
+    applyDefaultTheme()
+    ElMessage.success('已恢复为默认主题')
   }
 }
 
@@ -194,7 +244,14 @@ async function loadConfig() {
         const key = c.configKey
         const formKey = keyToForm[key]
         if (formKey && form.hasOwnProperty(formKey)) {
-          ;(form as Record<string, unknown>)[formKey] = c.configValue ?? ''
+          if (key === 'site.theme_mode') {
+            const v = String(c.configValue ?? 'auto').toLowerCase()
+            ;(form as Record<string, unknown>)[formKey] = (v === 'default' || v === 'custom' ? v : 'auto') as string
+          } else if (key === 'site.theme_color') {
+            ;(form as Record<string, unknown>)[formKey] = c.configValue ?? '#409eff'
+          } else {
+            ;(form as Record<string, unknown>)[formKey] = c.configValue ?? ''
+          }
         }
       })
       if (typeof form.student_default_page_size === 'string') {
@@ -211,6 +268,8 @@ async function handleSave() {
   try {
     await batchSetConfig({
       'site.logo': form.site_logo,
+      'site.theme_mode': form.site_theme_mode,
+      'site.theme_color': form.site_theme_mode === 'custom' ? (form.site_theme_color || '#409eff') : '',
       'site.title': form.site_title,
       'site.keywords': form.site_keywords,
       'site.description': form.site_description,
@@ -227,7 +286,18 @@ async function handleSave() {
   }
 }
 
-onMounted(() => loadConfig())
+watch(
+  () => [form.site_theme_mode, form.site_theme_color, form.site_logo],
+  () => {
+    applyPreviewTheme()
+  },
+  { deep: true }
+)
+
+onMounted(async () => {
+  await loadConfig()
+  applyPreviewTheme()
+})
 </script>
 
 <style scoped>
@@ -235,6 +305,11 @@ onMounted(() => loadConfig())
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+.card-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 .settings-form {
   max-width: 560px;
@@ -255,5 +330,15 @@ onMounted(() => loadConfig())
   margin-top: 6px;
   font-size: 12px;
   color: #909399;
+}
+.theme-color-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+.theme-color-value {
+  font-size: 13px;
+  color: #606266;
 }
 </style>
