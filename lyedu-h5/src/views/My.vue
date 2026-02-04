@@ -53,6 +53,7 @@
       <van-cell-group inset>
         <van-cell title="我的学习" is-link icon="video-o" to="/my-learning" />
         <van-cell title="课程中心" is-link icon="orders-o" to="/courses" />
+        <van-cell title="考试中心" is-link icon="notes-o" to="/exam" />
         <van-cell title="我的积分" is-link icon="gold-coin-o" to="/my-points" />
         <van-cell title="我的证书" is-link icon="medal-o" to="/my-certificates" />
         <van-cell title="我的任务" is-link icon="todo-list-o" to="/my-tasks" />
