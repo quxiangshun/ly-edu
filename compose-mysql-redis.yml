@@ -1,6 +1,6 @@
-# 仅启动 MySQL + Redis，用于本地 Debug
+# 仅启动 MySQL + Redis，开发环境直连 localhost
 # 使用: docker compose -f compose-mysql-redis.yml up -d
-# 然后本地启动: API(9700) -> lyedu-admin(9900) / lyedu-pc(9800) / lyedu-h5(9801)
+# 然后本地启动: Python API(9700) / lyedu-admin(9900) / lyedu-pc(9800) / lyedu-h5(9801)
 # 连接: MySQL localhost:3306, Redis localhost:6379
 services:
   mysql:
