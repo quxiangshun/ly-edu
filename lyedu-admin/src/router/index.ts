@@ -43,7 +43,7 @@ const routes: RouteRecordRaw[] = [
         name: 'User',
         component: () => import('@/views/User.vue'),
         meta: {
-          title: '用户管理'
+          title: '员工管理'
         }
       },
       {

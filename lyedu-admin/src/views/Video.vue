@@ -120,17 +120,20 @@
         <el-form-item label="视频上传" prop="url">
           <chunk-upload
             accept="video/*"
-            :chunk-size="5 * 1024 * 1024"
+            :chunk-size="10 * 1024 * 1024"
             @success="handleUploadSuccess"
             @error="handleUploadError"
+            @file-select="onVideoFileSelect"
           />
         </el-form-item>
         <el-form-item label="视频地址" prop="url">
           <el-input v-model="form.url" placeholder="视频上传成功后自动填充，或手动输入视频URL" />
         </el-form-item>
         <el-form-item label="时长（秒）" prop="duration">
-          <el-input-number v-model="form.duration" :min="0" placeholder="请输入视频时长（秒）" />
+          <el-input-number v-model="form.duration" :min="0" :disabled="durationAutoFilled" placeholder="选择视频后自动获取，或手动输入" />
+          <span v-if="durationAutoFilled" class="duration-tip">已自动获取（不可修改）</span>
         </el-form-item>
+        <video ref="videoEl" style="display: none" preload="metadata" />
         <el-form-item label="排序" prop="sort">
           <el-input-number v-model="form.sort" :min="0" />
         </el-form-item>
@@ -162,6 +165,8 @@ const courseOptions = ref<Course[]>([])
 const chapterOptions = ref<{ label: string; value: number }[]>([])
 const courseSearchLoading = ref(false)
 const chapterLoading = ref(false)
+const videoEl = ref<HTMLVideoElement | null>(null)
+const durationAutoFilled = ref(false)
 
 const searchForm = reactive<{ courseId?: number; keyword: string }>({
   courseId: undefined,
@@ -277,6 +282,7 @@ const handleReset = () => {
 const handleAdd = () => {
   isEdit.value = false
   dialogTitle.value = '新增视频'
+  durationAutoFilled.value = false
   Object.assign(form, {
     courseId: undefined,
     chapterId: undefined,
@@ -312,6 +318,38 @@ const handleDelete = async (row: Video) => {
   } catch (e) {
     // 用户取消或删除失败
   }
+}
+
+const onVideoFileSelect = (file: File) => {
+  durationAutoFilled.value = false
+  form.duration = 0
+  if (!file.type.startsWith('video/')) return
+  const url = URL.createObjectURL(file)
+  const video = videoEl.value
+  if (!video) {
+    URL.revokeObjectURL(url)
+    return
+  }
+  const onLoaded = () => {
+    const d = Math.round(video.duration)
+    if (d > 0 && isFinite(d)) {
+      form.duration = d
+      durationAutoFilled.value = true
+    }
+    URL.revokeObjectURL(url)
+    video.removeEventListener('loadedmetadata', onLoaded)
+    video.removeEventListener('error', onErr)
+    video.src = ''
+  }
+  const onErr = () => {
+    URL.revokeObjectURL(url)
+    video.removeEventListener('loadedmetadata', onLoaded)
+    video.removeEventListener('error', onErr)
+    video.src = ''
+  }
+  video.addEventListener('loadedmetadata', onLoaded)
+  video.addEventListener('error', onErr)
+  video.src = url
 }
 
 const handleUploadSuccess = (url: string) => {
@@ -371,5 +409,11 @@ onMounted(() => {
 
 .search-form {
   margin-bottom: 20px;
+}
+
+.duration-tip {
+  margin-left: 8px;
+  font-size: 12px;
+  color: var(--el-color-success);
 }
 </style>

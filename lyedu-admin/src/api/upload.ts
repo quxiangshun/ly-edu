@@ -57,7 +57,7 @@ export const uploadChunk = (fileId: string, chunkIndex: number, chunkSize: numbe
   formData.append('file', file)
   
   return request.post('/upload/chunk', formData, {
-    timeout: 300000 // 5分钟超时，用于大文件上传
+    timeout: 600000 // 10分钟超时，支持 50MB～1GB 视频分片上传
   })
 }
 
