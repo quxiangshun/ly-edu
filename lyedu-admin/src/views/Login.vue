@@ -58,6 +58,7 @@ import type { FormInstance, FormRules } from 'element-plus'
 import { View, Hide } from '@element-plus/icons-vue'
 import { login, type LoginParams } from '@/api/user'
 import { getConfigByKey } from '@/api/config'
+import { applyCustomTheme, applyDefaultTheme, applyThemeFromLogoUrl } from '@/utils/theme'
 
 const router = useRouter()
 const route = useRoute()
@@ -129,6 +130,19 @@ async function loadBranding() {
     const logo = await getConfigByKey('site.logo')
     if (logo) siteLogo.value = logo
   } catch (_e) {}
+
+  try {
+    const mode = (await getConfigByKey('site.theme_mode')) ?? 'auto'
+    const modeStr = String(mode).toLowerCase()
+    if (modeStr === 'custom') {
+      const color = (await getConfigByKey('site.theme_color')) ?? '#409eff'
+      applyCustomTheme(color)
+    } else if (modeStr === 'default') {
+      applyDefaultTheme()
+    } else {
+      await applyThemeFromLogoUrl(logoSrc.value)
+    }
+  } catch (_e) {}
 }
 
 onMounted(() => {
@@ -143,7 +157,7 @@ onMounted(() => {
   align-items: center;
   width: 100%;
   height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--el-color-primary) 0%, rgba(0, 0, 0, 0.2) 100%);
 }
 
 .login-box {
@@ -169,7 +183,7 @@ onMounted(() => {
 
   .login-title {
     font-size: 28px;
-    color: #667eea;
+    color: var(--el-color-primary);
     margin: 0;
     font-weight: 600;
   }
