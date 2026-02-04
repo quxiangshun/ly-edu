@@ -1,6 +1,6 @@
 <template>
   <div class="main-layout">
-    <main class="main-content">
+    <main class="main-content" :class="{ 'main-content--no-scroll': route.path === '/my' }">
       <router-view v-slot="{ Component }">
         <component :is="Component" :key="route.fullPath" v-if="Component" />
       </router-view>
@@ -38,5 +38,10 @@ watch(() => route.path, updateActive, { immediate: true })
 .main-content {
   padding-bottom: 50px;
   min-height: 100vh;
+}
+.main-content--no-scroll {
+  height: 100vh;
+  overflow: hidden;
+  min-height: 0;
 }
 </style>

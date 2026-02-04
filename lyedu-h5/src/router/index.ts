@@ -78,6 +78,36 @@ const routes: RouteRecordRaw[] = [
       title: '知识中心',
       requiresAuth: true
     }
+  },
+  {
+    path: '/my-points',
+    name: 'MyPoints',
+    component: () => import('@/views/MyPoints.vue'),
+    meta: { title: '我的积分', requiresAuth: true }
+  },
+  {
+    path: '/my-certificates',
+    name: 'MyCertificates',
+    component: () => import('@/views/MyCertificates.vue'),
+    meta: { title: '我的证书', requiresAuth: true }
+  },
+  {
+    path: '/my-tasks',
+    name: 'MyTasks',
+    component: () => import('@/views/MyTasks.vue'),
+    meta: { title: '我的任务', requiresAuth: true }
+  },
+  {
+    path: '/settings',
+    name: 'Settings',
+    component: () => import('@/views/Settings.vue'),
+    meta: { title: '设置' }
+  },
+  {
+    path: '/about',
+    name: 'About',
+    component: () => import('@/views/About.vue'),
+    meta: { title: '关于' }
   }
 ]
 
