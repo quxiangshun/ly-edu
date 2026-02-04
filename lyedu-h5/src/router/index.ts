@@ -13,9 +13,10 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/',
     component: () => import('@/views/MainLayout.vue'),
+    redirect: '/index',
     children: [
       {
-        path: '',
+        path: 'index',
         name: 'Home',
         component: () => import('@/views/Home.vue'),
         meta: { title: '首页' }
