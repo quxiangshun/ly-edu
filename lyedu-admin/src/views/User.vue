@@ -36,9 +36,18 @@
       <el-table :data="userList" v-loading="loading" border>
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="username" label="用户名" width="120" />
-        <el-table-column prop="realName" label="真实姓名" width="120" />
+        <el-table-column prop="real_name" label="真实姓名" width="120">
+          <template #default="{ row }">
+            {{ row.real_name || row.username || '-' }}
+          </template>
+        </el-table-column>
         <el-table-column prop="email" label="邮箱" width="180" />
         <el-table-column prop="mobile" label="手机号" width="120" />
+        <el-table-column prop="departmentId" label="部门" width="160">
+          <template #default="{ row }">
+            {{ row.departmentId ? (departmentNameMap.get(row.departmentId) || row.departmentId) : '-' }}
+          </template>
+        </el-table-column>
         <el-table-column prop="role" label="角色" width="100">
           <template #default="{ row }">
             <el-tag :type="row.role === 'admin' ? 'danger' : row.role === 'teacher' ? 'warning' : 'success'">
@@ -83,8 +92,8 @@
         <el-form-item v-if="!isEdit" label="密码" prop="password">
           <el-input v-model="form.password" type="password" placeholder="留空则使用默认密码123456" show-password />
         </el-form-item>
-        <el-form-item label="真实姓名" prop="realName">
-          <el-input v-model="form.realName" placeholder="请输入真实姓名" />
+        <el-form-item label="真实姓名" prop="real_name">
+          <el-input v-model="form.real_name" placeholder="请输入真实姓名" />
         </el-form-item>
         <el-form-item label="邮箱" prop="email">
           <el-input v-model="form.email" placeholder="请输入邮箱" />
@@ -95,8 +104,16 @@
         <el-form-item label="头像URL" prop="avatar">
           <el-input v-model="form.avatar" placeholder="请输入头像URL" />
         </el-form-item>
-        <el-form-item label="部门ID" prop="departmentId">
-          <el-input-number v-model="form.departmentId" :min="0" placeholder="请输入部门ID" />
+        <el-form-item label="部门" prop="departmentId">
+          <el-tree-select
+            v-model="form.departmentId"
+            :data="departmentTreeOptions"
+            :props="{ label: 'name', value: 'id', children: 'children' }"
+            placeholder="请选择所属部门"
+            clearable
+            default-expand-all
+            style="width: 100%"
+          />
         </el-form-item>
         <el-form-item label="入职日期" prop="entryDate">
           <el-date-picker v-model="form.entryDate" type="date" value-format="YYYY-MM-DD" placeholder="新员工任务可见性" style="width: 100%" />
@@ -137,7 +154,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import {
@@ -148,6 +165,7 @@ import {
   resetUserPassword,
   type User
 } from '@/api/user'
+import { getDepartmentTree, type Department } from '@/api/department'
 
 const loading = ref(false)
 const userList = ref<User[]>([])
@@ -171,10 +189,32 @@ const pagination = reactive({
   total: 0
 })
 
+const departmentTree = ref<Department[]>([])
+const departmentTreeOptions = computed(() => departmentTree.value || [])
+
+function flattenDepartments(list: Department[]): Department[] {
+  const out: Department[] = []
+  function walk(items: Department[]) {
+    for (const d of items) {
+      out.push(d)
+      if (d.children?.length) walk(d.children)
+    }
+  }
+  walk(list)
+  return out
+}
+
+const departmentNameMap = computed(() => {
+  const flat = flattenDepartments(departmentTree.value || [])
+  const map = new Map<number, string>()
+  flat.forEach((d) => map.set(d.id, d.name))
+  return map
+})
+
 const form = reactive<Partial<User>>({
   username: '',
   password: '',
-  realName: '',
+  real_name: '',
   email: '',
   mobile: '',
   avatar: '',
@@ -225,6 +265,15 @@ const loadData = async () => {
   }
 }
 
+const loadDepartments = async () => {
+  try {
+    const list = await getDepartmentTree()
+    departmentTree.value = Array.isArray(list) ? list : []
+  } catch (_e) {
+    departmentTree.value = []
+  }
+}
+
 const handleSearch = () => {
   pagination.page = 1
   loadData()
@@ -252,7 +301,7 @@ const handleAdd = () => {
   Object.assign(form, {
     username: '',
     password: '',
-    realName: '',
+    real_name: '',
     email: '',
     mobile: '',
     avatar: '',
@@ -268,7 +317,7 @@ const handleEdit = (row: User) => {
   dialogTitle.value = '编辑用户'
   Object.assign(form, {
     username: row.username,
-    realName: row.realName,
+    real_name: row.real_name,
     email: row.email,
     mobile: row.mobile,
     avatar: row.avatar,
@@ -332,6 +381,7 @@ const handlePasswordSubmit = async () => {
 
 onMounted(() => {
   loadData()
+  loadDepartments()
 })
 </script>
 

@@ -29,7 +29,8 @@ export const getUserInfo = () => {
 export interface User {
   id: number
   username: string
-  realName?: string
+  /** 后端字段 real_name */
+  real_name?: string
   email?: string
   mobile?: string
   avatar?: string
