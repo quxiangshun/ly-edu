@@ -132,7 +132,8 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .home-container {
-  min-height: 100%;
+  min-height: 100vh;
+  background: #f7f8fa;
 }
 
 .banner {
