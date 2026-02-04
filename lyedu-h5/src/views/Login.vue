@@ -82,7 +82,7 @@ const loginForm = reactive({
 const handleFeishuLogin = async () => {
   feishuLoading.value = true
   try {
-    const r = (route.query.redirect as string) || '/'
+    const r = (route.query.redirect as string) || '/index'
     const path = r.startsWith('/') ? r : `/${r}`
     const fullRedirect = window.location.origin + path
     const res = await getFeishuAuthUrl(fullRedirect, 'feishu_scan')
@@ -105,8 +105,8 @@ const handleLogin = async () => {
     localStorage.setItem('token', res.token)
     localStorage.setItem('user', JSON.stringify(res.userInfo ?? {}))
     showSuccessToast('登录成功')
-    let redirect = (route.query.redirect as string) || '/'
-    if (redirect === '/login') redirect = '/'
+    let redirect = (route.query.redirect as string) || '/index'
+    if (redirect === '/login' || redirect === '/') redirect = '/index'
     const target = redirect.startsWith('/') ? redirect : `/${redirect}`
     const url = window.location.origin + target
     try {
