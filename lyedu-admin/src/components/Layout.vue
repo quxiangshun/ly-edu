@@ -22,7 +22,7 @@
             <el-icon><OfficeBuilding /></el-icon>
             <span>组织与人员</span>
           </template>
-          <el-menu-item index="/department">部门管理</el-menu-item>
+          <el-menu-item index="/department">公司架构</el-menu-item>
           <el-menu-item index="/user">用户管理</el-menu-item>
         </el-sub-menu>
         <el-sub-menu index="course-resource">
