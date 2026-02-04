@@ -2,9 +2,9 @@
   <el-container class="layout-container">
     <el-aside :width="isCollapse ? '64px' : '200px'" class="aside">
       <div class="logo">
-        <img v-if="!isCollapse" src="/icon-192.png" alt="LyEdu" class="logo-icon" />
-        <img v-else src="/icon-192.png" alt="LyEdu" class="logo-icon collapse" />
-        <h2 v-if="!isCollapse">LyEdu</h2>
+        <img v-if="!isCollapse" :src="logoSrc" alt="LyEdu" class="logo-icon" />
+        <img v-else :src="logoSrc" alt="LyEdu" class="logo-icon collapse" />
+        <h2 v-if="!isCollapse">{{ siteTitle }}</h2>
       </div>
       <el-menu
         :default-active="activeMenu"
@@ -98,9 +98,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { getConfigByKey } from '@/api/config'
 import {
   DataBoard,
   OfficeBuilding,
@@ -121,8 +122,17 @@ import {
 const router = useRouter()
 const route = useRoute()
 const isCollapse = ref(false)
+const siteTitle = ref('LyEdu')
+const siteLogo = ref('')
 
 const activeMenu = computed(() => route.path)
+
+const logoSrc = computed(() => {
+  const raw = siteLogo.value || '/icon-192.png'
+  if (raw.startsWith('http://') || raw.startsWith('https://')) return raw
+  if (raw.startsWith('/')) return window.location.origin + raw
+  return raw
+})
 
 const userInfo = computed(() => {
   const userStr = localStorage.getItem('user')
@@ -146,6 +156,21 @@ const handleLogout = () => {
   ElMessage.success('已退出登录')
   router.push('/login')
 }
+
+async function loadBranding() {
+  try {
+    const title = await getConfigByKey('site.title')
+    if (title) siteTitle.value = title
+  } catch (_e) {}
+  try {
+    const logo = await getConfigByKey('site.logo')
+    if (logo) siteLogo.value = logo
+  } catch (_e) {}
+}
+
+onMounted(() => {
+  loadBranding()
+})
 </script>
 
 <style scoped lang="scss">
@@ -183,6 +208,11 @@ const handleLogout = () => {
 
     h2 {
       margin: 0;
+      max-width: 120px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 16px;
       line-height: 32px;
       color: #409eff;
     }
