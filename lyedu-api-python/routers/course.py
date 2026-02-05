@@ -90,9 +90,13 @@ def comment_delete(
     comment_id: int,
     authorization: Optional[str] = Header(None, alias="Authorization"),
 ):
-    if not _user_id(authorization):
+    user_id = _user_id(authorization)
+    if not user_id:
         return error(401, "请先登录")
-    course_comment_service.delete(comment_id)
+    # 用户只能删除自己的评论
+    n = course_comment_service.delete_by_user(comment_id, user_id)
+    if n == 0:
+        return error(403, "只能删除自己的评论")
     return success(None)
 
 

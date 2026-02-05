@@ -90,3 +90,7 @@ export const getCourseComments = (courseId: number, chapterId?: number) => {
 export const addCourseComment = (courseId: number, body: { chapterId?: number; parentId?: number; content: string }) => {
   return request.post(`/course/${courseId}/comment`, body)
 }
+
+export const deleteCourseComment = (commentId: number) => {
+  return request.delete(`/course/comment/${commentId}`)
+}

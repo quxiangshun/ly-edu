@@ -163,14 +163,38 @@
                 <div class="comment-list" v-if="commentTree.length > 0">
                   <div v-for="node in commentTree" :key="node.id" class="comment-node">
                     <div class="comment-item">
-                      <span class="comment-user">{{ node.userRealName || '用户' }}</span>
-                      <span class="comment-time">{{ formatCommentTime(node.createTime) }}</span>
+                      <div class="comment-header">
+                        <span class="comment-user">{{ node.userRealName || '用户' }}</span>
+                        <span class="comment-time">{{ formatCommentTime(node.createTime) }}</span>
+                        <van-button
+                          v-if="hasToken && currentUserId === node.userId"
+                          type="danger"
+                          size="mini"
+                          plain
+                          @click="handleDeleteComment(node.id)"
+                          class="comment-delete-btn"
+                        >
+                          删除
+                        </van-button>
+                      </div>
                       <p class="comment-content">{{ node.content }}</p>
                     </div>
                     <div v-if="node.replies?.length" class="comment-replies">
                       <div v-for="r in node.replies" :key="r.id" class="comment-item reply">
-                        <span class="comment-user">{{ r.userRealName || '用户' }}</span>
-                        <span class="comment-time">{{ formatCommentTime(r.createTime) }}</span>
+                        <div class="comment-header">
+                          <span class="comment-user">{{ r.userRealName || '用户' }}</span>
+                          <span class="comment-time">{{ formatCommentTime(r.createTime) }}</span>
+                          <van-button
+                            v-if="hasToken && currentUserId === r.userId"
+                            type="danger"
+                            size="mini"
+                            plain
+                            @click="handleDeleteComment(r.id)"
+                            class="comment-delete-btn"
+                          >
+                            删除
+                          </van-button>
+                        </div>
                         <p class="comment-content">{{ r.content }}</p>
                       </div>
                     </div>
@@ -198,7 +222,7 @@
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { showSuccessToast, showFailToast } from 'vant'
-import { getCourseById, getCourseComments, addCourseComment, type CourseDetail, type CourseAttachment, type ChapterItem, type CourseCommentDto } from '@/api/course'
+import { getCourseById, getCourseComments, addCourseComment, deleteCourseComment, type CourseDetail, type CourseAttachment, type ChapterItem, type CourseCommentDto } from '@/api/course'
 import { joinCourse, updateVideoProgress } from '@/api/learning'
 import { getExamStatus } from '@/api/exam'
 
@@ -211,6 +235,7 @@ const comments = ref<CourseCommentDto[]>([])
 const commentContent = ref('')
 const commentSubmitting = ref(false)
 const hasToken = ref(!!localStorage.getItem('token'))
+const currentUserId = ref<number | null>(null)
 /** 当前在详情页顶部固定区播放的视频（B站式） */
 const currentVideo = ref<{ id: number; title?: string; url?: string; cover?: string; duration?: number } | null>(null)
 const fixedVideoRef = ref<HTMLVideoElement | null>(null)
@@ -305,6 +330,18 @@ async function submitComment() {
     showFailToast((e as { response?: { data?: { message?: string } } })?.response?.data?.message || '发表失败')
   } finally {
     commentSubmitting.value = false
+  }
+}
+
+async function handleDeleteComment(commentId: number) {
+  try {
+    await deleteCourseComment(commentId)
+    showSuccessToast('删除成功')
+    const courseId = Number(route.params.id)
+    const list = await getCourseComments(courseId)
+    comments.value = list || []
+  } catch (e: unknown) {
+    showFailToast((e as { response?: { data?: { message?: string } } })?.response?.data?.message || '删除失败')
   }
 }
 
@@ -532,6 +569,17 @@ function measureVideoAreaHeight() {
 onMounted(() => {
   measureVideoAreaHeight()
   window.addEventListener('resize', measureVideoAreaHeight)
+  hasToken.value = !!localStorage.getItem('token')
+  // 获取当前用户ID
+  try {
+    const userStr = localStorage.getItem('user')
+    if (userStr) {
+      const user = JSON.parse(userStr)
+      currentUserId.value = user.id || user.userId || null
+    }
+  } catch {
+    currentUserId.value = null
+  }
   loadCourseDetail()
 })
 
@@ -758,14 +806,6 @@ onBeforeUnmount(() => {
   padding: 24px 0;
 }
 
-.comment-submit {
-  margin-top: 10px;
-}
-.comment-login-tip {
-  font-size: 13px;
-  color: #969799;
-  margin: 0 0 12px;
-}
 .comment-list {
   .comment-node {
     border-bottom: 1px solid #ebedf0;
@@ -775,30 +815,60 @@ onBeforeUnmount(() => {
       border-bottom: none;
       margin-bottom: 0;
     }
+    .comment-item {
+      background: #fff;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 8px;
+      .comment-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 8px;
+        .comment-user {
+          font-weight: 600;
+          color: #323233;
+          font-size: 14px;
+        }
+        .comment-time {
+          color: #969799;
+          font-size: 12px;
+          flex: 1;
+        }
+        .comment-delete-btn {
+          flex-shrink: 0;
+          height: 24px;
+          padding: 0 8px;
+          font-size: 12px;
+        }
+      }
+      .comment-content {
+        color: #646566;
+        font-size: 14px;
+        line-height: 1.6;
+        margin: 6px 0 0;
+        word-break: break-word;
+        white-space: pre-wrap;
+      }
+      &.reply {
+        margin-left: 32px;
+        padding: 8px 0 0 10px;
+        background: #f7f8fa;
+        border-left: 3px solid #ebedf0;
+      }
+    }
+    .comment-replies {
+      margin-top: 8px;
+    }
   }
-  .comment-item {
-    .comment-user {
-      font-weight: 500;
-      color: #323233;
-      margin-right: 8px;
-      font-size: 14px;
-    }
-    .comment-time {
-      font-size: 12px;
-      color: #969799;
-    }
-    .comment-content {
-      margin: 6px 0 0;
-      font-size: 14px;
-      color: #646566;
-      line-height: 1.5;
-      white-space: pre-wrap;
-    }
-    &.reply {
-      margin-left: 16px;
-      padding: 8px 0 0 10px;
-      border-left: 3px solid #ebedf0;
-    }
-  }
+}
+
+.comment-submit {
+  margin-top: 10px;
+}
+.comment-login-tip {
+  font-size: 13px;
+  color: #969799;
+  margin: 0 0 12px;
 }
 </style>

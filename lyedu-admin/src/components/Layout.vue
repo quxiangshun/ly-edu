@@ -31,6 +31,7 @@
             <span>课程与资源</span>
           </template>
           <el-menu-item index="/course">课程管理</el-menu-item>
+          <el-menu-item index="/course-comment">评论管理</el-menu-item>
           <el-menu-item index="/video">视频管理</el-menu-item>
           <el-menu-item index="/image">图片库</el-menu-item>
           <el-menu-item index="/knowledge">知识库</el-menu-item>
