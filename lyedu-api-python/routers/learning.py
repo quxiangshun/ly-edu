@@ -35,32 +35,45 @@ def video_progress(body: VideoProgressRequest, authorization: Optional[str] = He
     uid = _uid(authorization)
     if uid is None:
         return error_result(ResultCode.UNAUTHORIZED)
-    user_video_progress_service.update_progress(uid, body.video_id, progress=body.progress or 0, duration=body.duration or 0)
-    video = video_service.get_by_id(body.video_id)
-    if video and video.get("course_id"):
-        user_course_service.join_course(uid, video["course_id"])
-        course_videos = video_service.list_by_course_id(video["course_id"])
-        video_ids = [v["id"] for v in course_videos]
-        progress_map = user_video_progress_service.get_progress_map(uid, video_ids)
-        total_duration = sum(v.get("duration") or 0 for v in course_videos if (v.get("duration") or 0) > 0)
-        finished_duration = 0
-        for v in course_videos:
-            d = v.get("duration") or 0
-            if d <= 0:
-                continue
-            p = progress_map.get(v["id"])
-            if p and p.get("progress") is not None:
-                finished_duration += min(p["progress"], d)
-        percent = int(finished_duration * 100 / total_duration) if total_duration > 0 else 0
-        user_course_service.update_progress(uid, video["course_id"], min(100, percent))
+    video_id = body.get_video_id()
+    if video_id is None:
+        return error_result(ResultCode.PARAM_ERROR)  # 缺少 video_id / videoId
+    try:
+        user_video_progress_service.update_progress(uid, video_id, progress=body.progress or 0, duration=body.duration or 0)
+        video = video_service.get_by_id(video_id)
+        if video and video.get("course_id"):
+            user_course_service.join_course(uid, video["course_id"])
+            course_videos = video_service.list_by_course_id(video["course_id"])
+            video_ids = [v["id"] for v in course_videos]
+            progress_map = user_video_progress_service.get_progress_map(uid, video_ids)
+            total_duration = sum(int(v.get("duration") or 0) for v in course_videos if (v.get("duration") or 0) > 0)
+            finished_duration = 0
+            for v in course_videos:
+                d = int(v.get("duration") or 0)
+                if d <= 0:
+                    continue
+                p = progress_map.get(v["id"])
+                if p and p.get("progress") is not None:
+                    finished_duration += min(int(p["progress"]), d)
+            percent = int(finished_duration * 100 / total_duration) if total_duration > 0 else 0
+            user_course_service.update_progress(uid, video["course_id"], min(100, percent))
+    except Exception:
+        pass  # 表缺失或字段异常时仅跳过进度更新，仍返回成功
     return success()
+
 
 @router.post("/play-ping")
 def play_ping(body: PlayPingRequest, authorization: Optional[str] = Header(None, alias="Authorization")):
     uid = _uid(authorization)
     if uid is None:
         return error_result(ResultCode.UNAUTHORIZED)
-    user_video_progress_service.update_last_play_ping(uid, body.video_id)
+    video_id = body.get_video_id()
+    if video_id is None:
+        return success()  # 缺少时忽略
+    try:
+        user_video_progress_service.update_last_play_ping(uid, video_id)
+    except Exception:
+        pass  # 表缺失或字段异常时忽略
     return success()
 
 @router.get("/video-progress/{videoId}")

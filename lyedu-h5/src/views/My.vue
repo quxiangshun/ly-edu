@@ -52,6 +52,7 @@
     <div class="menu-section">
       <van-cell-group inset>
         <van-cell title="我的学习" is-link icon="video-o" to="/my-learning" />
+        <van-cell title="我点赞的视频" is-link icon="good-job-o" to="/my-liked-videos" />
         <van-cell title="课程中心" is-link icon="orders-o" to="/courses" />
         <van-cell title="考试中心" is-link icon="notes-o" to="/exam" />
         <van-cell title="我的积分" is-link icon="gold-coin-o" to="/my-points" />

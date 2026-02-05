@@ -1,14 +1,30 @@
 # -*- coding: utf-8 -*-
 """课程章节服务"""
-from typing import List, Optional
+from typing import Any, List, Optional
 import db
+
+
+def _int(v: Any, default: int = 0) -> int:
+    if v is None:
+        return default
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        return default
+
 
 def _row_to_chapter(row: dict) -> dict:
     if not row:
         return {}
-    return {"id": row["id"], "course_id": row["course_id"], "title": row.get("title"),
-            "sort": row.get("sort", 0), "create_time": row.get("create_time"),
-            "update_time": row.get("update_time"), "deleted": row.get("deleted")}
+    return {
+        "id": _int(row["id"]),
+        "course_id": _int(row["course_id"]),
+        "title": row.get("title"),
+        "sort": _int(row.get("sort"), 0),
+        "create_time": row.get("create_time"),
+        "update_time": row.get("update_time"),
+        "deleted": row.get("deleted"),
+    }
 
 def list_by_course_id(course_id: int) -> List[dict]:
     rows = db.query_all(

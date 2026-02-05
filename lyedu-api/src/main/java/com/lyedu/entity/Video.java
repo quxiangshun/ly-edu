@@ -51,4 +51,19 @@ public class Video extends BaseEntity {
      * 排序
      */
     private Integer sort;
+
+    /**
+     * 播放次数
+     */
+    private Integer playCount;
+
+    /**
+     * 点赞数
+     */
+    private Integer likeCount;
+
+    /**
+     * 当前用户是否已点赞（H5 用，非表字段）
+     */
+    private Boolean liked;
 }

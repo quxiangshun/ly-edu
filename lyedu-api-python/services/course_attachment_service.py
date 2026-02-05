@@ -1,20 +1,29 @@
 # -*- coding: utf-8 -*-
 """课程附件服务，与 Java CourseAttachmentService 对应"""
-from typing import List
+from typing import Any, List
 
 import db
+
+
+def _int(v: Any, default: int = 0) -> int:
+    if v is None:
+        return default
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        return default
 
 
 def _row_to_attachment(row: dict) -> dict:
     if not row:
         return {}
     return {
-        "id": row["id"],
-        "course_id": row["course_id"],
+        "id": _int(row["id"]),
+        "course_id": _int(row["course_id"]),
         "name": row.get("name"),
         "type": row.get("type"),
         "file_url": row.get("file_url"),
-        "sort": row.get("sort", 0),
+        "sort": _int(row.get("sort"), 0),
         "create_time": row.get("create_time"),
         "update_time": row.get("update_time"),
         "deleted": row.get("deleted"),

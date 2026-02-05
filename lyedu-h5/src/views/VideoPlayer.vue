@@ -23,6 +23,7 @@
             webkit-playsinline
             x5-playsinline
             @loadedmetadata="handleLoadedMetadata"
+            @play="handlePlay"
             @timeupdate="handleTimeUpdate"
             @seeking="handleSeeking"
             @ended="handleVideoEnded"
@@ -34,9 +35,19 @@
         <!-- 视频信息 -->
         <div class="video-info">
           <h2>{{ video.title }}</h2>
-          <div class="video-meta" v-if="video.duration">
-            <van-icon name="clock-o" />
-            <span>时长: {{ formatDuration(video.duration) }}</span>
+          <div class="video-meta-row">
+            <div class="video-meta" v-if="video.duration">
+              <van-icon name="clock-o" />
+              <span>时长: {{ formatDuration(video.duration) }}</span>
+            </div>
+            <div class="video-meta">
+              <van-icon name="play-circle-o" />
+              <span>播放 {{ video.playCount ?? 0 }} 次</span>
+            </div>
+            <div class="video-meta video-like" @click="handleLike">
+              <van-icon :name="video.liked ? 'good-job' : 'good-job-o'" :color="video.liked ? '#ee0a24' : undefined" />
+              <span>{{ video.likeCount ?? 0 }} 点赞</span>
+            </div>
           </div>
         </div>
 
@@ -57,9 +68,15 @@
               <div class="video-index">{{ index + 1 }}</div>
               <div class="video-info-item">
                 <h4>{{ relatedVideo.title }}</h4>
-                <div class="video-meta-item" v-if="relatedVideo.duration">
-                  <van-icon name="clock-o" size="12" />
-                  <span>{{ formatDuration(relatedVideo.duration) }}</span>
+                <div class="video-meta-item">
+                  <template v-if="relatedVideo.duration">
+                    <van-icon name="clock-o" size="12" />
+                    <span>{{ formatDuration(relatedVideo.duration) }}</span>
+                    <span class="meta-sep">·</span>
+                  </template>
+                  <span>播放 {{ relatedVideo.playCount ?? 0 }}</span>
+                  <span class="meta-sep">·</span>
+                  <span>{{ relatedVideo.likeCount ?? 0 }} 赞</span>
                 </div>
               </div>
               <div class="video-action" v-if="relatedVideo.id === video.id">
@@ -78,7 +95,7 @@
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { showSuccessToast, showFailToast } from 'vant'
-import { getVideoById } from '@/api/video'
+import { getVideoById, recordPlay, likeVideo, unlikeVideo } from '@/api/video'
 import { getCourseById } from '@/api/course'
 import { updateVideoProgress, playPing } from '@/api/learning'
 import type { Video } from '@/api/course'
@@ -97,6 +114,7 @@ const hasSavedMinProgress = ref(false)
 const lastValidCurrentTime = ref(0)
 const playerDisableSeek = ref(false)
 const playerDisableSpeed = ref(false)
+const playRecorded = ref(false)
 const PROGRESS_SAVE_INTERVAL_MS = 5000
 const MIN_PROGRESS_TO_COUNT_AS_WATCHED = 1
 const PLAY_PING_INTERVAL_MS = 30000
@@ -104,25 +122,28 @@ const playPingTimerRef = ref<ReturnType<typeof setInterval> | null>(null)
 
 const videoUrl = computed(() => {
   if (!video.value?.url) return ''
-  let url = video.value.url
+  let url = String(video.value.url).trim()
   const apiBase = window.location.origin + '/api'
-  // 相对路径转为完整URL（适配Docker/多环境）
-  if (url.startsWith('/')) {
+  // 相对路径转为完整URL：后端存 videos/xxx/video.mp4 或 /uploads/videos/xxx/video.mp4
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    // 已是完整 URL，不动
+  } else if (url.startsWith('/uploads/')) {
     url = apiBase + url
-  } else if (!url.startsWith('http://') && !url.startsWith('https://')) {
-    url = apiBase + (url.startsWith('/') ? url : '/' + url)
+  } else if (url.startsWith('/')) {
+    url = apiBase + url
+  } else {
+    // 相对路径（如 videos/xxx/video.mp4）→ /api/uploads/videos/xxx/video.mp4
+    url = apiBase + '/uploads/' + url.replace(/^\/+/, '')
   }
-  
+
   // 对URL中的中文字符进行编码
   try {
     const urlObj = new URL(url)
-    // 编码路径部分的中文字符（保留斜杠）
     const pathParts = urlObj.pathname.split('/').filter(p => p)
-    const encodedPath = '/' + pathParts.map(part => encodeURIComponent(part)).join('/')
+    const encodedPath = '/' + pathParts.map(part => encodeURIComponent(decodeURIComponent(part))).join('/')
     urlObj.pathname = encodedPath
     return urlObj.toString()
   } catch (e) {
-    // 如果URL解析失败，尝试简单编码
     return encodeURI(url)
   }
 })
@@ -164,15 +185,28 @@ const loadVideo = async () => {
     const res = await getVideoById(videoId)
     video.value = res
 
-    // 加载相关视频（同一课程的其他视频）
-    if (res.courseId) {
-      const courseRes = await getCourseById(res.courseId)
-      relatedVideos.value = courseRes.videos || []
-      courseCover.value = courseRes.course?.cover || ''
-      
-      // 等待DOM更新后，滚动到当前视频项
-      await nextTick()
-      scrollToCurrentVideo()
+    // 兼容后端返回 course_id（snake_case）或 courseId（camelCase）
+    const courseId = res.courseId ?? (res as any).course_id
+    // 加载相关视频（同一课程的其他视频，含 playCount/likeCount/liked）
+    if (courseId) {
+      try {
+        const courseRes = await getCourseById(courseId)
+        const list = courseRes.videos || []
+        relatedVideos.value = list.length > 0 ? list : [res]
+        const currentInList = list.find((v: any) => v.id === videoId)
+        if (currentInList && res) {
+          currentInList.liked = res.liked
+          currentInList.likeCount = res.likeCount ?? (res as any).like_count
+          currentInList.playCount = res.playCount ?? (res as any).play_count
+        }
+        courseCover.value = courseRes.course?.cover || ''
+        await nextTick()
+        scrollToCurrentVideo()
+      } catch (_e) {
+        relatedVideos.value = [res]
+      }
+    } else {
+      relatedVideos.value = [res]
     }
     // 防挂机：播放过程中心跳上报（每 30 秒）
     if (localStorage.getItem('token')) {
@@ -223,12 +257,51 @@ const handleLoadedMetadata = () => {
   }
 }
 
+const handlePlay = () => {
+  if (!video.value || playRecorded.value) return
+  playRecorded.value = true
+  recordPlay(video.value.id).catch(() => {})
+}
+
+const handleLike = async () => {
+  if (!video.value) return
+  const token = localStorage.getItem('token')
+  if (!token) {
+    showFailToast('请先登录')
+    return
+  }
+  try {
+    if (video.value.liked) {
+      await unlikeVideo(video.value.id)
+      video.value.liked = false
+      video.value.likeCount = Math.max(0, (video.value.likeCount ?? 0) - 1)
+    } else {
+      await likeVideo(video.value.id)
+      video.value.liked = true
+      video.value.likeCount = (video.value.likeCount ?? 0) + 1
+    }
+    syncRelatedVideoLike(video.value.id, video.value.liked, video.value.likeCount ?? 0)
+  } catch (e: any) {
+    showFailToast(e?.response?.data?.message || '操作失败')
+  }
+}
+
+function syncRelatedVideoLike(videoId: number, liked: boolean, likeCount: number) {
+  const item = relatedVideos.value.find((v) => v.id === videoId)
+  if (item) {
+    item.liked = liked
+    item.likeCount = likeCount
+  }
+}
+
 const saveProgressIfNeeded = () => {
   const token = localStorage.getItem('token')
   if (!token || !video.value || !videoPlayer.value) return
   const progress = Math.floor(videoPlayer.value.currentTime)
-  const duration = Math.floor(videoPlayer.value.duration)
-  if (!Number.isFinite(progress) || !Number.isFinite(duration) || duration <= 0) return
+  let duration = Math.floor(videoPlayer.value.duration)
+  if (!Number.isFinite(duration) || duration <= 0) duration = Math.floor((video.value?.duration ?? 0))
+  if (!Number.isFinite(progress) || progress < 0) return
+  if (duration <= 0) return
   if (progress < MIN_PROGRESS_TO_COUNT_AS_WATCHED) return
   const now = Date.now()
   if (!hasSavedMinProgress.value) {
@@ -282,6 +355,7 @@ const handleVideoEnded = async () => {
 watch(() => route.params.id, (newId, oldId) => {
   if (newId && newId !== oldId) {
     hasSavedMinProgress.value = false
+    playRecorded.value = false
     loadVideo()
   }
 }, { immediate: false })
@@ -305,8 +379,9 @@ onUnmounted(() => {
   }
   if (videoPlayer.value && video.value && localStorage.getItem('token')) {
     const progress = Math.floor(videoPlayer.value.currentTime)
-    const duration = Math.floor(videoPlayer.value.duration)
-    if (Number.isFinite(progress) && Number.isFinite(duration) && progress >= MIN_PROGRESS_TO_COUNT_AS_WATCHED) {
+    let duration = Math.floor(videoPlayer.value.duration)
+    if (!Number.isFinite(duration) || duration <= 0) duration = Math.floor((video.value?.duration ?? 0))
+    if (Number.isFinite(progress) && progress >= MIN_PROGRESS_TO_COUNT_AS_WATCHED && duration > 0) {
       updateVideoProgress(video.value.id, progress, duration).catch(() => {})
     }
   }
@@ -372,10 +447,17 @@ onUnmounted(() => {
     h2 {
       font-size: 16px;
       color: #323233;
-      margin-bottom: 6px;
+      margin-bottom: 8px;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+
+    .video-meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px 16px;
     }
 
     .video-meta {
@@ -384,6 +466,14 @@ onUnmounted(() => {
       gap: 5px;
       font-size: 13px;
       color: #969799;
+    }
+
+    .video-like {
+      cursor: pointer;
+      user-select: none;
+      &:active {
+        opacity: 0.7;
+      }
     }
   }
 }
@@ -481,6 +571,10 @@ onUnmounted(() => {
           gap: 4px;
           font-size: 12px;
           color: #969799;
+          .meta-sep {
+            margin: 0 2px;
+            color: #c8c9cc;
+          }
         }
       }
 

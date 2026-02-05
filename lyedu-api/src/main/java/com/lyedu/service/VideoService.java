@@ -25,18 +25,36 @@ public interface VideoService {
 
     /**
      * 根据课程ID获取视频列表
+     * @param userId 当前用户ID（可选），用于设置 liked
      */
-    List<Video> listByCourseId(Long courseId);
+    List<Video> listByCourseId(Long courseId, Long userId);
 
     /**
      * 根据章节ID获取视频列表
+     * @param userId 当前用户ID（可选），用于设置 liked
      */
-    List<Video> listByChapterId(Long chapterId);
+    List<Video> listByChapterId(Long chapterId, Long userId);
 
     /**
      * 根据ID获取视频
+     * @param userId 当前用户ID（可选），用于设置 liked
      */
-    Video getById(Long id);
+    Video getById(Long id, Long userId);
+
+    /**
+     * 记录播放次数（每次播放+1）
+     */
+    void recordPlay(Long videoId);
+
+    /**
+     * 点赞（一人只能点一次）
+     */
+    void like(Long videoId, Long userId);
+
+    /**
+     * 取消点赞
+     */
+    void unlike(Long videoId, Long userId);
 
     /**
      * 保存视频

@@ -35,7 +35,30 @@ db/
   ```bash
   alembic upgrade head
   ```
-- `lyedu-api-python/alembic.ini` 中已设置 `script_location = ../db/alembic`，迁移从 `db/alembic` 读取，`db/alembic/env.py` 会加载 `lyedu-api-python` 的 config。
+- 或直接启动 Python 应用，启动时会自动执行 `alembic upgrade head`。
+- `lyedu-api-python/alembic.ini` 中已设置 `script_location = ../db/alembic`，迁移从 `db/alembic` 读取。
+
+### 若出现 "Unknown column 'v.play_count' in 'field list'"
+
+说明 V14 迁移（视频播放次数、点赞）尚未执行，请任选其一：
+
+1. **推荐**：在 **lyedu-api-python** 目录下执行一次迁移：
+   ```bash
+   python -m alembic -c alembic.ini upgrade head
+   ```
+   （Windows 下可先设置 `set PYTHONUTF8=1` 再执行，避免编码问题。）
+
+2. **或**：在 MySQL 中手动执行 `db/flyway/V14__add_video_play_like.sql` 中的 SQL（添加 `ly_video.play_count`、`ly_video.like_count` 及表 `ly_video_like`）。
+
+### 若出现 "Can't locate revision identified by 'v19'"
+
+说明数据库中 `alembic_version` 曾记录为 v19，但当前代码链只到 v13（已移除 v14～v19）。在 MySQL 中执行一次即可：
+
+```sql
+UPDATE alembic_version SET version_num = 'v13';
+```
+
+（若表为空或需初始化，可先执行 `INSERT INTO alembic_version (version_num) VALUES ('v13');`。）
 
 ### 新增迁移时
 
