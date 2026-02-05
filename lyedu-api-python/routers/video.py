@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """视频路由：管理 + 播放次数/点赞（H5 用）"""
-from typing import Optional
+from typing import Optional, List
 from fastapi import APIRouter, Header
+from pydantic import BaseModel
 from common.result import error, success, error_result
 from common.result import ResultCode
 from models.schemas import VideoRequest
@@ -139,3 +140,7 @@ def update(id: int, body: VideoRequest):
 def delete(id: int):
     video_service.delete(id)
     return success()
+
+
+class VideoCoursesRequest(BaseModel):
+    courseIds: Optional[List[int]] = None

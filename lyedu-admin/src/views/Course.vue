@@ -386,12 +386,13 @@ const handleAdd = () => {
     sort: 0,
     isRequired: 0,
     visibility: 1,
-    departmentIds: []
+    departmentIds: [],
+    courseVideoIds: []
   })
   dialogVisible.value = true
 }
 
-const handleEdit = (row: Course) => {
+const handleEdit = async (row: Course) => {
   isEdit.value = true
   dialogTitle.value = '编辑课程'
   Object.assign(form, row)
