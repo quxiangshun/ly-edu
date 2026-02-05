@@ -12,6 +12,7 @@ import com.lyedu.entity.UserVideoProgress;
 import com.lyedu.entity.Video;
 import com.lyedu.service.CourseAttachmentService;
 import com.lyedu.service.CourseChapterService;
+import com.lyedu.service.CourseExamService;
 import com.lyedu.service.CourseService;
 import com.lyedu.service.UserCourseService;
 import com.lyedu.service.UserVideoProgressService;
@@ -41,6 +42,7 @@ public class CourseController {
     private final VideoService videoService;
     private final CourseChapterService courseChapterService;
     private final CourseAttachmentService courseAttachmentService;
+    private final CourseExamService courseExamService;
     private final UserVideoProgressService userVideoProgressService;
     private final UserCourseService userCourseService;
     private final JwtUtil jwtUtil;
@@ -116,6 +118,8 @@ public class CourseController {
         detail.setVideos(videos);
         detail.setChapters(chapterItems);
         detail.setAttachments(attachments);
+        Long examId = courseExamService.getExamIdByCourseId(id);
+        detail.setExamId(examId);
 
         if (userId != null && !videos.isEmpty()) {
             List<Long> videoIds = videos.stream().map(Video::getId).collect(Collectors.toList());
@@ -209,12 +213,41 @@ public class CourseController {
     }
 
     /**
+     * 获取课程关联的考试ID，无关联时返回 200 且 data 为 null（正常，不报错）。
+     */
+    @GetMapping("/{id}/exam")
+    public Result<Long> getCourseExam(@PathVariable Long id) {
+        if (courseService.getByIdIgnoreVisibility(id) == null) {
+            return Result.error(404, "课程不存在");
+        }
+        Long examId = courseExamService.getExamIdByCourseId(id);
+        return Result.success(examId);
+    }
+
+    /**
+     * 设置课程关联的考试；examId 为 null 表示取消关联。
+     */
+    @PutMapping("/{id}/exam")
+    public Result<Void> setCourseExam(@PathVariable Long id, @RequestBody CourseExamRequest body) {
+        if (courseService.getByIdIgnoreVisibility(id) == null) {
+            return Result.error(404, "课程不存在");
+        }
+        courseExamService.setCourseExam(id, body.getExamId());
+        return Result.success();
+    }
+
+    /**
      * 删除课程
      */
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
         courseService.delete(id);
         return Result.success();
+    }
+
+    @Data
+    public static class CourseExamRequest {
+        private Long examId;
     }
 
     @Data

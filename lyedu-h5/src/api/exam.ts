@@ -52,6 +52,19 @@ export const getExamById = (id: number) => {
   return request.get<Exam>(`/exam/${id}`)
 }
 
+export const getExamStatus = (id: number) => {
+  return request.get<{
+    examId: number
+    canStart: boolean
+    status: string
+    message: string
+    startTime?: string
+    endTime?: string
+    durationMinutes?: number
+    unlimited: boolean
+  }>(`/exam-status/${id}`)
+}
+
 export const getPaperQuestions = (paperId: number) => {
   return request.get<PaperQuestionDto[]>(`/paper/${paperId}/questions`)
 }

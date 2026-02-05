@@ -190,6 +190,19 @@
             style="width: 100%"
           />
         </el-form-item>
+        <el-form-item label="关联考试">
+          <el-select
+            v-model="selectedExamId"
+            filterable
+            clearable
+            placeholder="可选择一场考试"
+            style="width: 100%"
+            :loading="examOptionsLoading"
+          >
+            <el-option v-for="e in examOptions" :key="e.id" :label="e.title" :value="e.id" />
+          </el-select>
+          <div class="form-tip">一门课程可关联一场考试；同一考试可被多门课程使用</div>
+        </el-form-item>
         <el-form-item label="排序" prop="sort">
           <el-input-number v-model="form.sort" :min="0" />
         </el-form-item>
@@ -206,7 +219,7 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
-import { getCoursePage, createCourse, updateCourse, deleteCourse, type Course } from '@/api/course'
+import { getCoursePage, createCourse, updateCourse, deleteCourse, getCourseExam, setCourseExam, type Course } from '@/api/course'
 import { getDepartmentTree, type Department } from '@/api/department'
 import {
   getChaptersByCourseId,
@@ -222,6 +235,7 @@ import {
   type CourseAttachment
 } from '@/api/courseAttachment'
 import { getImagePage, type ImageItem, type ImagePageResult } from '@/api/image'
+import { getExamPage, type Exam } from '@/api/exam'
 
 function flattenDepartments(list: Department[]): Department[] {
   const out: Department[] = []
@@ -238,6 +252,9 @@ function flattenDepartments(list: Department[]): Department[] {
 const loading = ref(false)
 const departmentTree = ref<Department[]>([])
 const currentCourse = ref<Course | null>(null)
+const examOptions = ref<Exam[]>([])
+const examOptionsLoading = ref(false)
+const selectedExamId = ref<number | null>(null)
 
 const departmentTreeOptions = computed(() => departmentTree.value || [])
 
@@ -386,9 +403,9 @@ const handleAdd = () => {
     sort: 0,
     isRequired: 0,
     visibility: 1,
-    departmentIds: [],
-    courseVideoIds: []
+    departmentIds: []
   })
+  selectedExamId.value = null
   dialogVisible.value = true
 }
 
@@ -396,7 +413,22 @@ const handleEdit = async (row: Course) => {
   isEdit.value = true
   dialogTitle.value = '编辑课程'
   Object.assign(form, row)
+  selectedExamId.value = null
   dialogVisible.value = true
+  examOptionsLoading.value = true
+  try {
+    const [examPage, cid] = await Promise.all([
+      getExamPage({ page: 1, size: 200 }),
+      getCourseExam(row.id)
+    ])
+    examOptions.value = examPage?.records || []
+    selectedExamId.value = cid ?? null
+  } catch {
+    examOptions.value = []
+    selectedExamId.value = null
+  } finally {
+    examOptionsLoading.value = false
+  }
 }
 
 const handleDelete = async (row: Course) => {
@@ -530,6 +562,7 @@ const handleSubmit = async () => {
   try {
     if (isEdit.value) {
       await updateCourse(form.id!, form)
+      await setCourseExam(form.id!, selectedExamId.value ?? null)
       ElMessage.success('更新成功')
     } else {
       await createCourse(form)
@@ -573,10 +606,6 @@ onMounted(async () => {
 
 .search-form {
   margin-bottom: 20px;
-}
-
-.cover-input {
-  width: 100%;
 }
 
 .image-select-grid {
