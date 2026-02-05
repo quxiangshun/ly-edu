@@ -272,6 +272,7 @@ const onDialogOpened = async () => {
   } else {
     chapterOptions.value = []
   }
+  // no extra load
 }
 
 const loadData = async () => {
@@ -319,7 +320,9 @@ const handleAdd = () => {
     url: '',
     cover: '',
     duration: 0,
-    sort: 0
+    sort: 0,
+    courseIds: [],
+    departmentIds: []
   })
   dialogVisible.value = true
 }
@@ -488,6 +491,11 @@ onMounted(() => {
 }
 .cover-tip {
   margin-top: 6px;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+}
+.form-tip {
+  margin-top: 4px;
   font-size: 12px;
   color: var(--el-text-color-secondary);
 }

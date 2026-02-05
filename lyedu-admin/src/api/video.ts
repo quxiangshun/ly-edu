@@ -55,3 +55,4 @@ export const getVideosByCourseId = (courseId: number) => {
 export const getVideosByChapterId = (chapterId: number) => {
   return request.get<Video[]>(`/video/chapter/${chapterId}`)
 }
+

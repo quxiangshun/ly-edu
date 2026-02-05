@@ -16,6 +16,7 @@ from services import course_attachment_service
 from services import course_comment_service
 from util.jwt_util import parse_authorization
 
+
 router = APIRouter(prefix="/course", tags=["course"])
 
 

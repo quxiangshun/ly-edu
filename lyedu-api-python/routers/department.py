@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""部门路由，与 Java DepartmentController 对应（部门可关联多个课程）"""
+"""部门路由，与 Java DepartmentController 对应（部门可关联课程）"""
 from typing import List, Optional
 
 from fastapi import APIRouter
@@ -100,3 +100,5 @@ def remove_course_from_department(id: int, course_id: int):
         return error(404, "部门不存在")
     course_department_service.remove_course_from_department(id, course_id)
     return success()
+
+
