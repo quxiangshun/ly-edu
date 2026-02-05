@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import FileResponse
 
 import config
-from routers import auth, course, chapter, video, learning, user, department, stats, knowledge, question, paper, exam, exam_status, exam_record, certificate_template, certificate, user_certificate, task, user_task, config as config_router, point, point_rule, image, upload
+from routers import auth, course, chapter, video, learning, user, department, stats, knowledge, question, paper, exam, exam_status, exam_record, certificate_template, certificate, user_certificate, task, user_task, config as config_router, point, point_rule, image, upload, course_comment
 
 
 def _run_alembic_upgrade() -> None:
@@ -93,6 +93,7 @@ def serve_upload(path: str):
 
 app.include_router(auth.router, prefix=API_PREFIX)
 app.include_router(course.router, prefix=API_PREFIX)
+app.include_router(course_comment.router, prefix=API_PREFIX)
 app.include_router(chapter.router, prefix=API_PREFIX)
 app.include_router(video.router, prefix=API_PREFIX)
 app.include_router(learning.router, prefix=API_PREFIX)

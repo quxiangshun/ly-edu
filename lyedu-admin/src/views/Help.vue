@@ -60,6 +60,37 @@
       </ul>
     </el-card>
 
+    <el-card id="course-comment" class="help-card">
+      <template #header>
+        <div class="help-card-header">
+          <span>评论管理</span>
+        </div>
+      </template>
+      <p>
+        统一管理课程评论，支持查看、删除、隐藏/显示等操作，维护良好的学习交流环境。
+      </p>
+      <ul>
+        <li>
+          <strong>评论查看</strong>：管理员可以查看所有评论，包括已删除和隐藏的评论。列表显示评论内容、所属课程、评论用户、创建时间、状态等信息。
+        </li>
+        <li>
+          <strong>搜索筛选</strong>：支持按关键词（评论内容/用户名）、课程ID、状态（显示/隐藏）进行筛选，快速定位目标评论。
+        </li>
+        <li>
+          <strong>删除评论</strong>：管理员可以删除任意评论。删除为"假删除"（软删除），数据不会从数据库中物理删除，只是标记为已删除状态，用户端将不再显示。
+        </li>
+        <li>
+          <strong>隐藏/显示评论</strong>：管理员可以将评论设置为"隐藏"状态，隐藏的评论在H5端（学员端）不会显示，但管理员仍可在后台查看。可以随时将隐藏的评论重新设置为"显示"状态。
+        </li>
+        <li>
+          <strong>用户端删除</strong>：在H5端（学员端），用户可以删除自己发表的评论。用户只能删除自己的评论，删除后评论在用户端不再显示，但管理员仍可在后台查看和管理。
+        </li>
+        <li>
+          <strong>默认状态</strong>：新发表的评论默认状态为"显示"（status=1），用户端正常展示。管理员可以根据内容质量、合规性等因素调整评论的显示状态。
+        </li>
+      </ul>
+    </el-card>
+
     <el-card id="video" class="help-card">
       <template #header>
         <div class="help-card-header">

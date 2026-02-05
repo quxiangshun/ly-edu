@@ -55,6 +55,14 @@ const routes: RouteRecordRaw[] = [
         }
       },
       {
+        path: 'course-comment',
+        name: 'CourseComment',
+        component: () => import('@/views/CourseComment.vue'),
+        meta: {
+          title: '评论管理'
+        }
+      },
+      {
         path: 'video',
         name: 'Video',
         component: () => import('@/views/Video.vue'),
