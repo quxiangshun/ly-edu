@@ -45,7 +45,7 @@
         </el-form-item>
       </el-form>
 
-      <el-table :data="userList" v-loading="loading" border>
+      <el-table :data="userList" v-loading="loading" border :max-height="tableMaxHeight">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="username" label="用户名" width="120" />
         <el-table-column prop="real_name" label="真实姓名" width="120">
@@ -234,7 +234,9 @@ import {
 } from '@/api/user'
 import { getDepartmentTree, type Department } from '@/api/department'
 import { useHelp } from '@/hooks/useHelp'
+import { useTableMaxHeight } from '@/hooks/useTableHeight'
 
+const tableMaxHeight = useTableMaxHeight()
 const loading = ref(false)
 const userList = ref<User[]>([])
 const formRef = ref<FormInstance>()
@@ -502,7 +504,11 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .user-container {
-  padding: 20px;
+  padding: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .card-header {

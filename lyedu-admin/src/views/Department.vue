@@ -22,6 +22,7 @@
         row-key="id"
         default-expand-all
         :tree-props="{ children: 'children', hasChildren: 'hasChildren' }"
+        :max-height="tableMaxHeight"
       >
         <el-table-column prop="name" label="部门名称" min-width="200" />
         <el-table-column prop="sort" label="排序" width="100" />
@@ -63,7 +64,7 @@
         </el-select>
         <el-button type="primary" size="small" style="margin-left: 8px; margin-top: 8px" @click="addSelectedCourses">添加</el-button>
       </div>
-      <el-table :data="linkedCourses" border size="small">
+      <el-table :data="linkedCourses" border size="small" max-height="280">
         <el-table-column prop="id" label="ID" width="70" />
         <el-table-column prop="title" label="课程名称" />
         <el-table-column label="操作" width="80">
@@ -122,6 +123,7 @@ import { QuestionFilled } from '@element-plus/icons-vue'
 import { getDepartmentTree, createDepartment, updateDepartment, deleteDepartment, getDepartmentCourses, addCoursesToDepartment, removeCourseFromDepartment, type Department } from '@/api/department'
 import { getCoursePage, type Course } from '@/api/course'
 import { useHelp } from '@/hooks/useHelp'
+import { useTableMaxHeight } from '@/hooks/useTableHeight'
 
 const loading = ref(false)
 const courseDialogVisible = ref(false)
@@ -134,6 +136,7 @@ const formRef = ref<FormInstance>()
 const dialogVisible = ref(false)
 const dialogTitle = ref('新增部门')
 const isEdit = ref(false)
+const tableMaxHeight = useTableMaxHeight()
 const { openPageHelp } = useHelp()
 
 const form = reactive<Partial<Department>>({
@@ -277,7 +280,11 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .department-container {
-  padding: 20px;
+  padding: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .card-header {

@@ -251,17 +251,17 @@ onMounted(() => {
 <style scoped lang="scss">
 .dashboard-container {
   background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-  padding: 24px;
+  padding: 0;
   // 移除固定高度，让内容自适应
 }
 
 // 欢迎横幅
 .welcome-banner {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 16px;
+  border-radius: 0;
   padding: 32px 40px;
-  margin-bottom: 24px;
-  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+  margin-bottom: 0;
+  box-shadow: none;
   color: white;
   position: relative;
   overflow: hidden;
@@ -315,7 +315,8 @@ onMounted(() => {
 
 // 统计卡片区域
 .stats-section {
-  margin-bottom: 24px;
+  margin-bottom: 0;
+  padding: 24px 24px 0;
 }
 
 .stats-grid {
@@ -407,6 +408,7 @@ onMounted(() => {
   display: grid;
   grid-template-columns: 2fr 1fr;
   gap: 24px;
+  padding: 0 24px 24px;
 
   @media (max-width: 1200px) {
     grid-template-columns: 1fr;

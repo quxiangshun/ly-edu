@@ -2,7 +2,7 @@
 """数据统计与导出，与 Java StatsController 对应"""
 import csv
 import io
-from typing import Any, List
+from typing import Any, List, Optional
 
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
@@ -99,6 +99,55 @@ def export_learners_csv():
         media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": "attachment; filename=learners.csv"},
     )
+
+
+@router.get("/learning/page")
+def learning_page(page: int = 1, size: int = 20, keyword: Optional[str] = None, userId: Optional[int] = None, courseId: Optional[int] = None):
+    """分页查询学习记录"""
+    page = max(1, page)
+    size = max(1, min(100, size))
+    offset = (page - 1) * size
+    
+    where_clauses = ["uc.user_id = u.id AND u.deleted = 0", "uc.course_id = c.id AND c.deleted = 0"]
+    params = []
+    
+    if keyword:
+        where_clauses.append("(u.real_name LIKE %s OR u.username LIKE %s OR c.title LIKE %s)")
+        keyword_pattern = f"%{keyword}%"
+        params.extend([keyword_pattern, keyword_pattern, keyword_pattern])
+    
+    if userId:
+        where_clauses.append("uc.user_id = %s")
+        params.append(userId)
+    
+    if courseId:
+        where_clauses.append("uc.course_id = %s")
+        params.append(courseId)
+    
+    where_sql = " AND ".join(where_clauses)
+    
+    # 查询总数
+    count_sql = f"SELECT COUNT(*) AS total FROM ly_user_course uc JOIN ly_user u ON uc.user_id = u.id JOIN ly_course c ON uc.course_id = c.id WHERE {where_sql}"
+    total_row = db.query_one(count_sql, tuple(params))
+    total = total_row.get("total") or 0 if total_row else 0
+    
+    # 查询数据
+    data_sql = (
+        f"SELECT uc.user_id AS userId, u.real_name AS realName, u.username, uc.course_id AS courseId, "
+        f"c.title AS courseTitle, uc.progress, uc.status AS completeStatus, uc.create_time AS joinTime, uc.update_time AS updateTime "
+        f"FROM ly_user_course uc "
+        f"JOIN ly_user u ON uc.user_id = u.id "
+        f"JOIN ly_course c ON uc.course_id = c.id "
+        f"WHERE {where_sql} "
+        f"ORDER BY uc.update_time DESC LIMIT %s OFFSET %s"
+    )
+    params.extend([size, offset])
+    rows = db.query_all(data_sql, tuple(params))
+    
+    return success({
+        "records": rows,
+        "total": total
+    })
 
 
 @router.get("/export/learning")

@@ -1,23 +1,6 @@
 <template>
   <div class="course-detail-container">
-    <el-header class="header">
-      <div class="header-content">
-        <div class="logo" @click="$router.push('/')">
-          <img src="/icon-192.png" alt="" class="header-logo-icon" />
-          <h1>LyEdu</h1>
-        </div>
-        <el-menu mode="horizontal" default-active="courses" class="header-menu">
-          <el-menu-item index="home" @click="$router.push('/')">首页</el-menu-item>
-          <el-menu-item index="courses" @click="$router.push('/courses')">课程中心</el-menu-item>
-          <el-menu-item index="knowledge" @click="$router.push('/knowledge')">知识中心</el-menu-item>
-          <el-menu-item index="exam" @click="$router.push('/exam')">考试中心</el-menu-item>
-          <el-menu-item index="certificates" @click="$router.push('/certificates')">我的证书</el-menu-item>
-          <el-menu-item index="tasks" @click="$router.push('/tasks')">我的任务</el-menu-item>
-          <el-menu-item index="points" @click="$router.push('/points')">积分</el-menu-item>
-          <el-menu-item index="my" @click="$router.push('/my-learning')">我的学习</el-menu-item>
-        </el-menu>
-      </div>
-    </el-header>
+    <AppHeader />
     <el-main class="main-content" v-loading="loading">
       <div v-if="courseDetail" class="course-detail-content">
         <!-- 课程信息 -->
@@ -227,6 +210,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Clock, VideoPlay, Document, Download } from '@element-plus/icons-vue'
+import AppHeader from '@/components/AppHeader.vue'
 import { getCourseById, getCourseComments, addCourseComment, type CourseDetail, type CourseAttachment, type ChapterItem, type CourseCommentDto } from '@/api/course'
 import { joinCourse } from '@/api/learning'
 
@@ -446,52 +430,11 @@ onMounted(() => {
   flex-direction: column;
 }
 
-.header {
-  background: #fff;
-  border-bottom: 1px solid #e4e7ed;
-  padding: 0;
-
-  .header-content {
-    max-width: 1200px;
-    margin: 0 auto;
-    width: 100%;
-    display: flex;
-    align-items: center;
-    padding: 0 20px;
-
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      cursor: pointer;
-
-      .header-logo-icon {
-        width: 28px;
-        height: 28px;
-        display: block;
-        object-fit: contain;
-      }
-
-      h1 {
-        color: #667eea;
-        font-size: 24px;
-        margin: 0;
-        line-height: 28px;
-      }
-    }
-
-    .header-menu {
-      flex: 1;
-      margin-left: 40px;
-      border: none;
-    }
-  }
-}
-
 .main-content {
   flex: 1;
   background: #f5f7fa;
   padding: 40px 20px;
+  margin-top: 60px;
 
   .course-detail-content {
     max-width: 1200px;

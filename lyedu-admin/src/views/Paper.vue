@@ -25,7 +25,7 @@
         </el-form-item>
       </el-form>
 
-      <el-table :data="paperList" v-loading="loading" border>
+      <el-table :data="paperList" v-loading="loading" border :max-height="tableMaxHeight">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="title" label="试卷名称" min-width="200" show-overflow-tooltip />
         <el-table-column prop="totalScore" label="总分" width="80" />
@@ -154,7 +154,9 @@ import {
 } from '@/api/paper'
 import { getQuestionPage, type Question } from '@/api/question'
 import { useHelp } from '@/hooks/useHelp'
+import { useTableMaxHeight } from '@/hooks/useTableHeight'
 
+const tableMaxHeight = useTableMaxHeight()
 const typeLabels: Record<string, string> = {
   single: '单选',
   multi: '多选',
@@ -359,6 +361,14 @@ onMounted(loadList)
 </script>
 
 <style scoped lang="scss">
+.paper-container {
+  padding: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 .paper-container .card-header {
   display: flex;
   justify-content: space-between;

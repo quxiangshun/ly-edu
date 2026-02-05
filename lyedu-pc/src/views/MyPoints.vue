@@ -1,23 +1,6 @@
 <template>
   <div class="my-points-container">
-    <el-header class="header">
-      <div class="header-content">
-        <div class="logo" @click="$router.push('/')">
-          <img src="/icon-192.png" alt="" class="header-logo-icon" />
-          <h1>LyEdu</h1>
-        </div>
-        <el-menu mode="horizontal" default-active="points" class="header-menu">
-          <el-menu-item index="home" @click="$router.push('/')">首页</el-menu-item>
-          <el-menu-item index="courses" @click="$router.push('/courses')">课程中心</el-menu-item>
-          <el-menu-item index="knowledge" @click="$router.push('/knowledge')">知识中心</el-menu-item>
-          <el-menu-item index="exam" @click="$router.push('/exam')">考试中心</el-menu-item>
-          <el-menu-item index="certificates" @click="$router.push('/certificates')">我的证书</el-menu-item>
-          <el-menu-item index="tasks" @click="$router.push('/tasks')">我的任务</el-menu-item>
-          <el-menu-item index="points">积分</el-menu-item>
-          <el-menu-item index="my" @click="$router.push('/my-learning')">我的学习</el-menu-item>
-        </el-menu>
-      </div>
-    </el-header>
+    <AppHeader />
     <el-main class="main-content">
       <div class="points-content">
         <h2>我的积分</h2>
@@ -72,6 +55,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
+import AppHeader from '@/components/AppHeader.vue'
 import { getMyTotal, getMyLog, getRanking, type PointLogItem, type RankingItem } from '@/api/point'
 
 const totalPoints = ref(0)
@@ -140,39 +124,12 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
 }
-.header {
-  background: #fff;
-  border-bottom: 1px solid #ebeef5;
-  padding: 0 24px;
-}
-.header-content {
-  max-width: 1200px;
-  margin: 0 auto;
-  display: flex;
-  align-items: center;
-  height: 60px;
-}
-.logo {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  margin-right: 24px;
-}
-.header-logo-icon {
-  width: 32px;
-  height: 32px;
-  object-fit: contain;
-}
-.header-menu {
-  flex: 1;
-  border: none;
-}
 .main-content {
   max-width: 900px;
   margin: 0 auto;
   padding: 24px 16px;
   flex: 1;
+  margin-top: 60px;
 }
 .points-content h2 {
   margin: 0 0 8px;
