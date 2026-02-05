@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
-"""分片上传服务，与 Java FileUploadService 对应；视频按内容哈希去重，只保留一份"""
-import hashlib
+"""分片上传服务：视频按内容哈希去重只保留一份，支持秒传/断点续传、分片哈希校验"""
 import shutil
 import uuid
 from pathlib import Path
@@ -8,8 +7,8 @@ from typing import List, Optional
 
 import db
 from config import UPLOAD_PATH
+from util.upload_util import get_chunk_hash, get_file_hash
 
-HASH_READ_CHUNK = 1024 * 1024  # 1MB
 SELECT_BY_HASH = "SELECT relative_path FROM ly_file_hash WHERE content_hash = %s LIMIT 1"
 INSERT_FILE_HASH = "INSERT INTO ly_file_hash (content_hash, relative_path, file_size) VALUES (%s, %s, %s)"
 
@@ -88,7 +87,34 @@ def get_uploaded_chunks(file_id: str) -> List[int]:
     return [r["chunk_index"] for r in rows]
 
 
-def upload_chunk(file_id: str, chunk_index: int, chunk_size: int, chunk_data: bytes) -> bool:
+def file_check(content_hash: str, file_ext: str) -> dict:
+    """
+    上传前校验：若内容哈希已存在则秒传，返回已有播放地址；否则返回可继续分片上传。
+    """
+    if not content_hash or not file_ext:
+        return {"is_exist": False, "uploaded_chunks": []}
+    ext = file_ext if file_ext.startswith(".") else "." + file_ext
+    existing = db.query_one(SELECT_BY_HASH, (content_hash.strip().lower(),))
+    if existing:
+        return {
+            "is_exist": True,
+            "video_url": "/uploads/" + (existing["relative_path"].lstrip("/")),
+            "uploaded_chunks": [],
+        }
+    return {"is_exist": False, "uploaded_chunks": []}
+
+
+def upload_chunk(
+    file_id: str,
+    chunk_index: int,
+    chunk_size: int,
+    chunk_data: bytes,
+    chunk_hash: Optional[str] = None,
+) -> bool:
+    if chunk_hash:
+        actual = get_chunk_hash(chunk_data)
+        if actual.lower() != chunk_hash.strip().lower():
+            raise ValueError(f"分片 {chunk_index} 哈希校验失败")
     uploaded = get_uploaded_chunks(file_id)
     if chunk_index in uploaded:
         return True
@@ -100,17 +126,6 @@ def upload_chunk(file_id: str, chunk_index: int, chunk_size: int, chunk_data: by
     db.execute(INSERT_CHUNK, (file_id, chunk_index, chunk_size, rel_path))
     db.execute(UPDATE_UPLOAD_PROGRESS, (file_id,))
     return True
-
-
-def _compute_file_sha256(path: Path) -> str:
-    h = hashlib.sha256()
-    with open(path, "rb") as f:
-        while True:
-            data = f.read(HASH_READ_CHUNK)
-            if not data:
-                break
-            h.update(data)
-    return h.hexdigest()
 
 
 def merge_chunks(file_id: str) -> str:
@@ -134,7 +149,7 @@ def merge_chunks(file_id: str) -> str:
     if chunk_dir.exists():
         shutil.rmtree(chunk_dir, ignore_errors=True)
     file_size = prog["fileSize"]
-    content_hash = _compute_file_sha256(merged_file)
+    content_hash = get_file_hash(merged_file)
     existing = db.query_one(SELECT_BY_HASH, (content_hash,))
     if existing:
         merged_file.unlink(missing_ok=True)
