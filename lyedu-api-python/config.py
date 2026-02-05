@@ -27,3 +27,9 @@ FEISHU_APP_SECRET = os.getenv("FEISHU_APP_SECRET", "")
 FEISHU_REDIRECT_URI = os.getenv("FEISHU_REDIRECT_URI", "")
 
 UPLOAD_PATH = Path(os.getenv("UPLOAD_PATH", "./uploads"))
+
+# 分片上传与内容去重（与豆包方案一致）
+CHUNK_SIZE = int(os.getenv("UPLOAD_CHUNK_SIZE", str(5 * 1024 * 1024)))  # 5MB
+HASH_ALGORITHM = "sha256"
+ALLOWED_VIDEO_EXT = {".mp4", ".mov", ".avi", ".mkv", ".flv"}
+ALLOWED_IMAGE_EXT = {".jpg", ".jpeg", ".png", ".gif", ".webp"}

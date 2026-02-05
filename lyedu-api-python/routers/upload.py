@@ -1,16 +1,37 @@
 # -*- coding: utf-8 -*-
-"""分片上传路由，与 Java FileUploadController 对应"""
+"""分片上传路由：秒传/断点、分片哈希校验、合并去重"""
 from typing import Optional
 
 from fastapi import APIRouter, File, Form, UploadFile
 from pydantic import BaseModel
 
 from common.result import error, success
+from config import CHUNK_SIZE as CONFIG_CHUNK_SIZE
 from services import upload_service
 
 router = APIRouter(prefix="/upload", tags=["upload"])
 
-DEFAULT_CHUNK_SIZE = 5 * 1024 * 1024  # 5MB
+DEFAULT_CHUNK_SIZE = CONFIG_CHUNK_SIZE
+
+
+class FileCheckRequest(BaseModel):
+    """上传前校验：秒传/断点续传前置"""
+    fileHash: str
+    fileExt: str
+
+
+@router.post("/check")
+def file_check(body: FileCheckRequest):
+    """
+    上传前校验：若内容哈希已存在则秒传，返回已有播放地址；否则可继续分片上传。
+    前端计算文件整体 SHA256 后调用，与后端 HASH_ALGORITHM 一致。
+    """
+    result = upload_service.file_check(body.fileHash.strip(), body.fileExt.strip())
+    return success({
+        "is_exist": result["is_exist"],
+        "video_url": result.get("video_url"),
+        "uploadedChunks": result.get("uploaded_chunks", []),
+    })
 
 
 class InitUploadRequest(BaseModel):
@@ -66,6 +87,7 @@ def upload_chunk(
     fileId: str = Form(...),
     chunkIndex: int = Form(...),
     chunkSize: int = Form(...),
+    chunkHash: Optional[str] = Form(None),
     file: UploadFile = File(...),
 ):
     try:
@@ -73,8 +95,10 @@ def upload_chunk(
     except Exception as e:
         return error(500, "Failed to read chunk: " + str(e))
     try:
-        upload_service.upload_chunk(fileId, chunkIndex, chunkSize, content)
+        upload_service.upload_chunk(fileId, chunkIndex, chunkSize, content, chunk_hash=chunkHash)
         return success()
+    except ValueError as e:
+        return error(400, str(e))
     except Exception as e:
         return error(500, str(e))
 
