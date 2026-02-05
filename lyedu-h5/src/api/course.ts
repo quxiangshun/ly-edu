@@ -19,6 +19,9 @@ export interface Video {
   url: string
   duration?: number
   sort: number
+  playCount?: number
+  likeCount?: number
+  liked?: boolean
 }
 
 export interface ChapterItem {

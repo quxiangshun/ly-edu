@@ -92,58 +92,63 @@ def comment_delete(
 
 @router.get("/{id}")
 def get_by_id(id: int, authorization: Optional[str] = Header(None, alias="Authorization")):
-    user_id = _user_id(authorization)
-    course = course_service.get_detail_by_id(id, user_id=user_id)
-    if not course:
-        return error(404, "课程不存在")
-    chapters = chapter_service.list_by_course_id(id)
-    videos = video_service.list_by_course_id(id)
-    chapter_items = []
-    for ch in chapters:
-        hours = [v for v in videos if v.get("chapter_id") == ch["id"]]
-        chapter_items.append(
-            {"id": ch["id"], "title": ch["title"], "sort": ch["sort"], "hours": hours}
-        )
-    uncategorized = [v for v in videos if v.get("chapter_id") is None]
-    if uncategorized:
-        chapter_items.append(
-            {"id": None, "title": "未分类", "sort": 999999, "hours": uncategorized}
-        )
-    attachments = course_attachment_service.list_by_course_id(id)
-    detail = {
-        "course": course,
-        "videos": videos,
-        "chapters": chapter_items,
-        "attachments": attachments,
-    }
-    user_id = _user_id(authorization)
-    if user_id and videos:
-        video_ids = [v["id"] for v in videos]
-        progress_map = user_video_progress_service.get_progress_map(user_id, video_ids)
-        learn_record = {
-            vid: {"progress": p["progress"], "duration": p["duration"]}
-            for vid, p in progress_map.items()
+    try:
+        user_id = _user_id(authorization)
+        course = course_service.get_detail_by_id(id, user_id=user_id)
+        if not course:
+            return error(404, "课程不存在")
+        chapters = chapter_service.list_by_course_id(id)
+        videos = video_service.list_by_course_id(id, user_id=user_id)
+        chapter_items = []
+        for ch in chapters:
+            hours = [v for v in videos if v.get("chapter_id") == ch["id"]]
+            chapter_items.append(
+                {"id": ch["id"], "title": ch["title"], "sort": ch["sort"], "hours": hours}
+            )
+        uncategorized = [v for v in videos if v.get("chapter_id") is None]
+        if uncategorized:
+            chapter_items.append(
+                {"id": None, "title": "未分类", "sort": 999999, "hours": uncategorized}
+            )
+        attachments = course_attachment_service.list_by_course_id(id)
+        detail = {
+            "course": course,
+            "videos": videos,
+            "chapters": chapter_items,
+            "attachments": attachments,
         }
-        detail["learnRecord"] = learn_record
-        total_duration = 0
-        finished_duration = 0
-        for v in videos:
-            d = v.get("duration") or 0
-            if d <= 0:
-                continue
-            total_duration += d
-            p = progress_map.get(v["id"])
-            if p and p.get("progress") is not None:
-                finished_duration += min(p["progress"], d)
-        course_progress = (
-            int(finished_duration * 100 / total_duration) if total_duration > 0 else 0
-        )
-        course_progress = min(100, course_progress)
-        uc = user_course_service.get_by_user_and_course(user_id, id)
-        if uc and (uc.get("progress") or 0) > course_progress:
-            course_progress = uc["progress"]
-        detail["courseProgress"] = course_progress
-    return success(detail)
+        if user_id and videos:
+            try:
+                video_ids = [v["id"] for v in videos]
+                progress_map = user_video_progress_service.get_progress_map(user_id, video_ids)
+                learn_record = {
+                    vid: {"progress": int(p.get("progress") or 0), "duration": int(p.get("duration") or 0)}
+                    for vid, p in progress_map.items()
+                }
+                detail["learnRecord"] = learn_record
+                total_duration = 0
+                finished_duration = 0
+                for v in videos:
+                    d = int(v.get("duration") or 0)
+                    if d <= 0:
+                        continue
+                    total_duration += d
+                    p = progress_map.get(v["id"])
+                    if p and p.get("progress") is not None:
+                        finished_duration += min(int(p["progress"]), d)
+                course_progress = (
+                    int(finished_duration * 100 / total_duration) if total_duration > 0 else 0
+                )
+                course_progress = min(100, course_progress)
+                uc = user_course_service.get_by_user_and_course(user_id, id)
+                if uc and (uc.get("progress") or 0) > course_progress:
+                    course_progress = int(uc["progress"])
+                detail["courseProgress"] = course_progress
+            except Exception:
+                pass  # 无学习进度表或计算异常时仍返回课程详情，仅无 progress
+        return success(detail)
+    except Exception as e:
+        return error(500, (getattr(e, "message", None) or str(e))[:200] or "加载课程详情失败")
 
 
 @router.post("")

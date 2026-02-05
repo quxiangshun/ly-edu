@@ -52,6 +52,8 @@
           </template>
         </el-table-column>
         <el-table-column prop="duration" label="时长（秒）" width="120" />
+        <el-table-column prop="playCount" label="播放次数" width="100" />
+        <el-table-column prop="likeCount" label="点赞数" width="100" />
         <el-table-column prop="sort" label="排序" width="100" />
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">

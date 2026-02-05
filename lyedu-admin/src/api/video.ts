@@ -11,6 +11,8 @@ export interface Video {
   cover?: string
   duration?: number
   sort: number
+  playCount?: number
+  likeCount?: number
 }
 
 export interface PageResult<T> {

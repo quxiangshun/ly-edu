@@ -42,13 +42,21 @@ class JoinCourseRequest(BaseModel):
 
 
 class VideoProgressRequest(BaseModel):
-    video_id: int
+    video_id: Optional[int] = None
+    videoId: Optional[int] = None  # 前端传 camelCase
     progress: Optional[int] = 0
     duration: Optional[int] = 0
 
+    def get_video_id(self) -> Optional[int]:
+        return self.video_id if self.video_id is not None else self.videoId
+
 
 class PlayPingRequest(BaseModel):
-    video_id: int
+    video_id: Optional[int] = None
+    videoId: Optional[int] = None  # 前端传 camelCase
+
+    def get_video_id(self) -> Optional[int]:
+        return self.video_id if self.video_id is not None else self.videoId
 
 
 # ----- Department -----

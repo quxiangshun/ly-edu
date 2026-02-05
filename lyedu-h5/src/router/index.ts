@@ -98,6 +98,12 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '我的任务', requiresAuth: true }
   },
   {
+    path: '/my-liked-videos',
+    name: 'MyLikedVideos',
+    component: () => import('@/views/MyLikedVideos.vue'),
+    meta: { title: '我点赞的视频', requiresAuth: true }
+  },
+  {
     path: '/exam',
     name: 'ExamList',
     component: () => import('@/views/ExamList.vue'),

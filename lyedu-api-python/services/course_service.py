@@ -42,19 +42,29 @@ def _select_cols() -> str:
     return SELECT_COLS_FULL if _course_table_has_visibility() else SELECT_COLS_LEGACY
 
 
+def _int(v: Any, default: int = 0) -> int:
+    """将 DB 返回的 int/Decimal/None 转为 int，避免 JSON 序列化报错。"""
+    if v is None:
+        return default
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        return default
+
+
 def _row_to_course(row: dict) -> dict:
     if not row:
         return {}
     return {
-        "id": row["id"],
+        "id": _int(row["id"]),
         "title": row.get("title"),
         "cover": row.get("cover"),
         "description": row.get("description"),
-        "category_id": row.get("category_id"),
-        "status": row.get("status", 1),
-        "sort": row.get("sort", 0),
-        "is_required": row.get("is_required", 0),
-        "visibility": row.get("visibility", 1),
+        "category_id": row.get("category_id") if row.get("category_id") is None else _int(row["category_id"]),
+        "status": _int(row.get("status"), 1),
+        "sort": _int(row.get("sort"), 0),
+        "is_required": _int(row.get("is_required"), 0),
+        "visibility": _int(row.get("visibility"), 1),
         "department_ids": [],  # 由 fill_department_ids 填充
         "create_time": row.get("create_time"),
         "update_time": row.get("update_time"),

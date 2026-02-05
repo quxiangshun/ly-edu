@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """LyEdu API - Python 版本 (FastAPI)"""
 import os
-import subprocess
 import sys
 import time
 from contextlib import asynccontextmanager
@@ -17,69 +16,52 @@ from routers import auth, course, chapter, video, learning, user, department, st
 
 def _run_alembic_upgrade() -> None:
     """启动时自动执行 Alembic 迁移（alembic upgrade head），与 Java 端 Flyway 行为一致。
-    使用子进程执行，避免 Windows 下本进程默认 GBK 导致读取 UTF-8 迁移脚本报错。
+    使用 Alembic API 在进程内执行，避免子进程 python -m alembic 在某些环境（如 Python 3.14）失败。
+    若数据库中曾记录为 v14～v19 等已移除的版本，会自动将 alembic_version 改为当前 head（v13）后重试。
     """
     base_dir = Path(__file__).resolve().parent
     script_dir = (base_dir.parent / "db" / "alembic").resolve()
     if not script_dir.exists():
         print("[LyEdu] [Alembic] 跳过: 未找到 db/alembic 目录（请从仓库根目录拉取代码）。", file=sys.stderr)
         return
-    env = os.environ.copy()
-    env["PYTHONUTF8"] = "1"
+    ini_path = base_dir / "alembic.ini"
     max_attempts = 3
+    fixed_stale_revision = False
     for attempt in range(1, max_attempts + 1):
         try:
-            r = subprocess.run(
-                [sys.executable, "-m", "alembic", "-c", str(base_dir / "alembic.ini"), "upgrade", "head"],
-                cwd=str(base_dir),
-                env=env,
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                timeout=120,
-            )
-            if r.returncode == 0:
-                if r.stdout:
-                    print(r.stdout, end="", file=sys.stderr)
-                print("[LyEdu] [Alembic] 数据库迁移已执行完成 (up to head)。")
-                return
-            err_msg = (r.stderr or r.stdout or "").strip() or f"exit code {r.returncode}"
-            # 仅将明确的连接类错误视为可重试（避免 "context" 等词误判）
+            from alembic.config import Config
+            from alembic import command
+            alembic_cfg = Config(str(ini_path))
+            command.upgrade(alembic_cfg, "head")
+            print("[LyEdu] [Alembic] 数据库迁移已执行完成 (up to head)。")
+            return
+        except Exception as e:
+            err_msg = str(e).strip()
+            # 数据库中记录为已移除的版本（如 v19）时，自动改为当前 head（v13）后重试一次
+            if "can't locate revision identified by" in err_msg.lower() and not fixed_stale_revision:
+                try:
+                    import db
+                    n = db.execute("UPDATE alembic_version SET version_num = %s", ("v13",))
+                    if n == 0:
+                        db.execute("INSERT INTO alembic_version (version_num) VALUES (%s)", ("v13",))
+                    print("[LyEdu] [Alembic] 已将数据库版本从已移除的修订改为 v13，正在重试迁移。", file=sys.stderr)
+                    fixed_stale_revision = True
+                    continue
+                except Exception as fix_e:
+                    print("[LyEdu] [Alembic] 自动修正版本失败:", str(fix_e)[:200], file=sys.stderr)
             is_conn = (
                 "connection refused" in err_msg.lower()
                 or "can't connect" in err_msg.lower()
                 or "error 2003" in err_msg.lower()
                 or "connection reset" in err_msg.lower()
-                or "connection refused" in err_msg.lower()
             )
             if is_conn and attempt < max_attempts:
                 print(f"[LyEdu] [Alembic] 第 {attempt} 次迁移失败（可能 MySQL 未就绪），{attempt} 秒后重试: {err_msg[:200]}", file=sys.stderr)
                 time.sleep(attempt)
                 continue
             print("[LyEdu] [Alembic] 自动迁移失败（应用仍会启动）:", err_msg[:500], file=sys.stderr)
-            if r.stderr:
-                print(r.stderr[:800], file=sys.stderr)
             print("[LyEdu] [Alembic] 请检查: 1) 是否已启动 MySQL（如 docker compose -f compose-mysql-redis.yml up）"
-                  " 2) .env 或环境变量 MYSQL_* 是否正确（可参考 .env.example）"
-                  " 3) 手动执行: cd lyedu-api-python && alembic -c alembic.ini upgrade head", file=sys.stderr)
-            return
-        except Exception as e:
-            err_msg = str(e).strip()
-            is_conn = (
-                "connection refused" in err_msg.lower()
-                or "can't connect" in err_msg.lower()
-                or "error 2003" in err_msg.lower()
-                or "connection reset" in err_msg.lower()
-            )
-            if is_conn and attempt < max_attempts:
-                print(f"[LyEdu] [Alembic] 第 {attempt} 次迁移失败（可能 MySQL 未就绪），{attempt} 秒后重试: {e}", file=sys.stderr)
-                time.sleep(attempt)
-                continue
-            print("[LyEdu] [Alembic] 自动迁移失败（应用仍会启动）:", e, file=sys.stderr)
-            print("[LyEdu] [Alembic] 请检查: 1) 是否已启动 MySQL（如 docker compose -f compose-mysql-redis.yml up）"
-                  " 2) .env 或环境变量 MYSQL_* 是否正确（可参考 .env.example）"
-                  " 3) 手动执行: cd lyedu-api-python && alembic -c alembic.ini upgrade head", file=sys.stderr)
+                  " 2) .env 或环境变量 MYSQL_* 是否正确（可参考 .env.example）", file=sys.stderr)
             return
 
 
