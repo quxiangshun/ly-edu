@@ -123,6 +123,7 @@
             :props="{ label: 'name', value: 'id', children: 'children' }"
             placeholder="请选择所属部门"
             clearable
+            check-strictly
             default-expand-all
             style="width: 100%"
           />

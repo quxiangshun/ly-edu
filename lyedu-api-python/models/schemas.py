@@ -2,7 +2,7 @@
 """Pydantic request/response schemas, mirroring Java DTOs."""
 from typing import Any, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, root_validator
 
 
 # ----- Course -----
@@ -77,9 +77,21 @@ class UserRequest(BaseModel):
     mobile: Optional[str] = None
     avatar: Optional[str] = None
     department_id: Optional[int] = None
+    departmentId: Optional[int] = None  # 前端使用的驼峰命名，兼容处理
     entry_date: Optional[str] = None  # YYYY-MM-DD
+    entryDate: Optional[str] = None  # 前端使用的驼峰命名，兼容处理
     role: Optional[str] = "student"
     status: Optional[int] = 1
+    
+    @root_validator(pre=True)
+    def convert_camel_case(cls, values):
+        # 统一处理：如果前端传了驼峰命名，转换为下划线命名
+        if isinstance(values, dict):
+            if 'departmentId' in values and 'department_id' not in values:
+                values['department_id'] = values.get('departmentId')
+            if 'entryDate' in values and 'entry_date' not in values:
+                values['entry_date'] = values.get('entryDate')
+        return values
 
 
 class ResetPasswordRequest(BaseModel):
