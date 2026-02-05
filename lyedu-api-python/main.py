@@ -9,7 +9,7 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
+from starlette.responses import FileResponse
 
 import config
 from routers import auth, course, chapter, video, learning, user, department, stats, knowledge, question, paper, exam, exam_record, certificate_template, certificate, user_certificate, task, user_task, config as config_router, point, point_rule, image, upload
@@ -95,13 +95,19 @@ app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=True, 
 # 与前端 baseURL: '/api' 一致，所有接口挂到 /api 下
 API_PREFIX = '/api'
 
-# 静态资源：上传文件访问（前端会将 /uploads 代理重写到 /api/uploads）
-try:
-    Path(config.UPLOAD_PATH).mkdir(parents=True, exist_ok=True)
-    app.mount(API_PREFIX + '/uploads', StaticFiles(directory=str(config.UPLOAD_PATH)), name='uploads')
-except Exception:
-    # 不影响主服务启动（仅影响静态资源访问）
-    pass
+# 上传文件访问：使用 FileResponse 支持 Range 分片加载（视频拖拽、分段请求）
+Path(config.UPLOAD_PATH).mkdir(parents=True, exist_ok=True)
+UPLOAD_PATH_RESOLVED = config.UPLOAD_PATH.resolve()
+
+
+@app.get(API_PREFIX + "/uploads/{path:path}")
+def serve_upload(path: str):
+    """提供上传文件，支持 HTTP Range 分片加载（视频播放器按需拉取）"""
+    full = (UPLOAD_PATH_RESOLVED / path).resolve()
+    if not str(full).startswith(str(UPLOAD_PATH_RESOLVED)) or ".." in path or not full.is_file():
+        from fastapi.responses import PlainTextResponse
+        return PlainTextResponse("Not Found", status_code=404)
+    return FileResponse(str(full), media_type=None)
 
 app.include_router(auth.router, prefix=API_PREFIX)
 app.include_router(course.router, prefix=API_PREFIX)

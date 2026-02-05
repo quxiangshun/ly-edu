@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-"""分片上传服务，与 Java FileUploadService 对应"""
-import os
+"""分片上传服务，与 Java FileUploadService 对应；视频按内容哈希去重，只保留一份"""
+import hashlib
 import shutil
 import uuid
 from pathlib import Path
@@ -8,6 +8,10 @@ from typing import List, Optional
 
 import db
 from config import UPLOAD_PATH
+
+HASH_READ_CHUNK = 1024 * 1024  # 1MB
+SELECT_BY_HASH = "SELECT relative_path FROM ly_file_hash WHERE content_hash = %s LIMIT 1"
+INSERT_FILE_HASH = "INSERT INTO ly_file_hash (content_hash, relative_path, file_size) VALUES (%s, %s, %s)"
 
 SELECT_BY_FILE_ID = (
     "SELECT id, file_id, file_name, file_size, file_type, chunk_size, total_chunks, "
@@ -30,7 +34,16 @@ DELETE_CHUNKS = "DELETE FROM ly_file_chunk WHERE file_id = %s"
 
 
 def _generate_file_id(file_name: str, file_size: int) -> str:
-    return f"{file_name}_{file_size}_{uuid.uuid4().hex[:16]}"
+    """生成不含原文件名的唯一 ID，路径中不暴露原文件名"""
+    return uuid.uuid4().hex
+
+
+def _video_storage_name(file_name: str) -> str:
+    """存储文件名：固定为 video + 原扩展名，不含原文件名"""
+    ext = (Path(file_name).suffix if file_name else "") or ".mp4"
+    if not ext.startswith("."):
+        ext = "." + ext
+    return "video" + ext
 
 
 def init_upload(
@@ -42,7 +55,8 @@ def init_upload(
 ) -> dict:
     file_id = (file_id or "").strip() or _generate_file_id(file_name, file_size)
     total_chunks = (file_size + chunk_size - 1) // chunk_size
-    relative_path = f"videos/{file_id}/{file_name}"
+    storage_name = _video_storage_name(file_name)
+    relative_path = f"videos/{file_id}/{storage_name}"
     chunk_dir = UPLOAD_PATH / "videos" / file_id / "chunks"
     chunk_dir.mkdir(parents=True, exist_ok=True)
     db.execute(
@@ -88,6 +102,17 @@ def upload_chunk(file_id: str, chunk_index: int, chunk_size: int, chunk_data: by
     return True
 
 
+def _compute_file_sha256(path: Path) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        while True:
+            data = f.read(HASH_READ_CHUNK)
+            if not data:
+                break
+            h.update(data)
+    return h.hexdigest()
+
+
 def merge_chunks(file_id: str) -> str:
     prog = get_progress(file_id)
     if not prog:
@@ -108,6 +133,17 @@ def merge_chunks(file_id: str) -> str:
             out.write(chunk_file.read_bytes())
     if chunk_dir.exists():
         shutil.rmtree(chunk_dir, ignore_errors=True)
+    file_size = prog["fileSize"]
+    content_hash = _compute_file_sha256(merged_file)
+    existing = db.query_one(SELECT_BY_HASH, (content_hash,))
+    if existing:
+        merged_file.unlink(missing_ok=True)
+        parent = merged_file.parent
+        if parent.exists() and not any(parent.iterdir()):
+            shutil.rmtree(parent, ignore_errors=True)
+        db.execute(UPDATE_UPLOAD_PATH, (existing["relative_path"], file_id))
+        return existing["relative_path"]
+    db.execute(INSERT_FILE_HASH, (content_hash, relative_path, file_size))
     db.execute(UPDATE_UPLOAD_PATH, (relative_path, file_id))
     return relative_path
 
