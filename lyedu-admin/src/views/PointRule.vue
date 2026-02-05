@@ -15,7 +15,7 @@
         </div>
       </template>
 
-      <el-table :data="ruleList" v-loading="loading" border>
+      <el-table :data="ruleList" v-loading="loading" border :max-height="tableMaxHeight">
         <el-table-column prop="ruleKey" label="规则键" width="140" />
         <el-table-column prop="ruleName" label="规则名称" min-width="120" />
         <el-table-column prop="points" label="奖励积分" width="100">
@@ -46,10 +46,12 @@ import { ElMessage } from 'element-plus'
 import { QuestionFilled } from '@element-plus/icons-vue'
 import { getPointRuleList, updatePointRule, type PointRuleItem } from '@/api/pointRule'
 import { useHelp } from '@/hooks/useHelp'
+import { useTableMaxHeight } from '@/hooks/useTableHeight'
 
 const loading = ref(false)
 const ruleList = ref<PointRuleItem[]>([])
 
+const tableMaxHeight = useTableMaxHeight()
 const { openPageHelp } = useHelp()
 
 async function loadList() {
@@ -84,6 +86,12 @@ onMounted(loadList)
 
 <style scoped lang="scss">
 .point-rule-container {
+  padding: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+
   .card-header {
     display: flex;
     align-items: center;

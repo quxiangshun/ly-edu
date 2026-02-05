@@ -333,6 +333,14 @@ onMounted(async () => {
     }
   }
 }
+.settings-container {
+  padding: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 .card-actions {
   display: flex;
   align-items: center;

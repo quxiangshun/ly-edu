@@ -2,7 +2,7 @@
 """用户证书记录服务，与 Java UserCertificateService 对应"""
 import uuid
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, List, Optional
 
 import db
 from services import certificate_service
@@ -83,3 +83,78 @@ def issue_if_eligible(source_type: str, source_id: int, user_id: int) -> Optiona
         "issuedAt": issued_at,
         "createTime": issued_at,
     }
+
+
+def page(
+    page_num: int = 1,
+    size: int = 20,
+    keyword: Optional[str] = None,
+    user_id: Optional[int] = None,
+    certificate_id: Optional[int] = None,
+) -> dict:
+    """分页查询用户证书（管理员）"""
+    from typing import Any
+    from common.result import page_result
+    
+    page_num = max(1, page_num)
+    size = max(1, min(100, size))
+    offset = (page_num - 1) * size
+    
+    where_clauses = []
+    params: List[Any] = []
+    
+    if keyword:
+        where_clauses.append("(u.real_name LIKE %s OR u.username LIKE %s OR uc.title LIKE %s OR uc.certificate_no LIKE %s)")
+        keyword_pattern = f"%{keyword}%"
+        params.extend([keyword_pattern, keyword_pattern, keyword_pattern, keyword_pattern])
+    
+    if user_id:
+        where_clauses.append("uc.user_id = %s")
+        params.append(user_id)
+    
+    if certificate_id:
+        where_clauses.append("uc.certificate_id = %s")
+        params.append(certificate_id)
+    
+    where_sql = " AND ".join(where_clauses) if where_clauses else "1=1"
+    
+    # 查询总数
+    count_sql = (
+        f"SELECT COUNT(*) AS total FROM ly_user_certificate uc "
+        f"LEFT JOIN ly_user u ON uc.user_id = u.id AND u.deleted = 0 "
+        f"WHERE {where_sql}"
+    )
+    total_row = db.query_one(count_sql, tuple(params))
+    total = total_row.get("total") or 0 if total_row else 0
+    
+    # 查询数据
+    data_sql = (
+        f"SELECT uc.id, uc.user_id AS userId, uc.certificate_id AS certificateId, "
+        f"uc.template_id AS templateId, uc.certificate_no AS certificateNo, uc.title, "
+        f"uc.issued_at AS issuedAt, uc.create_time AS createTime, "
+        f"u.real_name AS realName, u.username "
+        f"FROM ly_user_certificate uc "
+        f"LEFT JOIN ly_user u ON uc.user_id = u.id AND u.deleted = 0 "
+        f"WHERE {where_sql} "
+        f"ORDER BY uc.issued_at DESC LIMIT %s OFFSET %s"
+    )
+    params.extend([size, offset])
+    rows = db.query_all(data_sql, tuple(params))
+    
+    records = []
+    for r in (rows or []):
+        record = {
+            "id": r.get("id"),
+            "userId": r.get("userId"),
+            "realName": r.get("realName"),
+            "username": r.get("username"),
+            "certificateId": r.get("certificateId"),
+            "templateId": r.get("templateId"),
+            "certificateNo": r.get("certificateNo"),
+            "title": r.get("title"),
+            "issuedAt": r.get("issuedAt"),
+            "createTime": r.get("createTime"),
+        }
+        records.append(record)
+    
+    return page_result(records, total, page_num, size)

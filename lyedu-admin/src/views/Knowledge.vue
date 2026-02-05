@@ -28,7 +28,7 @@
         </el-form-item>
       </el-form>
 
-      <el-table :data="knowledgeList" v-loading="loading" border>
+      <el-table :data="knowledgeList" v-loading="loading" border :max-height="tableMaxHeight">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="title" label="标题" min-width="160" show-overflow-tooltip />
         <el-table-column prop="category" label="分类" width="120">
@@ -129,6 +129,7 @@ import {
 } from '@/api/knowledge'
 import { getDepartmentTree, type Department } from '@/api/department'
 import { useHelp } from '@/hooks/useHelp'
+import { useTableMaxHeight } from '@/hooks/useTableHeight'
 
 function flattenDepartments(list: Department[]): Department[] {
   const out: Department[] = []
@@ -142,6 +143,7 @@ function flattenDepartments(list: Department[]): Department[] {
   return out
 }
 
+const tableMaxHeight = useTableMaxHeight()
 const loading = ref(false)
 const departmentTree = ref<Department[]>([])
 const departmentTreeOptions = computed(() => departmentTree.value || [])
@@ -324,6 +326,12 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .knowledge-container {
+  padding: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+
   .card-header {
     display: flex;
     justify-content: space-between;
