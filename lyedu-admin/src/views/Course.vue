@@ -25,7 +25,7 @@
         </el-form-item>
       </el-form>
 
-      <el-table :data="courseList" v-loading="loading" border>
+      <el-table :data="courseList" v-loading="loading" border :max-height="tableMaxHeight">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="title" label="课程名称" />
         <el-table-column prop="cover" label="封面">
@@ -74,7 +74,7 @@
     <!-- 章节管理对话框 -->
     <el-dialog v-model="chapterDialogVisible" :title="`章节管理 - ${currentCourse?.title || ''}`" width="640px">
       <el-button type="primary" size="small" @click="handleAddChapter" style="margin-bottom: 12px">新增章节</el-button>
-      <el-table :data="chapterList" border size="small">
+      <el-table :data="chapterList" border size="small" max-height="360">
         <el-table-column prop="id" label="ID" width="70" />
         <el-table-column prop="title" label="章节名称" />
         <el-table-column prop="sort" label="排序" width="80" />
@@ -107,7 +107,7 @@
     <!-- 附件管理对话框 -->
     <el-dialog v-model="attachmentDialogVisible" :title="`附件管理 - ${currentCourse?.title || ''}`" width="720px">
       <el-button type="primary" size="small" @click="handleAddAttachment" style="margin-bottom: 12px">新增附件</el-button>
-      <el-table :data="attachmentList" border size="small">
+      <el-table :data="attachmentList" border size="small" max-height="360">
         <el-table-column prop="id" label="ID" width="70" />
         <el-table-column prop="name" label="附件名称" />
         <el-table-column prop="type" label="类型" width="80" />
@@ -240,6 +240,9 @@ import {
 import { getImagePage, type ImageItem, type ImagePageResult } from '@/api/image'
 import { getExamPage, type Exam } from '@/api/exam'
 import { useHelp } from '@/hooks/useHelp'
+import { useTableMaxHeight } from '@/hooks/useTableHeight'
+
+const tableMaxHeight = useTableMaxHeight()
 
 function flattenDepartments(list: Department[]): Department[] {
   const out: Department[] = []
@@ -600,7 +603,11 @@ onMounted(async () => {
 
 <style scoped lang="scss">
 .course-container {
-  padding: 20px;
+  padding: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .card-header {

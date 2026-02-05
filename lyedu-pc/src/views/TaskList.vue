@@ -1,22 +1,6 @@
 <template>
   <div class="task-list-container">
-    <el-header class="header">
-      <div class="header-content">
-        <div class="logo" @click="$router.push('/')">
-          <img src="/icon-192.png" alt="" class="header-logo-icon" />
-          <h1>LyEdu</h1>
-        </div>
-        <el-menu mode="horizontal" default-active="tasks" class="header-menu">
-          <el-menu-item index="home" @click="$router.push('/')">首页</el-menu-item>
-          <el-menu-item index="courses" @click="$router.push('/courses')">课程中心</el-menu-item>
-          <el-menu-item index="knowledge" @click="$router.push('/knowledge')">知识中心</el-menu-item>
-          <el-menu-item index="exam" @click="$router.push('/exam')">考试中心</el-menu-item>
-          <el-menu-item index="certificates" @click="$router.push('/certificates')">我的证书</el-menu-item>
-          <el-menu-item index="tasks">我的任务</el-menu-item>
-          <el-menu-item index="my" @click="$router.push('/my-learning')">我的学习</el-menu-item>
-        </el-menu>
-      </div>
-    </el-header>
+    <AppHeader />
     <el-main class="main-content">
       <div class="task-content">
         <h2>我的任务</h2>
@@ -47,6 +31,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import AppHeader from '@/components/AppHeader.vue'
 import { getMyTasks, type TaskWithUserProgress } from '@/api/userTask'
 
 const router = useRouter()
@@ -78,41 +63,13 @@ onMounted(() => loadList())
   display: flex;
   flex-direction: column;
 }
-.header {
-  background: #fff;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
-  padding: 0;
-  height: 56px;
-}
-.header-content {
-  max-width: 1200px;
-  margin: 0 auto;
-  display: flex;
-  align-items: center;
-  height: 100%;
-  padding: 0 20px;
-}
-.logo {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  cursor: pointer;
-  margin-right: 32px;
-}
-.header-logo-icon {
-  width: 32px;
-  height: 32px;
-}
-.header-menu {
-  flex: 1;
-  border: none;
-}
 .main-content {
   flex: 1;
   padding: 24px 20px;
   max-width: 1200px;
   margin: 0 auto;
   width: 100%;
+  margin-top: 60px;
 }
 .task-content h2 {
   margin: 0 0 8px 0;

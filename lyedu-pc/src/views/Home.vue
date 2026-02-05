@@ -1,49 +1,6 @@
 <template>
   <div class="home-container">
-    <el-header class="header">
-      <div class="header-content">
-        <div class="logo">
-          <img src="/icon-192.png" alt="" class="header-logo-icon" />
-          <h1>LyEdu</h1>
-        </div>
-        <el-menu
-          mode="horizontal"
-          :default-active="activeMenu"
-          class="header-menu"
-          @select="handleMenuSelect"
-        >
-          <el-menu-item index="home">首页</el-menu-item>
-          <el-menu-item index="courses">课程中心</el-menu-item>
-          <el-menu-item index="knowledge" @click="$router.push('/knowledge')">知识中心</el-menu-item>
-          <el-menu-item index="exam" @click="$router.push('/exam')">考试中心</el-menu-item>
-          <el-menu-item index="certificates" @click="$router.push('/certificates')">我的证书</el-menu-item>
-          <el-menu-item index="tasks" @click="$router.push('/tasks')">我的任务</el-menu-item>
-          <el-menu-item index="points" @click="$router.push('/points')">积分</el-menu-item>
-          <el-menu-item index="my" @click="$router.push('/my-learning')">我的学习</el-menu-item>
-        </el-menu>
-        <div class="header-right">
-          <template v-if="!isLoggedIn">
-            <el-button type="primary" @click="$router.push('/login')">登录</el-button>
-          </template>
-          <template v-else>
-            <el-dropdown>
-              <span class="el-dropdown-link" style="cursor: pointer;">
-                <el-icon><User /></el-icon>
-                已登录
-              </span>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item @click="$router.push('/courses')">进入课程中心</el-dropdown-item>
-                  <el-dropdown-item divided @click="handleLogout">
-                    退出登录
-                  </el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
-          </template>
-        </div>
-      </div>
-    </el-header>
+    <AppHeader />
     <el-main class="main-content">
       <div class="banner">
         <h2>欢迎来到 LyEdu 企业培训平台</h2>
@@ -142,14 +99,14 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { VideoCamera, Document, DataAnalysis, User } from '@element-plus/icons-vue'
+import { VideoCamera, Document, DataAnalysis } from '@element-plus/icons-vue'
+import AppHeader from '@/components/AppHeader.vue'
 import type { Course } from '@/api/course'
 import { getRecommendedCourses } from '@/api/course'
 import { getWatchedCourses, joinCourse } from '@/api/learning'
 
 const router = useRouter()
 
-const activeMenu = ref('home')
 const token = ref<string | null>(null)
 const recommendedCourses = ref<Course[]>([])
 const recentCourses = ref<Course[]>([])
@@ -215,22 +172,6 @@ onMounted(() => {
   }, 500)
 })
 
-const handleMenuSelect = (index: string) => {
-  if (index === 'home') {
-    router.push('/')
-  } else if (index === 'courses') {
-    router.push('/courses')
-  } else if (index === 'my') {
-    router.push('/my-learning')
-  }
-}
-
-const handleLogout = () => {
-  localStorage.removeItem('token')
-  localStorage.removeItem('user')
-  token.value = null
-  window.location.href = '/login'
-}
 </script>
 
 <style scoped lang="scss">
@@ -240,56 +181,10 @@ const handleLogout = () => {
   flex-direction: column;
 }
 
-.header {
-  background: #fff;
-  border-bottom: 1px solid #e4e7ed;
-  padding: 0;
-
-  .header-content {
-    max-width: 1200px;
-    margin: 0 auto;
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 20px;
-
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      cursor: pointer;
-
-      .header-logo-icon {
-        width: 28px;
-        height: 28px;
-        display: block;
-        object-fit: contain;
-      }
-
-      h1 {
-        color: #667eea;
-        font-size: 24px;
-        margin: 0;
-        line-height: 28px;
-      }
-    }
-
-    .header-menu {
-      flex: 1;
-      justify-content: center;
-      border: none;
-    }
-
-    .header-right {
-      margin-left: 20px;
-    }
-  }
-}
-
 .main-content {
   flex: 1;
   padding: 0;
+  margin-top: 60px;
 
   .banner {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);

@@ -47,6 +47,38 @@ const routes: RouteRecordRaw[] = [
         }
       },
       {
+        path: 'user-learning',
+        name: 'UserLearning',
+        component: () => import('@/views/UserLearning.vue'),
+        meta: {
+          title: '学习记录'
+        }
+      },
+      {
+        path: 'user-point',
+        name: 'UserPoint',
+        component: () => import('@/views/UserPoint.vue'),
+        meta: {
+          title: '积分记录'
+        }
+      },
+      {
+        path: 'user-certificate',
+        name: 'UserCertificate',
+        component: () => import('@/views/UserCertificate.vue'),
+        meta: {
+          title: '用户证书'
+        }
+      },
+      {
+        path: 'user-task',
+        name: 'UserTask',
+        component: () => import('@/views/UserTask.vue'),
+        meta: {
+          title: '用户任务'
+        }
+      },
+      {
         path: 'course',
         name: 'Course',
         component: () => import('@/views/Course.vue'),
@@ -108,6 +140,14 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/Exam.vue'),
         meta: {
           title: '考试管理'
+        }
+      },
+      {
+        path: 'exam-record',
+        name: 'ExamRecord',
+        component: () => import('@/views/ExamRecord.vue'),
+        meta: {
+          title: '考试记录'
         }
       },
       {

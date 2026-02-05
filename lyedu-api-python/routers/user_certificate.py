@@ -29,6 +29,18 @@ def list_by_user_id(uid: int):
     return success(user_certificate_service.list_by_user_id(uid))
 
 
+@router.get("/page")
+def page(
+    page: int = 1,
+    size: int = 20,
+    keyword: Optional[str] = None,
+    userId: Optional[int] = None,
+    certificateId: Optional[int] = None,
+):
+    """分页查询用户证书（管理员）"""
+    return success(user_certificate_service.page(page_num=page, size=size, keyword=keyword, user_id=userId, certificate_id=certificateId))
+
+
 @router.get("/{uc_id}")
 def get_by_id(
     uc_id: int,

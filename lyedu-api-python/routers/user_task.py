@@ -69,3 +69,15 @@ def update_progress(
     if not ut:
         return error_result((404, "资源不存在"))
     return success(ut)
+
+
+@router.get("/page")
+def page(
+    page: int = 1,
+    size: int = 20,
+    keyword: Optional[str] = None,
+    userId: Optional[int] = None,
+    taskId: Optional[int] = None,
+):
+    """分页查询用户任务（管理员）"""
+    return success(user_task_service.page(page_num=page, size=size, keyword=keyword, user_id=userId, task_id=taskId))

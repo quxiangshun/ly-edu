@@ -103,3 +103,80 @@ def get_by_exam_and_user(exam_id: int, user_id: int) -> Optional[dict]:
     sql = "SELECT " + SELECT_COLS + " FROM ly_exam_record WHERE exam_id = %s AND user_id = %s ORDER BY id DESC LIMIT 1"
     row = db.query_one(sql, (exam_id, user_id))
     return _row_to_record(row) if row else None
+
+
+def page(
+    page_num: int = 1,
+    size: int = 20,
+    keyword: Optional[str] = None,
+    exam_id: Optional[int] = None,
+    user_id: Optional[int] = None,
+) -> dict:
+    """分页查询考试记录（管理员）"""
+    from common.result import page_result
+    
+    page_num = max(1, page_num)
+    size = max(1, min(100, size))
+    offset = (page_num - 1) * size
+    
+    where_clauses = []
+    params: List[Any] = []
+    
+    if keyword:
+        where_clauses.append("(u.real_name LIKE %s OR u.username LIKE %s OR e.title LIKE %s)")
+        keyword_pattern = f"%{keyword}%"
+        params.extend([keyword_pattern, keyword_pattern, keyword_pattern])
+    
+    if exam_id:
+        where_clauses.append("er.exam_id = %s")
+        params.append(exam_id)
+    
+    if user_id:
+        where_clauses.append("er.user_id = %s")
+        params.append(user_id)
+    
+    where_sql = " AND ".join(where_clauses) if where_clauses else "1=1"
+    
+    # 查询总数
+    count_sql = (
+        f"SELECT COUNT(*) AS total FROM ly_exam_record er "
+        f"LEFT JOIN ly_user u ON er.user_id = u.id AND u.deleted = 0 "
+        f"LEFT JOIN ly_exam e ON er.exam_id = e.id AND e.deleted = 0 "
+        f"WHERE {where_sql}"
+    )
+    total_row = db.query_one(count_sql, tuple(params))
+    total = total_row.get("total") or 0 if total_row else 0
+    
+    # 查询数据
+    data_sql = (
+        f"SELECT er.id, er.exam_id AS examId, er.user_id AS userId, er.paper_id AS paperId, "
+        f"er.score, er.passed, er.answers, er.submit_time AS submitTime, er.create_time AS createTime, "
+        f"u.real_name AS realName, u.username, e.title AS examTitle "
+        f"FROM ly_exam_record er "
+        f"LEFT JOIN ly_user u ON er.user_id = u.id AND u.deleted = 0 "
+        f"LEFT JOIN ly_exam e ON er.exam_id = e.id AND e.deleted = 0 "
+        f"WHERE {where_sql} "
+        f"ORDER BY er.submit_time DESC LIMIT %s OFFSET %s"
+    )
+    params.extend([size, offset])
+    rows = db.query_all(data_sql, tuple(params))
+    
+    records = []
+    for r in (rows or []):
+        record = {
+            "id": r.get("id"),
+            "examId": r.get("examId"),
+            "userId": r.get("userId"),
+            "paperId": r.get("paperId"),
+            "score": r.get("score"),
+            "passed": r.get("passed"),
+            "answers": r.get("answers"),
+            "submitTime": r.get("submitTime"),
+            "createTime": r.get("createTime"),
+            "realName": r.get("realName"),
+            "username": r.get("username"),
+            "examTitle": r.get("examTitle"),
+        }
+        records.append(record)
+    
+    return page_result(records, total, page_num, size)

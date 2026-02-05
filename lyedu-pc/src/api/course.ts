@@ -86,7 +86,7 @@ export interface CourseCommentDto {
 }
 
 export const getCourseComments = (courseId: number, chapterId?: number) => {
-  return request.get<CourseCommentDto[]>(\`/course/\${courseId}/comment\`, {
+  return request.get<CourseCommentDto[]>(`/course/${courseId}/comment`, {
     params: chapterId != null ? { chapterId } : {}
   })
 }
@@ -95,5 +95,5 @@ export const addCourseComment = (
   courseId: number,
   body: { chapterId?: number; parentId?: number; content: string }
 ) => {
-  return request.post(\`/course/\${courseId}/comment\`, body)
+  return request.post(`/course/${courseId}/comment`, body)
 }

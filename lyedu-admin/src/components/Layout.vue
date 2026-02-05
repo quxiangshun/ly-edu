@@ -44,6 +44,7 @@
           <el-menu-item index="/question">试题管理</el-menu-item>
           <el-menu-item index="/paper">试卷管理</el-menu-item>
           <el-menu-item index="/exam">考试管理</el-menu-item>
+          <el-menu-item index="/exam-record">考试记录</el-menu-item>
         </el-sub-menu>
         <el-sub-menu index="training">
           <template #title>
@@ -51,6 +52,16 @@
             <span>培训任务</span>
           </template>
           <el-menu-item index="/task">周期任务</el-menu-item>
+          <el-menu-item index="/user-task">用户任务</el-menu-item>
+        </el-sub-menu>
+        <el-sub-menu index="user-data">
+          <template #title>
+            <el-icon><User /></el-icon>
+            <span>用户数据</span>
+          </template>
+          <el-menu-item index="/user-learning">学习记录</el-menu-item>
+          <el-menu-item index="/user-point">积分记录</el-menu-item>
+          <el-menu-item index="/user-certificate">用户证书</el-menu-item>
         </el-sub-menu>
         <el-sub-menu index="reward">
           <template #title>
@@ -352,7 +363,123 @@ onMounted(() => {
 
 .main {
   background-color: #f0f2f5;
-  padding: 20px;
-  overflow-y: auto;
+  padding: 0;
+  overflow: hidden;
+  height: calc(100vh - 60px);
+  display: flex;
+  flex-direction: column;
+
+  // 仪表盘页面允许全局滚动
+  :deep(.dashboard-container) {
+    overflow-y: auto;
+    height: 100%;
+  }
+
+  // 非仪表盘页面：限制高度，只允许内容滚动
+  :deep(.user-container),
+  :deep(.course-container),
+  :deep(.video-container),
+  :deep(.comment-container),
+  :deep(.user-learning-container),
+  :deep(.exam-record-container),
+  :deep(.user-point-container),
+  :deep(.user-certificate-container),
+  :deep(.user-task-container),
+  :deep(.department-container),
+  :deep(.knowledge-container),
+  :deep(.exam-container),
+  :deep(.paper-container),
+  :deep(.question-container),
+  :deep(.point-rule-container),
+  :deep(.certificate-container),
+  :deep(.certificate-template-container),
+  :deep(.task-container),
+  :deep(.image-library-container),
+  :deep(.settings-container) {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+
+    > .el-card {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      margin: 0;
+      border-radius: 0;
+      border-left: none;
+      border-right: none;
+      border-top: none;
+
+      .el-card__header {
+        padding: 16px 20px;
+        flex-shrink: 0;
+      }
+
+      .el-card__body {
+        padding: 20px;
+        flex: 1;
+        overflow: hidden;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+
+        // 搜索表单不滚动，固定在顶部
+        .search-form {
+          flex-shrink: 0;
+          margin-bottom: 20px;
+        }
+
+        // 表格区域：自动填充剩余空间
+        .el-table {
+          flex: 1;
+          min-height: 0;
+          display: flex;
+          flex-direction: column;
+          
+          // Element Plus 表格内部结构：让 body-wrapper 滚动
+          :deep(.el-table__inner) {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+          }
+          
+          :deep(.el-table__header-wrapper) {
+            flex-shrink: 0;
+          }
+          
+          :deep(.el-table__body-wrapper) {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto !important;
+          }
+        }
+
+        // 分页器固定在底部
+        .el-pagination {
+          flex-shrink: 0;
+          margin-top: 20px;
+        }
+      }
+    }
+  }
+
+  // 移除所有页面容器的顶部间距
+  :deep(.el-card) {
+    margin: 0;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    border-top: none;
+
+    .el-card__header {
+      padding: 16px 20px;
+    }
+
+    .el-card__body {
+      padding: 20px;
+    }
+  }
 }
 </style>

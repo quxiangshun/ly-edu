@@ -33,7 +33,7 @@
         </el-form-item>
       </el-form>
 
-      <el-table :data="commentList" v-loading="loading" border>
+      <el-table :data="commentList" v-loading="loading" border :max-height="tableMaxHeight">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="courseTitle" label="课程" min-width="150" show-overflow-tooltip />
         <el-table-column prop="userRealName" label="用户" width="120">
@@ -114,7 +114,9 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { QuestionFilled } from '@element-plus/icons-vue'
 import { getCommentPage, deleteComment, updateCommentStatus, type CourseComment } from '@/api/courseComment'
 import { useHelp } from '@/hooks/useHelp'
+import { useTableMaxHeight } from '@/hooks/useTableHeight'
 
+const tableMaxHeight = useTableMaxHeight()
 const { openPageHelp } = useHelp()
 
 const loading = ref(false)
@@ -225,7 +227,11 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .comment-container {
-  padding: 20px;
+  padding: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .card-header {

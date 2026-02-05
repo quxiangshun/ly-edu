@@ -45,7 +45,7 @@
         </el-form-item>
       </el-form>
 
-      <el-table :data="videoList" v-loading="loading" border>
+      <el-table :data="videoList" v-loading="loading" border :max-height="tableMaxHeight">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="courseName" label="课程名称" min-width="120" show-overflow-tooltip />
         <el-table-column prop="chapterName" label="章节名称" min-width="120" show-overflow-tooltip />
@@ -177,12 +177,14 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import { Plus, QuestionFilled } from '@element-plus/icons-vue'
 import ChunkUpload from '@/components/ChunkUpload.vue'
+import { useTableMaxHeight } from '@/hooks/useTableHeight'
 import { getVideoPage, createVideo, updateVideo, deleteVideo, type Video } from '@/api/video'
 import { getCoursePage, getCourseById, type Course } from '@/api/course'
 import { getChaptersByCourseId } from '@/api/chapter'
 import { uploadImage } from '@/api/image'
 import { useHelp } from '@/hooks/useHelp'
 
+const tableMaxHeight = useTableMaxHeight()
 const loading = ref(false)
 const videoList = ref<Video[]>([])
 const formRef = ref<FormInstance>()
@@ -452,7 +454,11 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .video-container {
-  padding: 20px;
+  padding: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .card-header {

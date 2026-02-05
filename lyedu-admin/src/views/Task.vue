@@ -25,7 +25,7 @@
         </el-form-item>
       </el-form>
 
-      <el-table :data="taskList" v-loading="loading" border>
+      <el-table :data="taskList" v-loading="loading" border :max-height="tableMaxHeight">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="title" label="任务名称" min-width="180" show-overflow-tooltip />
         <el-table-column prop="cycleType" label="周期" width="90">
@@ -152,6 +152,7 @@ import { getTaskPage, getTaskByIdAdmin, createTask, updateTask, deleteTask, type
 import { getDepartmentTree, type Department } from '@/api/department'
 import { getCertificateList, type CertificateRule } from '@/api/certificate'
 import { useHelp } from '@/hooks/useHelp'
+import { useTableMaxHeight } from '@/hooks/useTableHeight'
 
 function flattenDepartments(list: Department[]): Department[] {
   const out: Department[] = []
@@ -200,6 +201,7 @@ const editId = ref<number | null>(null)
 const searchForm = reactive({ keyword: '' })
 const pagination = reactive({ page: 1, size: 10, total: 0 })
 
+const tableMaxHeight = useTableMaxHeight()
 const { openPageHelp } = useHelp()
 
 const form = reactive({
@@ -368,6 +370,14 @@ onMounted(() => {
     }
   }
 }
+.task-container {
+  padding: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 .search-form {
   margin-bottom: 16px;
 }

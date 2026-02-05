@@ -15,7 +15,7 @@
         </div>
       </template>
 
-      <el-table :data="certList" v-loading="loading" border>
+      <el-table :data="certList" v-loading="loading" border :max-height="tableMaxHeight">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="name" label="证书名称" min-width="180" show-overflow-tooltip />
         <el-table-column prop="templateId" label="模板ID" width="90" />
@@ -113,7 +113,9 @@ import {
 import { getTemplateList, type CertificateTemplate } from '@/api/certificateTemplate'
 import { getExamPage, type Exam } from '@/api/exam'
 import { useHelp } from '@/hooks/useHelp'
+import { useTableMaxHeight } from '@/hooks/useTableHeight'
 
+const tableMaxHeight = useTableMaxHeight()
 const loading = ref(false)
 const certList = ref<CertificateRule[]>([])
 const templateOptions = ref<CertificateTemplate[]>([])
@@ -242,6 +244,14 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.certificate-container {
+  padding: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 .card-header {
   display: flex;
   justify-content: space-between;

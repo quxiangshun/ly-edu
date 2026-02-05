@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """考试记录路由，与 Java ExamRecordController 对应"""
-from typing import List, Optional
+from typing import Optional
 
 from fastapi import APIRouter, Header
 from pydantic import BaseModel
@@ -54,3 +54,15 @@ def list_by_exam(exam_id: int):
 def get_by_exam_and_user(exam_id: int, user_id: int):
     r = exam_record_service.get_by_exam_and_user(exam_id, user_id)
     return success(r)
+
+
+@router.get("/page")
+def page(
+    page: int = 1,
+    size: int = 20,
+    keyword: Optional[str] = None,
+    examId: Optional[int] = None,
+    userId: Optional[int] = None,
+):
+    """分页查询考试记录（管理员）"""
+    return success(exam_record_service.page(page_num=page, size=size, keyword=keyword, exam_id=examId, user_id=userId))
