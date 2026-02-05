@@ -3,7 +3,14 @@
     <el-card>
       <template #header>
         <div class="card-header">
-          <span>视频管理</span>
+          <div class="card-header-left">
+            <span>视频管理</span>
+            <el-tooltip content="查看本模块使用说明" placement="right">
+              <el-icon class="card-help-icon" @click="openPageHelp('video')">
+                <QuestionFilled />
+              </el-icon>
+            </el-tooltip>
+          </div>
           <el-button type="primary" @click="handleAdd">新增视频</el-button>
         </div>
       </template>
@@ -168,12 +175,13 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue'
+import { Plus, QuestionFilled } from '@element-plus/icons-vue'
 import ChunkUpload from '@/components/ChunkUpload.vue'
 import { getVideoPage, createVideo, updateVideo, deleteVideo, type Video } from '@/api/video'
 import { getCoursePage, getCourseById, type Course } from '@/api/course'
 import { getChaptersByCourseId } from '@/api/chapter'
 import { uploadImage } from '@/api/image'
+import { useHelp } from '@/hooks/useHelp'
 
 const loading = ref(false)
 const videoList = ref<Video[]>([])
@@ -199,6 +207,8 @@ const pagination = reactive({
   size: 10,
   total: 0
 })
+
+const { openPageHelp } = useHelp()
 
 const form = reactive<Partial<Video>>({
   courseId: undefined,
@@ -449,6 +459,22 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+
+  .card-header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card-help-icon {
+    font-size: 16px;
+    cursor: pointer;
+    color: #909399;
+
+    &:hover {
+      color: var(--el-color-primary);
+    }
+  }
 }
 
 .search-form {

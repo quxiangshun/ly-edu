@@ -3,7 +3,14 @@
     <el-card>
       <template #header>
         <div class="card-header">
-          <span>公司架构</span>
+          <div class="card-header-left">
+            <span>公司架构</span>
+            <el-tooltip content="查看本模块使用说明" placement="right">
+              <el-icon class="card-help-icon" @click="openPageHelp('department')">
+                <QuestionFilled />
+              </el-icon>
+            </el-tooltip>
+          </div>
           <el-button type="primary" @click="handleAdd">新增部门</el-button>
         </div>
       </template>
@@ -111,8 +118,10 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
+import { QuestionFilled } from '@element-plus/icons-vue'
 import { getDepartmentTree, createDepartment, updateDepartment, deleteDepartment, getDepartmentCourses, addCoursesToDepartment, removeCourseFromDepartment, type Department } from '@/api/department'
 import { getCoursePage, type Course } from '@/api/course'
+import { useHelp } from '@/hooks/useHelp'
 
 const loading = ref(false)
 const courseDialogVisible = ref(false)
@@ -125,6 +134,7 @@ const formRef = ref<FormInstance>()
 const dialogVisible = ref(false)
 const dialogTitle = ref('新增部门')
 const isEdit = ref(false)
+const { openPageHelp } = useHelp()
 
 const form = reactive<Partial<Department>>({
   name: '',
@@ -274,5 +284,21 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+
+  .card-header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card-help-icon {
+    font-size: 16px;
+    cursor: pointer;
+    color: #909399;
+
+    &:hover {
+      color: var(--el-color-primary);
+    }
+  }
 }
 </style>

@@ -75,6 +75,11 @@
           </el-icon>
         </div>
         <div class="header-right">
+          <el-tooltip content="查看系统使用说明" placement="bottom">
+            <el-icon class="help-icon" @click="openSystemHelp">
+              <QuestionFilled />
+            </el-icon>
+          </el-tooltip>
           <el-dropdown>
             <span class="user-info">
               <el-icon><User /></el-icon>
@@ -103,6 +108,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getConfigByKey } from '@/api/config'
 import { applyCustomTheme, applyDefaultTheme, applyThemeFromLogoUrl } from '@/utils/theme'
+import { useHelp } from '@/hooks/useHelp'
 import {
   DataBoard,
   OfficeBuilding,
@@ -117,7 +123,8 @@ import {
   Setting,
   Expand,
   Fold,
-  ArrowDown
+  ArrowDown,
+  QuestionFilled
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -150,6 +157,8 @@ const userInfo = computed(() => {
 const toggleCollapse = () => {
   isCollapse.value = !isCollapse.value
 }
+
+const { openSystemHelp } = useHelp()
 
 const handleLogout = () => {
   localStorage.removeItem('token')
@@ -312,6 +321,20 @@ onMounted(() => {
   }
 
   .header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+
+    .help-icon {
+      font-size: 20px;
+      cursor: pointer;
+      color: #909399;
+
+      &:hover {
+        color: var(--el-color-primary);
+      }
+    }
+
     .user-info {
       display: flex;
       align-items: center;

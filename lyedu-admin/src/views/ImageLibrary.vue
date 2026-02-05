@@ -3,8 +3,15 @@
     <el-card>
       <template #header>
         <div class="card-header">
-          <span>图片库</span>
-          <span class="card-desc">用于课程封面等，支持 jpg/png/gif/webp</span>
+          <div class="card-header-left">
+            <span>图片库</span>
+            <el-tooltip content="查看本模块使用说明" placement="right">
+              <el-icon class="card-help-icon" @click="openPageHelp('image')">
+                <QuestionFilled />
+              </el-icon>
+            </el-tooltip>
+            <span class="card-desc">用于课程封面等，支持 jpg/png/gif/webp</span>
+          </div>
           <el-upload
             :show-file-list="false"
             :before-upload="beforeUpload"
@@ -54,12 +61,16 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { QuestionFilled } from '@element-plus/icons-vue'
 import { getImagePage, uploadImage, deleteImage, type ImageItem, type ImagePageResult } from '@/api/image'
+import { useHelp } from '@/hooks/useHelp'
 
 const loading = ref(false)
 const keyword = ref('')
 const imageList = ref<ImageItem[]>([])
 const pagination = reactive({ page: 1, size: 24, total: 0 })
+
+const { openPageHelp } = useHelp()
 
 function imageUrl(item: ImageItem) {
   const url = item.url
@@ -132,7 +143,23 @@ onMounted(loadList)
   .card-header {
     display: flex;
     align-items: center;
-    gap: 12px;
+    justify-content: space-between;
+
+    .card-header-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-help-icon {
+      font-size: 16px;
+      cursor: pointer;
+      color: #909399;
+
+      &:hover {
+        color: var(--el-color-primary);
+      }
+    }
     flex-wrap: wrap;
     .card-desc {
       color: #909399;

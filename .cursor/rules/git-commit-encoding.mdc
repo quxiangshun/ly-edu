@@ -1,0 +1,13 @@
+---
+description: 避免 Git 提交信息在 Windows 下出现中文乱码
+globs: 
+alwaysApply: true
+---
+
+# Git 提交信息编码（防中文乱码）
+
+- **问题**：在 Windows 终端（PowerShell/CMD）中直接使用 `git commit -m "中文"` 时，可能因控制台编码（如 GBK）导致提交信息在仓库中存为乱码。
+- **做法**：
+  1. 将提交信息写入一个 **UTF-8 编码** 的文本文件（例如 `commit_msg.txt`）。
+  2. 使用 `git commit -F commit_msg.txt` 或 `git commit --amend -F commit_msg.txt` 提交，这样 Git 会按 UTF-8 读取文件内容。
+- **本仓库**：已设置 `i18n.commitEncoding=utf-8` 和 `i18n.logOutputEncoding=utf-8`。提交时若包含中文，请用 `-F <utf8文件>` 方式，不要依赖 `-m "中文"` 在终端中的传递。

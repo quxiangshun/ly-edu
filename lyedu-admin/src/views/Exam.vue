@@ -3,7 +3,14 @@
     <el-card>
       <template #header>
         <div class="card-header">
-          <span>考试管理</span>
+          <div class="card-header-left">
+            <span>考试管理</span>
+            <el-tooltip content="查看本模块使用说明" placement="right">
+              <el-icon class="card-help-icon" @click="openPageHelp('exam')">
+                <QuestionFilled />
+              </el-icon>
+            </el-tooltip>
+          </div>
           <el-button type="primary" @click="handleAdd">新增考试</el-button>
         </div>
       </template>
@@ -162,6 +169,7 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
+import { QuestionFilled } from '@element-plus/icons-vue'
 import {
   getExamPage,
   getExamByIdAdmin,
@@ -174,6 +182,7 @@ import {
 } from '@/api/exam'
 import { getPaperPage, type Paper } from '@/api/paper'
 import { getDepartmentTree, type Department } from '@/api/department'
+import { useHelp } from '@/hooks/useHelp'
 
 function flattenDepartments(list: Department[]): Department[] {
   const out: Department[] = []
@@ -206,6 +215,8 @@ const editId = ref<number | null>(null)
 const recordsDialogVisible = ref(false)
 const currentExam = ref<Exam | null>(null)
 const recordList = ref<ExamRecord[]>([])
+
+const { openPageHelp } = useHelp()
 
 const searchForm = reactive({ keyword: '' })
 const pagination = reactive({ page: 1, size: 10, total: 0 })

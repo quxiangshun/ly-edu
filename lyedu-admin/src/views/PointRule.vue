@@ -3,8 +3,15 @@
     <el-card>
       <template #header>
         <div class="card-header">
-          <span>积分规则</span>
-          <span class="card-desc">完成课程/考试合格/完成任务时按规则发放积分，同一项只发一次</span>
+          <div class="card-header-left">
+            <span>积分规则</span>
+            <el-tooltip content="查看本模块使用说明" placement="right">
+              <el-icon class="card-help-icon" @click="openPageHelp('point-rule')">
+                <QuestionFilled />
+              </el-icon>
+            </el-tooltip>
+            <span class="card-desc">完成课程/考试合格/完成任务时按规则发放积分，同一项只发一次</span>
+          </div>
         </div>
       </template>
 
@@ -36,10 +43,14 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { QuestionFilled } from '@element-plus/icons-vue'
 import { getPointRuleList, updatePointRule, type PointRuleItem } from '@/api/pointRule'
+import { useHelp } from '@/hooks/useHelp'
 
 const loading = ref(false)
 const ruleList = ref<PointRuleItem[]>([])
+
+const { openPageHelp } = useHelp()
 
 async function loadList() {
   loading.value = true
@@ -77,6 +88,22 @@ onMounted(loadList)
     display: flex;
     align-items: center;
     gap: 12px;
+
+    .card-header-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-help-icon {
+      font-size: 16px;
+      cursor: pointer;
+      color: #909399;
+
+      &:hover {
+        color: var(--el-color-primary);
+      }
+    }
     .card-desc {
       color: #909399;
       font-size: 13px;

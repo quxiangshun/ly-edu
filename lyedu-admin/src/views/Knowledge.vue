@@ -3,7 +3,14 @@
     <el-card>
       <template #header>
         <div class="card-header">
-          <span>知识库管理</span>
+          <div class="card-header-left">
+            <span>知识库管理</span>
+            <el-tooltip content="查看本模块使用说明" placement="right">
+              <el-icon class="card-help-icon" @click="openPageHelp('knowledge')">
+                <QuestionFilled />
+              </el-icon>
+            </el-tooltip>
+          </div>
           <el-button type="primary" @click="handleAdd">新增知识</el-button>
         </div>
       </template>
@@ -116,6 +123,7 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
+import { QuestionFilled } from '@element-plus/icons-vue'
 import {
   getKnowledgePage,
   getKnowledgeByIdAdmin,
@@ -125,6 +133,7 @@ import {
   type Knowledge
 } from '@/api/knowledge'
 import { getDepartmentTree, type Department } from '@/api/department'
+import { useHelp } from '@/hooks/useHelp'
 
 function flattenDepartments(list: Department[]): Department[] {
   const out: Department[] = []
@@ -165,6 +174,8 @@ const pagination = reactive({
   size: 10,
   total: 0
 })
+
+const { openPageHelp } = useHelp()
 
 const form = reactive({
   title: '',
@@ -322,6 +333,22 @@ onMounted(() => {
     display: flex;
     justify-content: space-between;
     align-items: center;
+
+    .card-header-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-help-icon {
+      font-size: 16px;
+      cursor: pointer;
+      color: #909399;
+
+      &:hover {
+        color: var(--el-color-primary);
+      }
+    }
   }
   .search-form {
     margin-bottom: 16px;

@@ -3,7 +3,14 @@
     <el-card>
       <template #header>
         <div class="card-header">
-          <span>周期任务</span>
+          <div class="card-header-left">
+            <span>周期任务</span>
+            <el-tooltip content="查看本模块使用说明" placement="right">
+              <el-icon class="card-help-icon" @click="openPageHelp('task')">
+                <QuestionFilled />
+              </el-icon>
+            </el-tooltip>
+          </div>
           <el-button type="primary" @click="handleAdd">新增任务</el-button>
         </div>
       </template>
@@ -140,9 +147,11 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
+import { QuestionFilled } from '@element-plus/icons-vue'
 import { getTaskPage, getTaskByIdAdmin, createTask, updateTask, deleteTask, type Task } from '@/api/task'
 import { getDepartmentTree, type Department } from '@/api/department'
-import { getCertificateList, type Certificate } from '@/api/certificate'
+import { getCertificateList, type CertificateRule } from '@/api/certificate'
+import { useHelp } from '@/hooks/useHelp'
 
 function flattenDepartments(list: Department[]): Department[] {
   const out: Department[] = []
@@ -190,6 +199,8 @@ const editId = ref<number | null>(null)
 
 const searchForm = reactive({ keyword: '' })
 const pagination = reactive({ page: 1, size: 10, total: 0 })
+
+const { openPageHelp } = useHelp()
 
 const form = reactive({
   title: '',
@@ -340,6 +351,22 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+
+  .card-header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card-help-icon {
+    font-size: 16px;
+    cursor: pointer;
+    color: #909399;
+
+    &:hover {
+      color: var(--el-color-primary);
+    }
+  }
 }
 .search-form {
   margin-bottom: 16px;
