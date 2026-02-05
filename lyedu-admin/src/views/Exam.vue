@@ -42,11 +42,6 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="departmentIds" label="关联部门" width="160">
-          <template #default="{ row }">
-            {{ row.visibility === 0 && row.departmentIds?.length ? (row.departmentIds as number[]).map(d => departmentNameMap.get(d) ?? d).join('、') : '-' }}
-          </template>
-        </el-table-column>
         <el-table-column prop="status" label="状态" width="80">
           <template #default="{ row }">
             <el-tag :type="row.status === 1 ? 'success' : 'info'">{{ row.status === 1 ? '上架' : '下架' }}</el-tag>

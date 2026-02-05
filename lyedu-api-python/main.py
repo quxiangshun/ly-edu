@@ -17,7 +17,7 @@ from routers import auth, course, chapter, video, learning, user, department, st
 def _run_alembic_upgrade() -> None:
     """启动时自动执行 Alembic 迁移（alembic upgrade head），与 Java 端 Flyway 行为一致。
     使用 Alembic API 在进程内执行，避免子进程 python -m alembic 在某些环境（如 Python 3.14）失败。
-    若数据库中曾记录为已移除的版本，会自动将 alembic_version 改为当前 head（v15）后重试。
+    若数据库中曾记录为已移除的版本（如原 v2～v16），会自动将 alembic_version 改为当前 head（v1）后重试。
     """
     base_dir = Path(__file__).resolve().parent
     script_dir = (base_dir.parent / "db" / "alembic").resolve()
@@ -37,14 +37,14 @@ def _run_alembic_upgrade() -> None:
             return
         except Exception as e:
             err_msg = str(e).strip()
-            # 数据库中记录为已移除的版本时，自动改为当前 head（v15）后重试一次
+            # 数据库中记录为已移除的版本时，自动改为当前 head（v1）后重试一次
             if "can't locate revision identified by" in err_msg.lower() and not fixed_stale_revision:
                 try:
                     import db
-                    n = db.execute("UPDATE alembic_version SET version_num = %s", ("v15",))
+                    n = db.execute("UPDATE alembic_version SET version_num = %s", ("v1",))
                     if n == 0:
-                        db.execute("INSERT INTO alembic_version (version_num) VALUES (%s)", ("v15",))
-                    print("[LyEdu] [Alembic] 已将数据库版本从已移除的修订改为 v15，正在重试迁移。", file=sys.stderr)
+                        db.execute("INSERT INTO alembic_version (version_num) VALUES (%s)", ("v1",))
+                    print("[LyEdu] [Alembic] 已将数据库版本从已移除的修订改为 v1，正在重试迁移。", file=sys.stderr)
                     fixed_stale_revision = True
                     continue
                 except Exception as fix_e:
