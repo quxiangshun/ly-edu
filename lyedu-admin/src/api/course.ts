@@ -46,3 +46,14 @@ export const deleteCourse = (id: number) => {
 export const getRecommendedCourses = (limit: number = 6) => {
   return request.get<Course[]>('/course/recommended', { params: { limit } })
 }
+
+/** 课程关联考试（单个）；无关联时返回 null，属正常不报错 */
+export const getCourseExam = (id: number) => {
+  return request
+    .get<number | null>(`/course/${id}/exam`, { silentError: true } as any)
+    .catch(() => null as number | null)
+}
+
+export const setCourseExam = (id: number, examId: number | null) => {
+  return request.put(`/course/${id}/exam`, { examId })
+}

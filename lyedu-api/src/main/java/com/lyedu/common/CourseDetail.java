@@ -49,6 +49,11 @@ public class CourseDetail implements Serializable {
      */
     private List<CourseAttachment> attachments;
 
+    /**
+     * 关联的考试ID，无关联时为 null（正常，一个课程可以不存在考试）
+     */
+    private Long examId;
+
     @Data
     public static class ChapterItem implements Serializable {
         private static final long serialVersionUID = 1L;

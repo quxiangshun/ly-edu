@@ -61,6 +61,27 @@
               />
               <span class="progress-text">已学 {{ Math.round(courseDetail.courseProgress ?? 0) }}%</span>
             </div>
+            <div v-if="examId" class="exam-card">
+              <div class="exam-title">课程考试</div>
+              <div class="exam-meta">
+                <span v-if="examStatus?.startTime">开始：{{ examStatus?.startTime }}</span>
+                <span v-if="examStatus?.endTime">结束：{{ examStatus?.endTime }}</span>
+                <span v-if="examStatus?.durationMinutes && !examStatus?.unlimited">时长 {{ examStatus?.durationMinutes }} 分钟</span>
+                <span v-if="examStatus?.unlimited">无时间限制</span>
+              </div>
+              <div class="exam-action">
+                <van-button
+                  type="primary"
+                  size="small"
+                  round
+                  :loading="examLoading"
+                  :disabled="examStatus && examStatus.canStart === false"
+                  @click="handleStartExam"
+                >
+                  {{ examStatus?.canStart === false ? (examStatus?.message || '不可开始') : '开始考试' }}
+                </van-button>
+              </div>
+            </div>
           </div>
 
           <!-- 3. Tab：滚动到视频底部时吸附，继续向下滚动内容在 Tab 下滚动，向上滚动还原 -->
@@ -179,6 +200,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { showSuccessToast, showFailToast } from 'vant'
 import { getCourseById, getCourseComments, addCourseComment, type CourseDetail, type CourseAttachment, type ChapterItem, type CourseCommentDto } from '@/api/course'
 import { joinCourse, updateVideoProgress } from '@/api/learning'
+import { getExamStatus } from '@/api/exam'
 
 const router = useRouter()
 const route = useRoute()
@@ -202,6 +224,9 @@ const tabsStickyTop = ref(220)
 const NAV_BAR_HEIGHT = 46
 const fixedVideoLastProgressSaveAt = ref(0)
 const FIXED_VIDEO_PROGRESS_INTERVAL_MS = 5000
+const examId = ref<number | null>(null)
+const examStatus = ref<{ canStart: boolean; status: string; message: string; durationMinutes?: number; unlimited: boolean; startTime?: string; endTime?: string } | null>(null)
+const examLoading = ref(false)
 
 const apiBase = () => window.location.origin + '/api'
 /** 将后端返回的 url 转为可播放的完整地址（与 VideoPlayer 一致） */
@@ -353,6 +378,12 @@ const loadCourseDetail = async () => {
     const res = await getCourseById(courseId)
     courseDetail.value = res
     hasToken.value = !!localStorage.getItem('token')
+    examId.value = (res as any).examId ?? null
+    if (examId.value) {
+      await loadExamStatus(examId.value)
+    } else {
+      examStatus.value = null
+    }
     // 默认使用第一个视频（章节内首个或未分类首个）
     const firstVideo = res?.chapters?.[0]?.hours?.[0] ?? res?.videos?.[0]
     if (firstVideo) {
@@ -469,6 +500,27 @@ function onFixedVideoEnded() {
   let duration = Math.floor(el.duration) || Math.floor((currentVideo.value?.duration ?? 0))
   if (duration > 0) updateVideoProgress(currentVideo.value.id, progress, duration).catch(() => {})
   loadCourseDetail()
+}
+
+async function loadExamStatus(eid: number) {
+  examLoading.value = true
+  try {
+    const res = await getExamStatus(eid)
+    examStatus.value = res as any
+  } catch {
+    examStatus.value = null
+  } finally {
+    examLoading.value = false
+  }
+}
+
+function handleStartExam() {
+  if (!examId.value) return
+  if (examStatus.value && examStatus.value.canStart === false) {
+    showFailToast(examStatus.value.message || '考试未开始或已结束')
+    return
+  }
+  router.push(`/exam/${examId.value}/take`)
 }
 
 function measureVideoAreaHeight() {
@@ -605,6 +657,30 @@ onBeforeUnmount(() => {
     .progress-text {
       font-size: 12px;
       color: #969799;
+    }
+  }
+  .exam-card {
+    margin-top: 10px;
+    padding: 12px;
+    border: 1px solid #ebedf0;
+    border-radius: 8px;
+    background: #f8f9fb;
+    .exam-title {
+      font-weight: 600;
+      color: #323233;
+      margin-bottom: 6px;
+    }
+    .exam-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      font-size: 13px;
+      color: #646566;
+      margin-bottom: 8px;
+    }
+    .exam-action {
+      display: flex;
+      justify-content: flex-start;
     }
   }
 }

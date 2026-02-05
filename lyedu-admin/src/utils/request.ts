@@ -62,11 +62,14 @@ service.interceptors.response.use(
   },
   (error) => {
     console.error('响应错误:', error)
-    const msg = error.response?.data?.message || error.message || '网络错误'
-    const hint = error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')
-      ? '（请确认后端 API 已启动，默认 http://localhost:9700）'
-      : ''
-    ElMessage.error(msg + hint)
+    const silentError = (error.config as any)?.silentError
+    if (!silentError) {
+      const msg = error.response?.data?.message || error.message || '网络错误'
+      const hint = error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')
+        ? '（请确认后端 API 已启动，默认 http://localhost:9700）'
+        : ''
+      ElMessage.error(msg + hint)
+    }
     return Promise.reject(error)
   }
 )

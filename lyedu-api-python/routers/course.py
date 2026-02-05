@@ -14,6 +14,7 @@ from services import user_video_progress_service
 from services import user_course_service
 from services import course_attachment_service
 from services import course_comment_service
+from services import course_exam_service
 from util.jwt_util import parse_authorization
 
 
@@ -28,6 +29,10 @@ class CommentRequest(BaseModel):
 
 def _user_id(authorization: Optional[str]) -> Optional[int]:
     return parse_authorization(authorization)
+
+
+class CourseExamRequest(BaseModel):
+    examId: Optional[int] = None
 
 
 @router.get("/page")
@@ -118,6 +123,10 @@ def get_by_id(id: int, authorization: Optional[str] = Header(None, alias="Author
             "chapters": chapter_items,
             "attachments": attachments,
         }
+        # 课程关联考试（单选，考试可被多课程共用）
+        if course_exam_service.table_exists():
+            exam_id = course_exam_service.get_exam_id_by_course(id)
+            detail["examId"] = exam_id
         if user_id and videos:
             try:
                 video_ids = [v["id"] for v in videos]
@@ -185,6 +194,27 @@ def update(id: int, body: CourseRequest):
         visibility=body.visibility if body.visibility is not None else 1,
         department_ids=body.department_ids,
     )
+    return success()
+
+
+@router.get("/{id}/exam")
+def get_course_exam(id: int):
+    c = course_service.get_by_id_ignore_visibility(id)
+    if not c:
+        return error(404, "课程不存在")
+    if not course_exam_service.table_exists():
+        return success(None)
+    return success(course_exam_service.get_exam_id_by_course(id))
+
+
+@router.put("/{id}/exam")
+def set_course_exam(id: int, body: CourseExamRequest):
+    c = course_service.get_by_id_ignore_visibility(id)
+    if not c:
+        return error(404, "课程不存在")
+    if not course_exam_service.table_exists():
+        return error(500, "课程-考试关联表不存在，请先迁移数据库")
+    course_exam_service.set_course_exam(id, body.examId)
     return success()
 
 

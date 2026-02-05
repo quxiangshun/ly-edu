@@ -24,6 +24,10 @@
       </template>
 
       <template v-else>
+        <div class="timer-row">
+          <div class="timer-text" v-if="examStatus?.unlimited">已用时：{{ formatSeconds(elapsedSeconds) }}</div>
+          <div class="timer-text" v-else>剩余：{{ formatSeconds(remainingSeconds ?? 0) }}</div>
+        </div>
         <van-loading v-if="loading" class="loading-wrap" vertical>加载题目...</van-loading>
 
         <template v-else-if="questions.length > 0">
@@ -104,13 +108,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, watch } from 'vue'
+import { ref, reactive, onMounted, watch, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { showToast, showConfirmDialog } from 'vant'
 import {
   getExamById,
   getPaperQuestions,
   submitExam,
+  getExamStatus,
   type Exam,
   type PaperQuestionDto,
   type ExamRecord
@@ -123,10 +128,14 @@ const loading = ref(true)
 const submitting = ref(false)
 const submitted = ref(false)
 const exam = ref<Exam | null>(null)
+const examStatus = ref<{ canStart: boolean; status: string; message: string; durationMinutes?: number; unlimited: boolean; startTime?: string; endTime?: string } | null>(null)
 const questions = ref<PaperQuestionDto[]>([])
 const answers = reactive<Record<string, string>>({})
 const multiAnswers = reactive<Record<string, string[]>>({})
 const record = ref<ExamRecord | null>(null)
+const elapsedSeconds = ref(0)
+const remainingSeconds = ref<number | null>(null)
+let timer: number | null = null
 
 function parseOptions(options?: string): string[] {
   if (!options) return []
@@ -171,6 +180,12 @@ async function loadExam() {
   }
   loading.value = true
   try {
+    examStatus.value = await getExamStatus(examId.value)
+    if (examStatus.value && examStatus.value.canStart === false) {
+      showToast(examStatus.value.message || '考试未开始或已结束')
+      router.push('/exam')
+      return
+    }
     exam.value = await getExamById(examId.value)
     if (!exam.value) {
       showToast('考试不存在')
@@ -184,6 +199,7 @@ async function loadExam() {
         multiAnswers[String(item.questionId)] = []
       }
     })
+    startTimer()
   } catch (_e) {
     showToast('加载失败')
     router.push('/exam')
@@ -200,10 +216,52 @@ async function handleSubmit() {
     record.value = res
     submitted.value = true
     showToast('交卷成功')
+    stopTimer()
   } catch (_e) {
     // 具体错误信息由全局请求拦截器弹出，这里避免覆盖
   } finally {
     submitting.value = false
+  }
+}
+
+function formatSeconds(sec: number) {
+  const s = Math.max(0, Math.floor(sec))
+  const m = Math.floor(s / 60)
+  const h = Math.floor(m / 60)
+  const mm = (m % 60).toString().padStart(2, '0')
+  const ss = (s % 60).toString().padStart(2, '0')
+  if (h > 0) return `${h}:${mm}:${ss}`
+  return `${mm}:${ss}`
+}
+
+function startTimer() {
+  const total = examStatus.value?.unlimited ? null : (examStatus.value?.durationMinutes || exam.value?.durationMinutes || 0) * 60
+  const startedAt = Date.now()
+  if (total && total > 0) remainingSeconds.value = total
+  elapsedSeconds.value = 0
+  if (timer) {
+    clearInterval(timer)
+    timer = null
+  }
+  timer = window.setInterval(() => {
+    const elapsed = Math.floor((Date.now() - startedAt) / 1000)
+    elapsedSeconds.value = elapsed
+    if (total && total > 0) {
+      const remain = total - elapsed
+      remainingSeconds.value = remain > 0 ? remain : 0
+      if (remain <= 0) {
+        stopTimer()
+        showToast('时间到，自动交卷')
+        handleSubmit()
+      }
+    }
+  }, 1000)
+}
+
+function stopTimer() {
+  if (timer) {
+    clearInterval(timer)
+    timer = null
   }
 }
 
@@ -217,6 +275,7 @@ watch(
 )
 
 onMounted(() => loadExam())
+onBeforeUnmount(() => stopTimer())
 </script>
 
 <style scoped lang="scss">
@@ -230,6 +289,12 @@ onMounted(() => loadExam())
 }
 .loading-wrap {
   padding: 40px 0;
+}
+.timer-row {
+  padding: 10px 0;
+  text-align: center;
+  font-size: 14px;
+  color: #323233;
 }
 .question-block {
   background: #fff;

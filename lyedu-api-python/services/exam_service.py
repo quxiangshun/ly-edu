@@ -9,6 +9,7 @@ from models.schemas import page_result
 from services import department_service
 from services import exam_department_service
 from services import user_service
+from services import course_exam_service
 
 SELECT_COLS = "id, title, paper_id, start_time, end_time, duration_minutes, pass_score, visibility, status, create_time, update_time, deleted"
 
@@ -98,6 +99,8 @@ def page(
         for r in (rows or []):
             e = _row_to_exam(r)
             e["departmentIds"] = exam_department_service.list_department_ids_by_exam_id(e.get("id"))
+            if course_exam_service.table_exists():
+                e["courseIds"] = course_exam_service.get_course_ids_by_exam(e.get("id"))
             records.append(e)
         return page_result(records, total, page_num, size)
     except pymysql.err.MySQLError as e:
@@ -121,6 +124,8 @@ def get_by_id_ignore_visibility(exam_id: int) -> Optional[dict]:
             return None
         e = _row_to_exam(row)
         e["departmentIds"] = exam_department_service.list_department_ids_by_exam_id(e.get("id"))
+        if course_exam_service.table_exists():
+            e["courseIds"] = course_exam_service.get_course_ids_by_exam(e.get("id"))
         return e
     except pymysql.err.MySQLError as e:
         if getattr(e, "args", (None,))[0] == 1146:

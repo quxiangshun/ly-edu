@@ -26,6 +26,7 @@ class ExamRequest(BaseModel):
     visibility: Optional[int] = 1
     status: Optional[int] = 1
     departmentIds: Optional[List[int]] = None
+    courseIds: Optional[List[int]] = None  # 用于可见范围外的关联展示（不强制写库）
 
 
 def _parse_datetime(s: Optional[str]):
