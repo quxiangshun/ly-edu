@@ -48,6 +48,7 @@ def create(body: VideoRequest):
         chapter_id=chapter_id,
         title=body.title or "",
         url=body.url or "",
+        cover=body.cover,
         duration=body.duration or 0,
         sort=body.sort or 0,
     )
@@ -71,6 +72,7 @@ def update(id: int, body: VideoRequest):
         chapter_id=chapter_id,
         title=body.title or "",
         url=body.url or "",
+        cover=body.cover,
         duration=body.duration or 0,
         sort=body.sort or 0,
     )

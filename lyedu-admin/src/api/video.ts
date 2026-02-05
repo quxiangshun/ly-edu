@@ -8,6 +8,7 @@ export interface Video {
   chapterName?: string
   title: string
   url: string
+  cover?: string
   duration?: number
   sort: number
 }

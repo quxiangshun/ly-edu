@@ -13,12 +13,13 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HexFormat;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * 文件上传服务实现
@@ -59,6 +60,14 @@ public class FileUploadServiceImpl implements FileUploadService {
 
     private static final String DELETE_CHUNKS_SQL =
             "DELETE FROM ly_file_chunk WHERE file_id = ?";
+
+    private static final String SELECT_BY_HASH_SQL =
+            "SELECT relative_path FROM ly_file_hash WHERE content_hash = ? LIMIT 1";
+
+    private static final String INSERT_FILE_HASH_SQL =
+            "INSERT INTO ly_file_hash (content_hash, relative_path, file_size) VALUES (?, ?, ?)";
+
+    private static final int HASH_READ_BUFFER = 1024 * 1024; // 1MB
 
     @Override
     @Transactional
@@ -191,13 +200,47 @@ public class FileUploadServiceImpl implements FileUploadService {
                         });
             }
             
-            // 更新上传记录
+            // 视频去重：按内容哈希只保留一份
+            String contentHash = computeFileSha256(mergedFile);
+            List<String> existing = jdbcTemplate.query(SELECT_BY_HASH_SQL,
+                    (rs, rowNum) -> rs.getString("relative_path"), contentHash);
+            if (!existing.isEmpty()) {
+                Files.deleteIfExists(mergedFile);
+                Path parentDir = mergedFile.getParent();
+                if (parentDir != null && Files.exists(parentDir)) {
+                    try {
+                        Files.delete(parentDir);
+                    } catch (IOException ignored) {
+                        // 目录非空时忽略
+                    }
+                }
+                String existingPath = existing.get(0);
+                jdbcTemplate.update(UPDATE_UPLOAD_PATH_SQL, existingPath, fileId);
+                return existingPath;
+            }
+            jdbcTemplate.update(INSERT_FILE_HASH_SQL, contentHash, upload.getUploadPath(), upload.getFileSize());
             jdbcTemplate.update(UPDATE_UPLOAD_PATH_SQL, upload.getUploadPath(), fileId);
-            
             return upload.getUploadPath();
         } catch (IOException e) {
             throw new RuntimeException("Failed to merge chunks", e);
         }
+    }
+
+    private String computeFileSha256(Path file) throws IOException {
+        MessageDigest md;
+        try {
+            md = MessageDigest.getInstance("SHA-256");
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
+        byte[] buf = new byte[HASH_READ_BUFFER];
+        try (InputStream in = Files.newInputStream(file)) {
+            int n;
+            while ((n = in.read(buf)) != -1) {
+                md.update(buf, 0, n);
+            }
+        }
+        return HexFormat.of().formatHex(md.digest());
     }
 
     @Override

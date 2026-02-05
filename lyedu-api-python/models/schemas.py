@@ -31,6 +31,7 @@ class VideoRequest(BaseModel):
     chapterId: Optional[int] = None
     title: Optional[str] = None
     url: Optional[str] = None
+    cover: Optional[str] = None
     duration: Optional[int] = 0
     sort: Optional[int] = 0
 

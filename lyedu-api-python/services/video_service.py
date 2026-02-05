@@ -15,6 +15,7 @@ def _row_to_video(row: dict) -> dict:
         "chapter_id": row.get("chapter_id"),
         "title": row.get("title"),
         "url": row.get("url"),
+        "cover": row.get("cover"),
         "duration": row.get("duration", 0),
         "sort": row.get("sort", 0),
         "create_time": row.get("create_time"),
@@ -54,7 +55,7 @@ def page(
     )
     total = total_row["cnt"] or 0
     sql = (
-        "SELECT v.id, v.course_id, v.chapter_id, v.title, v.url, v.duration, v.sort, "
+        "SELECT v.id, v.course_id, v.chapter_id, v.title, v.url, v.cover, v.duration, v.sort, "
         "c.title AS course_name, ch.title AS chapter_name "
         "FROM ly_video v "
         "LEFT JOIN ly_course c ON v.course_id = c.id AND c.deleted = 0 "
@@ -69,7 +70,7 @@ def page(
 
 def list_by_course_id(course_id: int) -> List[dict]:
     rows = db.query_all(
-        "SELECT id, course_id, chapter_id, title, url, duration, sort, create_time, update_time, deleted "
+        "SELECT id, course_id, chapter_id, title, url, cover, duration, sort, create_time, update_time, deleted "
         "FROM ly_video WHERE course_id = %s AND deleted = 0 ORDER BY sort ASC, id ASC",
         (course_id,),
     )
@@ -78,7 +79,7 @@ def list_by_course_id(course_id: int) -> List[dict]:
 
 def list_by_chapter_id(chapter_id: int) -> List[dict]:
     rows = db.query_all(
-        "SELECT id, course_id, chapter_id, title, url, duration, sort, create_time, update_time, deleted "
+        "SELECT id, course_id, chapter_id, title, url, cover, duration, sort, create_time, update_time, deleted "
         "FROM ly_video WHERE chapter_id = %s AND deleted = 0 ORDER BY sort ASC, id ASC",
         (chapter_id,),
     )
@@ -87,7 +88,7 @@ def list_by_chapter_id(chapter_id: int) -> List[dict]:
 
 def get_by_id(video_id: int) -> Optional[dict]:
     row = db.query_one(
-        "SELECT id, course_id, chapter_id, title, url, duration, sort, create_time, update_time, deleted "
+        "SELECT id, course_id, chapter_id, title, url, cover, duration, sort, create_time, update_time, deleted "
         "FROM ly_video WHERE id = %s AND deleted = 0",
         (video_id,),
     )
@@ -99,12 +100,13 @@ def save(
     chapter_id: Optional[int],
     title: str,
     url: str,
+    cover: Optional[str] = None,
     duration: int = 0,
     sort: int = 0,
 ) -> int:
     db.execute(
-        "INSERT INTO ly_video (course_id, chapter_id, title, url, duration, sort) VALUES (%s, %s, %s, %s, %s, %s)",
-        (course_id, chapter_id, title or "", url or "", duration, sort),
+        "INSERT INTO ly_video (course_id, chapter_id, title, url, cover, duration, sort) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+        (course_id, chapter_id, title or "", url or "", cover or "", duration, sort),
     )
     return 0
 
@@ -115,12 +117,13 @@ def update(
     chapter_id: Optional[int],
     title: str,
     url: str,
-    duration: int,
-    sort: int,
+    cover: Optional[str] = None,
+    duration: int = 0,
+    sort: int = 0,
 ) -> int:
     return db.execute(
-        "UPDATE ly_video SET course_id = %s, chapter_id = %s, title = %s, url = %s, duration = %s, sort = %s WHERE id = %s AND deleted = 0",
-        (course_id, chapter_id, title or "", url or "", duration, sort, video_id),
+        "UPDATE ly_video SET course_id = %s, chapter_id = %s, title = %s, url = %s, cover = %s, duration = %s, sort = %s WHERE id = %s AND deleted = 0",
+        (course_id, chapter_id, title or "", url or "", cover or "", duration, sort, video_id),
     )
 
 

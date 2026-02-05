@@ -119,6 +119,7 @@
         </el-form-item>
         <el-form-item label="视频上传" prop="url">
           <chunk-upload
+            :key="uploadKey"
             accept="video/*"
             :chunk-size="10 * 1024 * 1024"
             @success="handleUploadSuccess"
@@ -128,6 +129,21 @@
         </el-form-item>
         <el-form-item label="视频地址" prop="url">
           <el-input v-model="form.url" placeholder="视频上传成功后自动填充，或手动输入视频URL" />
+        </el-form-item>
+        <el-form-item label="视频封面" prop="cover">
+          <div class="cover-upload">
+            <el-upload
+              class="cover-uploader"
+              :show-file-list="false"
+              accept="image/*"
+              :http-request="handleCoverUpload"
+            >
+              <img v-if="form.cover" :src="coverPreviewUrl" class="cover-preview" />
+              <el-icon v-else class="cover-uploader-icon"><Plus /></el-icon>
+            </el-upload>
+            <el-button v-if="form.cover" type="primary" link @click="form.cover = ''">清除封面</el-button>
+          </div>
+          <div class="cover-tip">选填，支持 jpg/png/gif 等图片</div>
         </el-form-item>
         <el-form-item label="时长（秒）" prop="duration">
           <el-input-number v-model="form.duration" :min="0" :disabled="durationAutoFilled" placeholder="选择视频后自动获取，或手动输入" />
@@ -147,13 +163,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
+import { Plus } from '@element-plus/icons-vue'
 import ChunkUpload from '@/components/ChunkUpload.vue'
 import { getVideoPage, createVideo, updateVideo, deleteVideo, type Video } from '@/api/video'
 import { getCoursePage, getCourseById, type Course } from '@/api/course'
 import { getChaptersByCourseId } from '@/api/chapter'
+import { uploadImage } from '@/api/image'
 
 const loading = ref(false)
 const videoList = ref<Video[]>([])
@@ -167,6 +185,7 @@ const courseSearchLoading = ref(false)
 const chapterLoading = ref(false)
 const videoEl = ref<HTMLVideoElement | null>(null)
 const durationAutoFilled = ref(false)
+const uploadKey = ref(0)
 
 const searchForm = reactive<{ courseId?: number; keyword: string }>({
   courseId: undefined,
@@ -184,8 +203,15 @@ const form = reactive<Partial<Video>>({
   chapterId: undefined,
   title: '',
   url: '',
+  cover: '',
   duration: 0,
   sort: 0
+})
+
+const coverPreviewUrl = computed(() => {
+  const c = form.cover
+  if (!c) return ''
+  return c.startsWith('http') ? c : (c.startsWith('/') ? '/api' : '/api/') + c
 })
 
 const rules: FormRules = {
@@ -228,6 +254,7 @@ const onCourseChange = () => {
 }
 
 const onDialogOpened = async () => {
+  uploadKey.value++
   await searchCourseOptions('')
   if (form.courseId) {
     const inList = courseOptions.value.some((c) => c.id === form.courseId)
@@ -288,6 +315,7 @@ const handleAdd = () => {
     chapterId: undefined,
     title: '',
     url: '',
+    cover: '',
     duration: 0,
     sort: 0
   })
@@ -302,7 +330,8 @@ const handleEdit = (row: Video) => {
   Object.assign(form, {
     ...row,
     courseId,
-    chapterId: chapterId ?? 0
+    chapterId: chapterId ?? 0,
+    cover: row.cover ?? (row as any).cover ?? ''
   })
   dialogVisible.value = true
 }
@@ -350,6 +379,16 @@ const onVideoFileSelect = (file: File) => {
   video.addEventListener('loadedmetadata', onLoaded)
   video.addEventListener('error', onErr)
   video.src = url
+}
+
+const handleCoverUpload = async (options: { file: File }) => {
+  try {
+    const res = await uploadImage(options.file)
+    form.cover = (res as { url?: string }).url || ''
+    ElMessage.success('封面上传成功')
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message || '封面上传失败')
+  }
 }
 
 const handleUploadSuccess = (url: string) => {
@@ -415,5 +454,39 @@ onMounted(() => {
   margin-left: 8px;
   font-size: 12px;
   color: var(--el-color-success);
+}
+
+.cover-upload {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.cover-uploader {
+  border: 1px dashed var(--el-border-color);
+  border-radius: 6px;
+  cursor: pointer;
+  overflow: hidden;
+}
+.cover-uploader :deep(.el-upload) {
+  display: block;
+}
+.cover-uploader-icon {
+  font-size: 28px;
+  color: var(--el-text-color-placeholder);
+  width: 120px;
+  height: 90px;
+  line-height: 90px;
+  text-align: center;
+}
+.cover-preview {
+  width: 120px;
+  height: 90px;
+  object-fit: cover;
+  display: block;
+}
+.cover-tip {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
 }
 </style>
