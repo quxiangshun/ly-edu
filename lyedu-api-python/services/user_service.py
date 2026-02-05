@@ -72,6 +72,7 @@ def find_by_feishu_open_id(feishu_open_id: str) -> Optional[dict]:
 def _row_to_user(row: dict) -> dict:
     if not row:
         return {}
+    dept_id = row.get("department_id")
     return {
         "id": row["id"],
         "username": row.get("username"),
@@ -81,7 +82,8 @@ def _row_to_user(row: dict) -> dict:
         "mobile": row.get("mobile"),
         "avatar": row.get("avatar"),
         "feishu_open_id": row.get("feishu_open_id"),
-        "department_id": row.get("department_id"),
+        "department_id": dept_id,
+        "departmentId": dept_id,  # 前端使用的驼峰命名
         "entry_date": row.get("entry_date"),
         "entryDate": row.get("entry_date"),
         "role": row.get("role"),
