@@ -2,6 +2,7 @@
   <div class="my-container">
     <van-nav-bar title="我的" fixed placeholder />
 
+    <div class="my-scroll-body">
     <div class="user-info">
       <van-cell-group inset>
         <van-cell is-link @click="handleUserCellClick">
@@ -66,6 +67,7 @@
         <van-cell title="设置" is-link icon="setting-o" to="/settings" />
         <van-cell title="关于" is-link icon="info-o" to="/about" />
       </van-cell-group>
+    </div>
     </div>
   </div>
 </template>
@@ -179,10 +181,33 @@ onUnmounted(() => {
   min-height: 0;
   overflow: hidden;
   background: #f7f8fa;
-  padding-bottom: 20px;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
+}
+
+/* 可滚动区域：占满剩余高度，超出时出现滚动条 */
+.my-scroll-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 20px;
+}
+
+.my-scroll-body::-webkit-scrollbar {
+  width: 6px;
+}
+.my-scroll-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+.my-scroll-body::-webkit-scrollbar-thumb {
+  background: #c8c9cc;
+  border-radius: 3px;
+}
+.my-scroll-body::-webkit-scrollbar-thumb:hover {
+  background: #969799;
 }
 
 .stats-section {

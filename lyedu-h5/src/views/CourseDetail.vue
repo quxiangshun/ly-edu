@@ -13,11 +13,20 @@
               class="fixed-video-player"
               :src="fixedVideoUrl"
               :poster="fixedVideoPoster"
+              preload="metadata"
               controls
               playsinline
               webkit-playsinline
               @timeupdate="onFixedVideoTimeUpdate"
               @ended="onFixedVideoEnded"
+              @play="fixedVideoCoverHidden = true"
+            />
+            <!-- 封面层：始终显示设置的封面，直到用户点击播放 -->
+            <div
+              v-show="!fixedVideoCoverHidden"
+              class="fixed-video-poster-overlay"
+              :style="fixedVideoPoster ? { backgroundImage: `url(${fixedVideoPoster})` } : {}"
+              @click="fixedVideoRef?.play()"
             />
           </template>
           <template v-else>
@@ -183,6 +192,8 @@ const hasToken = ref(!!localStorage.getItem('token'))
 /** 当前在详情页顶部固定区播放的视频（B站式） */
 const currentVideo = ref<{ id: number; title?: string; url?: string; cover?: string; duration?: number } | null>(null)
 const fixedVideoRef = ref<HTMLVideoElement | null>(null)
+/** 是否隐藏封面遮罩（开始播放后为 true，切换视频时重置） */
+const fixedVideoCoverHidden = ref(false)
 const fixedVideoAreaRef = ref<HTMLElement | null>(null)
 /** 固定视频区高度（px），用于 spacer 与 Tab 吸附位置 */
 const videoAreaHeightPx = ref(220)
@@ -342,6 +353,15 @@ const loadCourseDetail = async () => {
     const res = await getCourseById(courseId)
     courseDetail.value = res
     hasToken.value = !!localStorage.getItem('token')
+    // 默认使用第一个视频（章节内首个或未分类首个）
+    const firstVideo = res?.chapters?.[0]?.hours?.[0] ?? res?.videos?.[0]
+    if (firstVideo) {
+      const cover = getVideoCover(firstVideo)
+      currentVideo.value = { id: firstVideo.id, title: firstVideo.title, url: firstVideo.url, cover: cover || undefined, duration: firstVideo.duration }
+      fixedVideoCoverHidden.value = false
+    } else {
+      currentVideo.value = null
+    }
     const list = await getCourseComments(courseId)
     comments.value = list || []
   } catch (e: any) {
@@ -392,9 +412,18 @@ const handleStartLearn = async () => {
   }
 }
 
+/** 从视频对象中取封面（兼容后端 cover / cover_url 等） */
+function getVideoCover(video: any): string {
+  if (!video) return ''
+  const c = video.cover ?? (video as any).cover_url ?? video.coverUrl ?? ''
+  return typeof c === 'string' ? c : ''
+}
+
 /** 在详情页顶部固定区播放（B站式）；也可跳转独立播放页 */
 function handlePlayInPlace(video: any) {
-  currentVideo.value = { id: video.id, title: video.title, url: video.url, cover: video.cover, duration: video.duration }
+  const cover = getVideoCover(video)
+  currentVideo.value = { id: video.id, title: video.title, url: video.url, cover: cover || undefined, duration: video.duration }
+  fixedVideoCoverHidden.value = false
   nextTick(() => {
     const el = fixedVideoRef.value
     if (el) {
@@ -501,6 +530,20 @@ onBeforeUnmount(() => {
   width: 100%;
   height: 100%;
   object-fit: contain;
+}
+/* 封面遮罩：在播放前始终显示设置的封面，避免浏览器显示首帧 */
+.fixed-video-poster-overlay {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #000;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  z-index: 2;
+  pointer-events: auto;
 }
 .video-cover-wrap {
   position: absolute;
