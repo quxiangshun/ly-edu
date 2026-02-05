@@ -34,7 +34,7 @@
         </el-form-item>
       </el-form>
 
-      <el-table :data="questionList" v-loading="loading" border>
+      <el-table :data="questionList" v-loading="loading" border :max-height="tableMaxHeight">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="type" label="题型" width="90">
           <template #default="{ row }">{{ typeLabel(row.type) }}</template>
@@ -114,7 +114,9 @@ import {
   type Question
 } from '@/api/question'
 import { useHelp } from '@/hooks/useHelp'
+import { useTableMaxHeight } from '@/hooks/useTableHeight'
 
+const tableMaxHeight = useTableMaxHeight()
 const typeLabels: Record<string, string> = {
   single: '单选',
   multi: '多选',
@@ -255,6 +257,14 @@ onMounted(loadList)
 </script>
 
 <style scoped lang="scss">
+.question-container {
+  padding: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 .question-container .card-header {
   display: flex;
   justify-content: space-between;

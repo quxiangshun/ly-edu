@@ -1,23 +1,6 @@
 <template>
   <div class="knowledge-center-container">
-    <el-header class="header">
-      <div class="header-content">
-        <div class="logo" @click="$router.push('/')">
-          <img src="/icon-192.png" alt="" class="header-logo-icon" />
-          <h1>LyEdu</h1>
-        </div>
-        <el-menu mode="horizontal" default-active="knowledge" class="header-menu">
-          <el-menu-item index="home" @click="$router.push('/')">首页</el-menu-item>
-          <el-menu-item index="courses" @click="$router.push('/courses')">课程中心</el-menu-item>
-          <el-menu-item index="knowledge">知识中心</el-menu-item>
-          <el-menu-item index="exam" @click="$router.push('/exam')">考试中心</el-menu-item>
-          <el-menu-item index="certificates" @click="$router.push('/certificates')">我的证书</el-menu-item>
-          <el-menu-item index="tasks" @click="$router.push('/tasks')">我的任务</el-menu-item>
-          <el-menu-item index="points" @click="$router.push('/points')">积分</el-menu-item>
-          <el-menu-item index="my" @click="$router.push('/my-learning')">我的学习</el-menu-item>
-        </el-menu>
-      </div>
-    </el-header>
+    <AppHeader />
     <el-main class="main-content">
       <div class="knowledge-content">
         <h2>知识中心</h2>
@@ -62,6 +45,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import AppHeader from '@/components/AppHeader.vue'
 import { getKnowledgePage, type Knowledge } from '@/api/knowledge'
 
 const router = useRouter()
@@ -136,37 +120,11 @@ onMounted(() => loadList())
 <style scoped lang="scss">
 .knowledge-center-container {
   min-height: 100vh;
-  .header {
-    background: #fff;
-    border-bottom: 1px solid #e4e7ed;
-    padding: 0 24px;
-  }
-  .header-content {
-    max-width: 1200px;
-    margin: 0 auto;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  .logo {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-    .header-logo-icon {
-      width: 32px;
-      height: 32px;
-    }
-    h1 {
-      margin: 0;
-      font-size: 20px;
-      color: #409eff;
-    }
-  }
   .main-content {
     max-width: 1000px;
     margin: 0 auto;
     padding: 24px 16px;
+    margin-top: 60px;
   }
   .knowledge-content {
     h2 {

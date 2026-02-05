@@ -1,18 +1,6 @@
 <template>
   <div class="video-player-container">
-    <el-header class="header">
-      <div class="header-content">
-        <div class="logo" @click="$router.push('/')">
-          <img src="/icon-192.png" alt="" class="header-logo-icon" />
-          <h1>LyEdu</h1>
-        </div>
-        <el-menu mode="horizontal" default-active="courses" class="header-menu">
-          <el-menu-item index="home" @click="$router.push('/')">首页</el-menu-item>
-          <el-menu-item index="courses" @click="$router.push('/courses')">课程中心</el-menu-item>
-          <el-menu-item index="my" @click="$router.push('/my-learning')">我的学习</el-menu-item>
-        </el-menu>
-      </div>
-    </el-header>
+    <AppHeader />
     <el-main class="main-content" v-loading="loading">
       <div v-if="video && relatedVideos.length > 0" class="video-layout">
         <!-- 左侧：固定视频播放器 -->
@@ -90,6 +78,7 @@ import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Clock, VideoPlay } from '@element-plus/icons-vue'
+import AppHeader from '@/components/AppHeader.vue'
 import { getVideoById } from '@/api/video'
 import { getCourseById } from '@/api/course'
 import { updateVideoProgress, playPing } from '@/api/learning'
@@ -327,49 +316,6 @@ onUnmounted(() => {
   }
 }
 
-.header {
-  flex-shrink: 0;
-  background: #fff;
-  border-bottom: 1px solid #e4e7ed;
-  padding: 0;
-
-  .header-content {
-    max-width: 100%;
-    margin: 0 auto;
-    width: 100%;
-    display: flex;
-    align-items: center;
-    padding: 0 20px;
-
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      cursor: pointer;
-
-      .header-logo-icon {
-        width: 28px;
-        height: 28px;
-        display: block;
-        object-fit: contain;
-      }
-
-      h1 {
-        color: #667eea;
-        font-size: 24px;
-        margin: 0;
-        line-height: 28px;
-      }
-    }
-
-    .header-menu {
-      flex: 1;
-      margin-left: 40px;
-      border: none;
-    }
-  }
-}
-
 .main-content {
   flex: 1;
   min-height: 0;
@@ -378,6 +324,7 @@ onUnmounted(() => {
   overflow: hidden !important;
   display: flex;
   flex-direction: column;
+  margin-top: 60px;
 }
 
 .video-layout {

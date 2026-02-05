@@ -38,3 +38,14 @@ def my_log(
 @router.get("/ranking")
 def ranking(limit: int = 50, department_id: Optional[int] = None):
     return success(point_service.list_ranking(limit=limit, department_id=department_id))
+
+
+@router.get("/log/page")
+def log_page(
+    page: int = 1,
+    size: int = 20,
+    keyword: Optional[str] = None,
+    userId: Optional[int] = None,
+):
+    """分页查询积分记录（管理员）"""
+    return success(point_service.page_log(page_num=page, size=size, keyword=keyword, user_id=userId))

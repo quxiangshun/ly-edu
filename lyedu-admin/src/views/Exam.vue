@@ -25,7 +25,7 @@
         </el-form-item>
       </el-form>
 
-      <el-table :data="examList" v-loading="loading" border>
+      <el-table :data="examList" v-loading="loading" border :max-height="tableMaxHeight">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="title" label="考试名称" min-width="180" show-overflow-tooltip />
         <el-table-column prop="paperId" label="试卷ID" width="90" />
@@ -140,7 +140,7 @@
     </el-dialog>
 
     <el-dialog v-model="recordsDialogVisible" :title="`成绩 - ${currentExam?.title || ''}`" width="720px">
-      <el-table :data="recordList" border size="small">
+      <el-table :data="recordList" border size="small" max-height="360">
         <el-table-column prop="id" label="ID" width="70" />
         <el-table-column prop="userId" label="用户ID" width="90" />
         <el-table-column prop="score" label="得分" width="80" />
@@ -178,6 +178,7 @@ import {
 import { getPaperPage, type Paper } from '@/api/paper'
 import { getDepartmentTree, type Department } from '@/api/department'
 import { useHelp } from '@/hooks/useHelp'
+import { useTableMaxHeight } from '@/hooks/useTableHeight'
 
 function flattenDepartments(list: Department[]): Department[] {
   const out: Department[] = []
@@ -211,6 +212,7 @@ const recordsDialogVisible = ref(false)
 const currentExam = ref<Exam | null>(null)
 const recordList = ref<ExamRecord[]>([])
 
+const tableMaxHeight = useTableMaxHeight()
 const { openPageHelp } = useHelp()
 
 const searchForm = reactive({ keyword: '' })
@@ -369,6 +371,14 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
+.exam-container {
+  padding: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 .exam-container .card-header {
   display: flex;
   justify-content: space-between;

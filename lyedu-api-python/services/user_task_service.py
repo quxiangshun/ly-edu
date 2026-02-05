@@ -130,3 +130,80 @@ def update_progress(task_id: int, user_id: int, progress_json: Optional[str]) ->
             user_certificate_service.issue_if_eligible("task", task_id, user_id)
         point_service.add_points(user_id, "task_finish", "task", task_id)
     return _get_by_user_and_task(user_id, task_id)
+
+
+def page(
+    page_num: int = 1,
+    size: int = 20,
+    keyword: Optional[str] = None,
+    user_id: Optional[int] = None,
+    task_id: Optional[int] = None,
+) -> dict:
+    """分页查询用户任务（管理员）"""
+    from common.result import page_result
+    
+    page_num = max(1, page_num)
+    size = max(1, min(100, size))
+    offset = (page_num - 1) * size
+    
+    where_clauses = []
+    params: List[Any] = []
+    
+    if keyword:
+        where_clauses.append("(u.real_name LIKE %s OR u.username LIKE %s OR t.title LIKE %s)")
+        keyword_pattern = f"%{keyword}%"
+        params.extend([keyword_pattern, keyword_pattern, keyword_pattern])
+    
+    if user_id:
+        where_clauses.append("ut.user_id = %s")
+        params.append(user_id)
+    
+    if task_id:
+        where_clauses.append("ut.task_id = %s")
+        params.append(task_id)
+    
+    where_sql = " AND ".join(where_clauses) if where_clauses else "1=1"
+    
+    # 查询总数
+    count_sql = (
+        f"SELECT COUNT(*) AS total FROM ly_user_task ut "
+        f"LEFT JOIN ly_user u ON ut.user_id = u.id AND u.deleted = 0 "
+        f"LEFT JOIN ly_task t ON ut.task_id = t.id AND t.deleted = 0 "
+        f"WHERE {where_sql}"
+    )
+    total_row = db.query_one(count_sql, tuple(params))
+    total = total_row.get("total") or 0 if total_row else 0
+    
+    # 查询数据
+    data_sql = (
+        f"SELECT ut.id, ut.user_id AS userId, ut.task_id AS taskId, "
+        f"ut.progress, ut.status, ut.completed_at AS completedAt, "
+        f"ut.create_time AS createTime, ut.update_time AS updateTime, "
+        f"u.real_name AS realName, u.username, t.title AS taskTitle "
+        f"FROM ly_user_task ut "
+        f"LEFT JOIN ly_user u ON ut.user_id = u.id AND u.deleted = 0 "
+        f"LEFT JOIN ly_task t ON ut.task_id = t.id AND t.deleted = 0 "
+        f"WHERE {where_sql} "
+        f"ORDER BY ut.update_time DESC LIMIT %s OFFSET %s"
+    )
+    params.extend([size, offset])
+    rows = db.query_all(data_sql, tuple(params))
+    
+    records = []
+    for r in (rows or []):
+        record = {
+            "id": r.get("id"),
+            "userId": r.get("userId"),
+            "realName": r.get("realName"),
+            "username": r.get("username"),
+            "taskId": r.get("taskId"),
+            "taskTitle": r.get("taskTitle"),
+            "progress": r.get("progress"),
+            "status": r.get("status"),
+            "completedAt": r.get("completedAt"),
+            "createTime": r.get("createTime"),
+            "updateTime": r.get("updateTime"),
+        }
+        records.append(record)
+    
+    return page_result(records, total, page_num, size)

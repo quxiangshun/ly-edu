@@ -140,6 +140,12 @@ onMounted(loadList)
 
 <style scoped lang="scss">
 .image-library-container {
+  padding: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+
   .card-header {
     display: flex;
     align-items: center;

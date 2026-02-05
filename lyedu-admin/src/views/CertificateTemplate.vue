@@ -15,7 +15,7 @@
         </div>
       </template>
 
-      <el-table :data="templateList" v-loading="loading" border>
+      <el-table :data="templateList" v-loading="loading" border :max-height="tableMaxHeight">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="name" label="模板名称" min-width="160" show-overflow-tooltip />
         <el-table-column prop="description" label="说明" min-width="200" show-overflow-tooltip />
@@ -77,7 +77,9 @@ import {
   type CertificateTemplate
 } from '@/api/certificateTemplate'
 import { useHelp } from '@/hooks/useHelp'
+import { useTableMaxHeight } from '@/hooks/useTableHeight'
 
+const tableMaxHeight = useTableMaxHeight()
 const loading = ref(false)
 const templateList = ref<CertificateTemplate[]>([])
 const dialogVisible = ref(false)
@@ -191,5 +193,13 @@ onMounted(() => loadList())
       color: var(--el-color-primary);
     }
   }
+}
+
+.certificate-template-container {
+  padding: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 </style>
