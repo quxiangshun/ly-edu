@@ -1,14 +1,14 @@
-Alembic 迁移版本（与 Flyway 一一对应）：
-v1 -> v2 -> v3 -> v4 -> v5 -> v6 -> v7 -> v8 -> v9 -> v10 -> v11 -> v12_course_visibility
-- v1: V1__init_schema.sql
-- v2: V2__init_admin_user.sql
-- v3: V3__init_test_data.sql
-- v4: V4__create_file_upload_table.sql
-- v5: V5__fix_video_titles.sql
-- v6: V6__ensure_user_video_progress_table.sql
-- v7: V7__add_last_play_ping_at.sql
-- v8: V8__create_course_attachment.sql
-- v9: V9__add_course_is_required.sql
-- v10: V10__ensure_course_chapter_and_attachment.sql
-- v11: V11__ensure_user_course_table.sql
-- v12_course_visibility: V12__add_course_visibility_and_department.sql
+Alembic 迁移版本（整合后仅保留单次迁移，与 Flyway V1～V17 对应）：
+
+- v1_init_schema.py：完整初始化，整合原 v1～v16 为单次迁移
+  - 用户/部门/课程/章节/附件/视频/用户课程/视频进度/文件上传/分片
+  - 飞书 open_id、入职日期、累计积分（用户表）
+  - 课程评论、知识库及部门关联
+  - 试题/试卷/考试/考试部门/考试记录
+  - 证书模板/证书/用户证书
+  - 周期任务/任务部门/用户任务
+  - 系统配置、积分规则与流水、图片库
+  - 文件哈希、视频封面/播放数/点赞、ly_video_like、ly_course_video、ly_course_exam
+  - 种子数据：admin、部门、课程、config、point_rule；ly_course_video 从 ly_video 回填
+
+运行：在 lyedu-api-python 目录下执行 `python -m alembic upgrade head`。

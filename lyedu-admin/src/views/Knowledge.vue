@@ -42,11 +42,6 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="departmentIds" label="关联部门" width="180">
-          <template #default="{ row }">
-            {{ row.visibility === 0 && row.departmentIds?.length ? (row.departmentIds as number[]).map(d => departmentNameMap.get(d) ?? d).join('、') : '-' }}
-          </template>
-        </el-table-column>
         <el-table-column prop="sort" label="排序" width="80" />
         <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
