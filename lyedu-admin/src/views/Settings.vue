@@ -3,7 +3,14 @@
     <el-card>
       <template #header>
         <div class="card-header">
-          <span>系统配置</span>
+          <div class="card-header-left">
+            <span>系统配置</span>
+            <el-tooltip content="查看本模块使用说明" placement="right">
+              <el-icon class="card-help-icon" @click="openPageHelp('settings')">
+                <QuestionFilled />
+              </el-icon>
+            </el-tooltip>
+          </div>
           <div class="card-actions">
             <el-button type="default" @click="handleRestoreTheme">恢复默认</el-button>
             <el-button type="primary" @click="handleSave" :loading="saving">保存</el-button>
@@ -89,9 +96,11 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
+import { QuestionFilled } from '@element-plus/icons-vue'
 import { getConfigAll, batchSetConfig, getConfigByKey, type ConfigItem } from '@/api/config'
 import { uploadImage } from '@/api/image'
 import { applyThemeFromConfig, applyDefaultTheme, applyCustomTheme, applyThemeFromLogoUrl } from '@/utils/theme'
+import { useHelp } from '@/hooks/useHelp'
 
 const activeTab = ref('site')
 const saving = ref(false)
@@ -107,6 +116,8 @@ const form = reactive({
   player_disable_speed: '0',
   student_default_page_size: 20
 })
+
+const { openPageHelp } = useHelp()
 
 const keyToForm: Record<string, string> = {
   'site.logo': 'site_logo',
@@ -305,6 +316,22 @@ onMounted(async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+
+  .card-header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card-help-icon {
+    font-size: 16px;
+    cursor: pointer;
+    color: #909399;
+
+    &:hover {
+      color: var(--el-color-primary);
+    }
+  }
 }
 .card-actions {
   display: flex;

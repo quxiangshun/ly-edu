@@ -141,6 +141,14 @@ const routes: RouteRecordRaw[] = [
         meta: {
           title: '系统设置'
         }
+      },
+      {
+        path: 'help',
+        name: 'Help',
+        component: () => import('@/views/Help.vue'),
+        meta: {
+          title: '系统使用说明'
+        }
       }
     ]
   }

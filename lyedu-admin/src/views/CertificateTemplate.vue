@@ -3,7 +3,14 @@
     <el-card>
       <template #header>
         <div class="card-header">
-          <span>证书模板管理</span>
+          <div class="card-header-left">
+            <span>证书模板管理</span>
+            <el-tooltip content="查看本模块使用说明" placement="right">
+              <el-icon class="card-help-icon" @click="openPageHelp('certificate-template')">
+                <QuestionFilled />
+              </el-icon>
+            </el-tooltip>
+          </div>
           <el-button type="primary" @click="handleAdd">新增模板</el-button>
         </div>
       </template>
@@ -60,6 +67,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
+import { QuestionFilled } from '@element-plus/icons-vue'
 import {
   getTemplateList,
   getTemplateById,
@@ -68,6 +76,7 @@ import {
   deleteTemplate,
   type CertificateTemplate
 } from '@/api/certificateTemplate'
+import { useHelp } from '@/hooks/useHelp'
 
 const loading = ref(false)
 const templateList = ref<CertificateTemplate[]>([])
@@ -84,6 +93,8 @@ const form = reactive<Partial<CertificateTemplate> & { name: string }>({
 const formRules: FormRules = {
   name: [{ required: true, message: '请输入模板名称', trigger: 'blur' }]
 }
+
+const { openPageHelp } = useHelp()
 
 const loadList = async () => {
   loading.value = true
@@ -164,5 +175,21 @@ onMounted(() => loadList())
   display: flex;
   justify-content: space-between;
   align-items: center;
+
+  .card-header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card-help-icon {
+    font-size: 16px;
+    cursor: pointer;
+    color: #909399;
+
+    &:hover {
+      color: var(--el-color-primary);
+    }
+  }
 }
 </style>

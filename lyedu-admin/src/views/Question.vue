@@ -3,7 +3,14 @@
     <el-card>
       <template #header>
         <div class="card-header">
-          <span>试题管理</span>
+          <div class="card-header-left">
+            <span>试题管理</span>
+            <el-tooltip content="查看本模块使用说明" placement="right">
+              <el-icon class="card-help-icon" @click="openPageHelp('question')">
+                <QuestionFilled />
+              </el-icon>
+            </el-tooltip>
+          </div>
           <el-button type="primary" @click="handleAdd">新增试题</el-button>
         </div>
       </template>
@@ -97,6 +104,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
+import { QuestionFilled } from '@element-plus/icons-vue'
 import {
   getQuestionPage,
   getQuestionById,
@@ -105,6 +113,7 @@ import {
   deleteQuestion,
   type Question
 } from '@/api/question'
+import { useHelp } from '@/hooks/useHelp'
 
 const typeLabels: Record<string, string> = {
   single: '单选',
@@ -126,6 +135,8 @@ const editId = ref<number | null>(null)
 
 const searchForm = reactive({ keyword: '', type: '' })
 const pagination = reactive({ page: 1, size: 10, total: 0 })
+
+const { openPageHelp } = useHelp()
 
 const form = reactive({
   type: 'single',
@@ -248,6 +259,22 @@ onMounted(loadList)
   display: flex;
   justify-content: space-between;
   align-items: center;
+
+  .card-header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card-help-icon {
+    font-size: 16px;
+    cursor: pointer;
+    color: #909399;
+
+    &:hover {
+      color: var(--el-color-primary);
+    }
+  }
 }
 .question-container .search-form {
   margin-bottom: 16px;

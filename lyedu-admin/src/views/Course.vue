@@ -3,7 +3,14 @@
     <el-card>
       <template #header>
         <div class="card-header">
-          <span>课程管理</span>
+          <div class="card-header-left">
+            <span>课程管理</span>
+            <el-tooltip content="查看本模块使用说明" placement="right">
+              <el-icon class="card-help-icon" @click="openPageHelp('course')">
+                <QuestionFilled />
+              </el-icon>
+            </el-tooltip>
+          </div>
           <el-button type="primary" @click="handleAdd">新增课程</el-button>
         </div>
       </template>
@@ -219,6 +226,7 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
+import { QuestionFilled } from '@element-plus/icons-vue'
 import { getCoursePage, createCourse, updateCourse, deleteCourse, getCourseExam, setCourseExam, type Course } from '@/api/course'
 import { getDepartmentTree, type Department } from '@/api/department'
 import {
@@ -236,6 +244,7 @@ import {
 } from '@/api/courseAttachment'
 import { getImagePage, type ImageItem, type ImagePageResult } from '@/api/image'
 import { getExamPage, type Exam } from '@/api/exam'
+import { useHelp } from '@/hooks/useHelp'
 
 function flattenDepartments(list: Department[]): Department[] {
   const out: Department[] = []
@@ -278,6 +287,7 @@ const formRef = ref<FormInstance>()
 const dialogVisible = ref(false)
 const dialogTitle = ref('新增课程')
 const isEdit = ref(false)
+const { openPageHelp } = useHelp()
 
 const searchForm = reactive({
   keyword: ''
@@ -602,6 +612,22 @@ onMounted(async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+
+  .card-header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card-help-icon {
+    font-size: 16px;
+    cursor: pointer;
+    color: #909399;
+
+    &:hover {
+      color: var(--el-color-primary);
+    }
+  }
 }
 
 .search-form {
