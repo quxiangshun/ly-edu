@@ -88,6 +88,21 @@
             </el-form-item>
           </el-form>
         </el-tab-pane>
+        <el-tab-pane label="飞书应用" name="feishu">
+          <div class="feishu-tip">
+            <p><strong>飞书同步功能</strong>：可将飞书企业通讯录中的机构（部门）和用户同步至本系统，不存在则创建、存在则更新。支持手动触发与定时更新。</p>
+            <p>请先在飞书开放平台创建自建应用，并完成以下配置：</p>
+            <ul>
+              <li>在<strong>后端环境变量</strong>中设置：在 <code>lyedu-api-python/.env</code> 文件中添加：
+                <pre style="background: #f5f7fa; padding: 6px 8px; border-radius: 4px; font-size: 12px; margin: 4px 0; display: inline-block;">FEISHU_APP_ID=your_app_id
+FEISHU_APP_SECRET=your_app_secret</pre>
+                （如果 <code>.env</code> 不存在，可复制 <code>.env.example</code> 为 <code>.env</code> 后修改。配置后需重启后端服务。）
+              </li>
+              <li>在飞书开放平台该应用的<strong>权限管理</strong>中，申请并启用：<strong>通讯录 - 部门信息（只读）</strong>、<strong>通讯录 - 用户信息（只读）</strong>。</li>
+            </ul>
+            <p>配置完成后，可在「员工管理」页点击「从第三方同步」→「飞书」进行手动同步；定时同步可由后端配置定时任务调用 <code>POST /api/feishu/sync</code>。</p>
+          </div>
+        </el-tab-pane>
       </el-tabs>
     </el-card>
   </div>
@@ -376,4 +391,13 @@ onMounted(async () => {
   font-size: 13px;
   color: #606266;
 }
+.feishu-tip {
+  max-width: 560px;
+  font-size: 14px;
+  line-height: 1.7;
+  color: #606266;
+}
+.feishu-tip p { margin: 0 0 12px; }
+.feishu-tip ul { margin: 8px 0 12px; padding-left: 1.4em; }
+.feishu-tip code { background: #f5f7fa; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
 </style>
