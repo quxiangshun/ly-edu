@@ -16,6 +16,8 @@ class CourseRequest(BaseModel):
     is_required: Optional[int] = 0
     visibility: Optional[int] = 1  # 1-公开，0-私有
     department_ids: Optional[List[int]] = None  # 关联部门ID列表（私有时必填，可多选）
+    tag_ids: Optional[List[int]] = None
+    tagIds: Optional[List[int]] = None
 
 
 class ChapterRequest(BaseModel):
@@ -66,6 +68,8 @@ class DepartmentRequest(BaseModel):
     parentId: Optional[int] = None  # 前端可能传 camelCase
     sort: Optional[int] = 0
     status: Optional[int] = 1
+    tag_ids: Optional[List[int]] = None
+    tagIds: Optional[List[int]] = None
 
 
 # ----- User -----
@@ -84,7 +88,9 @@ class UserRequest(BaseModel):
     entryDate: Optional[str] = None  # 前端使用的驼峰命名，兼容处理
     role: Optional[str] = "student"
     status: Optional[int] = 1
-    
+    tag_ids: Optional[List[int]] = None
+    tagIds: Optional[List[int]] = None  # 前端驼峰，兼容处理
+
     @root_validator(pre=True)
     def convert_camel_case(cls, values):
         # 统一处理：如果前端传了驼峰命名，转换为下划线命名
@@ -95,6 +101,8 @@ class UserRequest(BaseModel):
                 values['entry_date'] = values.get('entryDate')
             if 'unionId' in values and 'union_id' not in values:
                 values['union_id'] = values.get('unionId')
+            if 'tagIds' in values and 'tag_ids' not in values:
+                values['tag_ids'] = values.get('tagIds')
         return values
 
 

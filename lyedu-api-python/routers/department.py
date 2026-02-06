@@ -10,6 +10,7 @@ from models.schemas import DepartmentRequest
 from services import course_department_service
 from services import course_service
 from services import department_service
+from services import tag_service
 
 router = APIRouter(prefix="/department", tags=["department"])
 
@@ -18,10 +19,19 @@ class DepartmentCoursesRequest(BaseModel):
     courseIds: Optional[List[int]] = None
 
 
+def _add_tag_ids_to_tree(nodes: list) -> None:
+    for node in nodes or []:
+        node["tagIds"] = tag_service.list_tag_ids_by_department(node.get("id") or 0)
+        if node.get("children"):
+            _add_tag_ids_to_tree(node["children"])
+
+
 @router.get("/tree")
 def tree():
     """获取部门树/列表（全部部门扁平列表）"""
-    return success(department_service.list_tree())
+    data = department_service.list_tree()
+    _add_tag_ids_to_tree(data)
+    return success(data)
 
 
 @router.get("/{id}")
@@ -29,18 +39,21 @@ def get_by_id(id: int):
     dept = department_service.get_by_id(id)
     if not dept:
         return error(404, "部门不存在")
+    dept["tagIds"] = tag_service.list_tag_ids_by_department(id)
     return success(dept)
 
 
 @router.post("")
 def create(body: DepartmentRequest):
     parent_id = body.parentId if body.parentId is not None else body.parent_id
-    department_service.save(
+    new_id = department_service.save(
         name=body.name or "",
         parent_id=parent_id,
         sort=body.sort if body.sort is not None else 0,
         status=body.status if body.status is not None else 1,
     )
+    if new_id:
+        tag_service.set_tags_for_department(new_id, body.tagIds or body.tag_ids or [])
     return success()
 
 
@@ -57,6 +70,7 @@ def update(id: int, body: DepartmentRequest):
         sort=body.sort,
         status=body.status,
     )
+    tag_service.set_tags_for_department(id, body.tagIds or body.tag_ids or [])
     return success()
 
 

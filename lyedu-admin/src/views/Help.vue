@@ -1,71 +1,119 @@
 <template>
   <div class="help-page">
-    <el-page-header content="系统使用说明" @back="$router.back()" class="help-header" />
+    <div class="help-hero">
+      <el-page-header content="" @back="$router.back()" class="help-header">
+        <template #content>
+          <span class="help-title">系统使用说明</span>
+          <span class="help-subtitle">各功能模块说明与操作指引</span>
+        </template>
+      </el-page-header>
+    </div>
 
-    <el-card class="help-card">
-      <template #header>
-        <div class="help-card-header">
-          <span>如何使用本系统？</span>
+    <div class="help-content">
+      <el-card class="help-card help-card-intro" shadow="never">
+        <template #header>
+          <div class="help-card-header">
+            <span class="help-card-icon">📖</span>
+            <span>如何使用本系统？</span>
+          </div>
+        </template>
+        <div class="help-body">
+          <p>
+            本页集中展示各个功能模块（菜单）的使用说明和主要业务逻辑。你可以通过<strong>右上角帮助图标</strong>或各页面的<strong>问号图标</strong>快速跳转到对应模块的说明位置。
+          </p>
+          <p>
+            如需详细的企业内部规范或流程图，可在后续补充到此页面，或链接到公司内部文档。
+          </p>
         </div>
-      </template>
-      <p>
-        本页用于集中展示各个功能模块（菜单）的使用说明和主要业务逻辑。你可以通过右上角的帮助图标或各页面的 Tip
-        图标快速跳转到对应模块的说明位置。
-      </p>
-      <p>
-        如需详细的企业内部规范或流程图，可以在后续按需补充到此页面，或链接到公司内部文档。
-      </p>
-    </el-card>
+      </el-card>
 
-    <el-card id="dashboard" class="help-card">
-      <template #header>
-        <div class="help-card-header">
-          <span>仪表盘（Dashboard）</span>
-        </div>
-      </template>
-      <p>概览学习情况、考试情况等关键指标，为管理员提供快速总览入口。</p>
-    </el-card>
+      <el-card id="dashboard" class="help-card" shadow="hover">
+        <template #header>
+          <div class="help-card-header">
+            <span class="help-card-icon">📊</span>
+            <span>仪表盘（Dashboard）</span>
+          </div>
+        </template>
+        <p>概览学习情况、考试情况等关键指标，为管理员提供快速总览入口。</p>
+      </el-card>
 
-    <el-card id="department" class="help-card">
-      <template #header>
-        <div class="help-card-header">
-          <span>公司架构（组织与人员 - 部门）</span>
-        </div>
-      </template>
+      <el-card id="department" class="help-card" shadow="hover">
+        <template #header>
+          <div class="help-card-header">
+            <span class="help-card-icon">🏢</span>
+            <span>公司架构（组织与人员 - 部门）</span>
+          </div>
+        </template>
       <p>用于维护公司的组织架构，支持多级部门，其他模块（课程、考试等）的可见性会依赖部门信息。</p>
-    </el-card>
+      <p>支持为部门打标签：在新增/编辑部门时可多选标签，列表中会展示该部门的标签名称。</p>
+      <p><strong>关联标签/课程</strong>：操作列有「关联标签/课程」按钮。点击后弹窗内分「标签」「课程」两个 Tab，风格一致：</p>
+      <ul>
+        <li>多选下拉：选择要关联的标签或课程（已关联项在下拉中禁用）。</li>
+        <li>点击「添加」：将本次选中的项加入已关联列表并即时保存。</li>
+        <li>下方表格：展示当前已关联的标签或课程，每行有「移除」按钮，移除后即时保存。</li>
+        <li>弹窗底部仅「关闭」，无需「保存」——增删均即时生效。</li>
+      </ul>
+      </el-card>
 
-    <el-card id="user" class="help-card">
-      <template #header>
-        <div class="help-card-header">
-          <span>员工管理</span>
-        </div>
-      </template>
+      <el-card id="user" class="help-card" shadow="hover">
+        <template #header>
+          <div class="help-card-header">
+            <span class="help-card-icon">👤</span>
+            <span>员工管理</span>
+          </div>
+        </template>
       <p>用于维护员工账号、所属部门等信息，是学习记录、考试记录等的基础。</p>
-    </el-card>
+      <p>支持为员工打标签：在新增/编辑员工时可多选标签，列表中会展示该员工的标签名称，便于分类与筛选。</p>
+      </el-card>
 
-    <el-card id="course" class="help-card">
-      <template #header>
-        <div class="help-card-header">
-          <span>课程管理</span>
-        </div>
-      </template>
+      <el-card id="tag" class="help-card" shadow="hover">
+        <template #header>
+          <div class="help-card-header">
+            <span class="help-card-icon">🏷️</span>
+            <span>标签管理（组织与人员）</span>
+          </div>
+        </template>
+      <p><strong>标签的作用</strong>：登录用户可以看到（1）自己关联的标签，以及（2）其所属部门关联的标签；与此类标签相对应、被该标签标注的视频会对该用户可见。</p>
+      <p>标签可用于对人员、机构（部门）、课程进行统一分类与标记，同一标签可同时关联多类对象。</p>
+      <ul>
+        <li><strong>标签维护</strong>：新增、编辑、删除标签，可设置标签名称与排序。</li>
+        <li><strong>关联人员/机构/课程</strong>：在标签列表中点击某标签的「关联人员/机构/课程」，弹窗与公司架构中的「关联标签/课程」风格一致，分「人员」「部门」「课程」三个 Tab，每个 Tab 均为：
+          <ul>
+            <li>多选下拉：选择要关联的人员、部门或课程（已关联项在下拉中禁用）。</li>
+            <li>点击「添加」：将本次选中的项加入已关联列表并即时保存。</li>
+            <li>下方表格：展示当前已关联项，每行有「移除」按钮，移除后即时保存。</li>
+            <li>弹窗底部仅「关闭」，无需「保存」——增删均即时生效。</li>
+          </ul>
+        </li>
+        <li><strong>在业务中使用</strong>：在员工管理、公司架构（部门）、课程管理中，新增/编辑时可多选标签；列表中会展示对应标签名称，便于查看与区分。</li>
+      </ul>
+      </el-card>
+
+      <el-card id="course" class="help-card" shadow="hover">
+        <template #header>
+          <div class="help-card-header">
+            <span class="help-card-icon">📚</span>
+            <span>课程管理</span>
+          </div>
+        </template>
       <p>
         创建和维护培训课程，可配置章节与视频、课程可见性、是否必修等。课程可以不关联考试，也可以关联一场考试用于考核（同一场考试可被多门课共用）。
       </p>
+      <p>支持为课程打标签：在新增/编辑课程时可多选标签，列表中会展示该课程的标签名称。</p>
       <ul>
         <li>课程下可维护章节与视频：章节用于组织课程结构，视频管理中上传的视频可挂载到课程章节或“未分类”。</li>
         <li>可见性支持公开/私有：私有课程需要关联部门后才对对应员工可见。</li>
         <li>在课程编辑弹窗中可选择“关联考试”，保存后学员在学员端课程详情页可直接从课程进入考试。</li>
       </ul>
-    </el-card>
+      </el-card>
 
-    <el-card id="course-comment" class="help-card">
-      <template #header>
-        <div class="help-card-header">
-          <span>评论管理</span>
-        </div>
-      </template>
+      <el-card id="course-comment" class="help-card" shadow="hover">
+        <template #header>
+          <div class="help-card-header">
+            <span class="help-card-icon">💬</span>
+            <span>评论管理</span>
+          </div>
+        </template>
       <p>
         统一管理课程评论，支持查看、删除、隐藏/显示等操作，维护良好的学习交流环境。
       </p>
@@ -89,14 +137,15 @@
           <strong>默认状态</strong>：新发表的评论默认状态为"显示"（status=1），用户端正常展示。管理员可以根据内容质量、合规性等因素调整评论的显示状态。
         </li>
       </ul>
-    </el-card>
+      </el-card>
 
-    <el-card id="video" class="help-card">
-      <template #header>
-        <div class="help-card-header">
-          <span>视频管理</span>
-        </div>
-      </template>
+      <el-card id="video" class="help-card" shadow="hover">
+        <template #header>
+          <div class="help-card-header">
+            <span class="help-card-icon">🎬</span>
+            <span>视频管理</span>
+          </div>
+        </template>
       <p>统一管理上传的视频资源，并绑定到课程中供学员学习。</p>
       <ul>
         <li>基础信息：视频标题、所属课程与章节、排序等。</li>
@@ -107,50 +156,55 @@
         <li>自动获取时长：上传完成后系统会自动读取视频时长并回填到“时长（秒）”字段，便于统计学习进度。</li>
         <li>播放/点赞统计：后台可看到每个视频的播放次数与点赞次数，用于评估内容受欢迎程度（数据来自学员端实际观看与点赞行为）。</li>
       </ul>
-    </el-card>
+      </el-card>
 
-    <el-card id="image" class="help-card">
-      <template #header>
-        <div class="help-card-header">
-          <span>图片库</span>
-        </div>
-      </template>
+      <el-card id="image" class="help-card" shadow="hover">
+        <template #header>
+          <div class="help-card-header">
+            <span class="help-card-icon">🖼️</span>
+            <span>图片库</span>
+          </div>
+        </template>
       <p>统一管理图片素材，可用于课程封面、证书模板等场景。</p>
-    </el-card>
+      </el-card>
 
-    <el-card id="knowledge" class="help-card">
-      <template #header>
-        <div class="help-card-header">
-          <span>知识库</span>
-        </div>
-      </template>
+      <el-card id="knowledge" class="help-card" shadow="hover">
+        <template #header>
+          <div class="help-card-header">
+            <span class="help-card-icon">📁</span>
+            <span>知识库</span>
+          </div>
+        </template>
       <p>用于维护文档类知识内容，可与课程一起为员工提供系统化学习资料。</p>
-    </el-card>
+      </el-card>
 
-    <el-card id="question" class="help-card">
-      <template #header>
-        <div class="help-card-header">
-          <span>试题管理</span>
-        </div>
-      </template>
+      <el-card id="question" class="help-card" shadow="hover">
+        <template #header>
+          <div class="help-card-header">
+            <span class="help-card-icon">❓</span>
+            <span>试题管理</span>
+          </div>
+        </template>
       <p>维护题库（单选、多选、判断等），供试卷和考试引用。</p>
-    </el-card>
+      </el-card>
 
-    <el-card id="paper" class="help-card">
-      <template #header>
-        <div class="help-card-header">
-          <span>试卷管理</span>
-        </div>
-      </template>
+      <el-card id="paper" class="help-card" shadow="hover">
+        <template #header>
+          <div class="help-card-header">
+            <span class="help-card-icon">📄</span>
+            <span>试卷管理</span>
+          </div>
+        </template>
       <p>基于题库组卷，配置分值、及格分等信息，为考试提供试卷模板。</p>
-    </el-card>
+      </el-card>
 
-    <el-card id="exam" class="help-card">
-      <template #header>
-        <div class="help-card-header">
-          <span>考试管理</span>
-        </div>
-      </template>
+      <el-card id="exam" class="help-card" shadow="hover">
+        <template #header>
+          <div class="help-card-header">
+            <span class="help-card-icon">📝</span>
+            <span>考试管理</span>
+          </div>
+        </template>
       <p>
         创建考试任务，可配置时间范围（固定时间或不限时）、关联试卷、可见性和状态。课程可以关联到某场考试，实现“学完后参加考试”的流程。
       </p>
@@ -167,52 +221,58 @@
         <li>作答时长统计：无论是否固定时间，学员点击开始答题时开始计时，交卷时记录本次作答耗时，便于后续统计分析。</li>
         <li>可见性与部门：与课程类似，考试支持公开/私有，私有考试仅对关联部门员工可见。</li>
       </ul>
-    </el-card>
+      </el-card>
 
-    <el-card id="task" class="help-card">
-      <template #header>
-        <div class="help-card-header">
-          <span>培训任务</span>
-        </div>
-      </template>
+      <el-card id="task" class="help-card" shadow="hover">
+        <template #header>
+          <div class="help-card-header">
+            <span class="help-card-icon">📋</span>
+            <span>培训任务</span>
+          </div>
+        </template>
       <p>配置周期性任务，将课程、考试等组合到一起，作为员工的培训计划。</p>
-    </el-card>
+      </el-card>
 
-    <el-card id="certificate-template" class="help-card">
-      <template #header>
-        <div class="help-card-header">
-          <span>证书模板</span>
-        </div>
-      </template>
+      <el-card id="certificate-template" class="help-card" shadow="hover">
+        <template #header>
+          <div class="help-card-header">
+            <span class="help-card-icon">📜</span>
+            <span>证书模板</span>
+          </div>
+        </template>
       <p>设计和管理证书的样式（背景、文案、签名等），供证书规则在发放证书时引用。</p>
-    </el-card>
+      </el-card>
 
-    <el-card id="certificate" class="help-card">
-      <template #header>
-        <div class="help-card-header">
-          <span>证书规则</span>
-        </div>
-      </template>
+      <el-card id="certificate" class="help-card" shadow="hover">
+        <template #header>
+          <div class="help-card-header">
+            <span class="help-card-icon">🎓</span>
+            <span>证书规则</span>
+          </div>
+        </template>
       <p>配置在什么条件下为学员颁发哪一种证书，例如考试通过、任务完成等。</p>
-    </el-card>
+      </el-card>
 
-    <el-card id="point-rule" class="help-card">
-      <template #header>
-        <div class="help-card-header">
-          <span>积分规则</span>
-        </div>
-      </template>
+      <el-card id="point-rule" class="help-card" shadow="hover">
+        <template #header>
+          <div class="help-card-header">
+            <span class="help-card-icon">⭐</span>
+            <span>积分规则</span>
+          </div>
+        </template>
       <p>配置完成课程、通过考试、完成任务等行为获得多少积分，用于激励员工学习。</p>
-    </el-card>
+      </el-card>
 
-    <el-card id="settings" class="help-card">
-      <template #header>
-        <div class="help-card-header">
-          <span>系统设置</span>
-        </div>
-      </template>
-      <p>配置站点标题、Logo、主题色等基础信息，以及其他全局参数。</p>
-    </el-card>
+      <el-card id="settings" class="help-card" shadow="hover">
+        <template #header>
+          <div class="help-card-header">
+            <span class="help-card-icon">⚙️</span>
+            <span>系统设置</span>
+          </div>
+        </template>
+        <p>配置站点标题、Logo、主题色等基础信息，以及其他全局参数。</p>
+      </el-card>
+    </div>
   </div>
 </template>
 
@@ -236,18 +296,122 @@ onMounted(async () => {
 
 <style scoped lang="scss">
 .help-page {
-  padding: 0 0 12px;
+  padding: 0;
+  min-height: 100%;
+  background: linear-gradient(180deg, #f8fafc 0%, #f0f2f5 100%);
+}
+
+.help-hero {
+  background: #fff;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+  padding: 16px 24px;
+  margin: 0 -1px 0 0;
 }
 
 .help-header {
-  margin-bottom: 16px;
+  margin-bottom: 0;
+
+  :deep(.el-page-header__content) {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+}
+
+.help-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+
+.help-subtitle {
+  font-size: 13px;
+  color: var(--el-text-color-secondary);
+  font-weight: 400;
+}
+
+.help-content {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 24px 20px 32px;
 }
 
 .help-card {
-  margin-bottom: 16px;
+  margin-bottom: 20px;
+  border-radius: 12px;
+  border: 1px solid var(--el-border-color-lighter);
+  overflow: hidden;
 
-  .help-card-header {
-    font-weight: 600;
+  :deep(.el-card__header) {
+    padding: 16px 20px;
+    font-size: 15px;
+    border-bottom: 1px solid var(--el-border-color-lighter);
+    background: #fafbfc;
+  }
+
+  :deep(.el-card__body) {
+    padding: 20px 24px;
+    line-height: 1.72;
+    color: var(--el-text-color-regular);
+
+    p {
+      margin: 0 0 12px;
+      font-size: 14px;
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+
+    ul {
+      margin: 0 0 12px;
+      padding-left: 1.4em;
+
+      ul {
+        margin: 8px 0 0;
+        padding-left: 1.2em;
+      }
+    }
+
+    li {
+      margin-bottom: 6px;
+      font-size: 14px;
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+
+    strong {
+      color: var(--el-text-color-primary);
+      font-weight: 600;
+    }
+  }
+}
+
+.help-card-intro {
+  border-left: 4px solid var(--el-color-primary);
+  :deep(.el-card__header) {
+    background: linear-gradient(135deg, rgba(var(--el-color-primary-rgb), 0.06) 0%, #fafbfc 100%);
+  }
+}
+
+.help-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+
+.help-card-icon {
+  font-size: 1.2em;
+  line-height: 1;
+}
+
+.help-body {
+  p:last-child {
+    margin-bottom: 0;
   }
 }
 </style>

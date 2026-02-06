@@ -13,6 +13,8 @@ export interface Course {
   visibility?: number
   /** 关联部门ID列表（私有时必填，可多选） */
   departmentIds?: number[]
+  /** 标签ID列表 */
+  tagIds?: number[]
 }
 
 export interface PageResult<T> {

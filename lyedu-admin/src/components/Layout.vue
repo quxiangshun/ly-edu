@@ -24,6 +24,7 @@
           </template>
           <el-menu-item index="/department">公司架构</el-menu-item>
           <el-menu-item index="/user">员工管理</el-menu-item>
+          <el-menu-item index="/tag">标签管理</el-menu-item>
         </el-sub-menu>
         <el-sub-menu index="course-resource">
           <template #title>
@@ -373,6 +374,13 @@ onMounted(() => {
   :deep(.dashboard-container) {
     overflow-y: auto;
     height: 100%;
+  }
+
+  // 帮助页（系统使用说明）允许整页滚动
+  :deep(.help-page) {
+    height: 100%;
+    min-height: 0;
+    overflow-y: auto;
   }
 
   // 非仪表盘页面：限制高度，只允许内容滚动

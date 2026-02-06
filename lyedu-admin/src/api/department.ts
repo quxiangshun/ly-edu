@@ -7,6 +7,8 @@ export interface Department {
   sort: number
   status: number
   children?: Department[]
+  /** 标签ID列表 */
+  tagIds?: number[]
 }
 
 export const getDepartmentTree = () => {

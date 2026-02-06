@@ -215,7 +215,7 @@ def save(
         )
     if last_id and course_department_service.table_exists() and department_ids:
         course_department_service.set_course_departments(last_id, department_ids)
-    return 0
+    return last_id or 0
 
 
 def update(

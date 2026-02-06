@@ -41,6 +41,11 @@
             </el-tag>
           </template>
         </el-table-column>
+        <el-table-column prop="tagIds" label="标签" width="160">
+          <template #default="{ row }">
+            {{ (row.tagIds || []).map((id: number) => tagNameMap.get(id)).filter(Boolean).join('、') || '-' }}
+          </template>
+        </el-table-column>
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
             <el-tag :type="row.status === 1 ? 'success' : 'info'">
@@ -192,6 +197,11 @@
             style="width: 100%"
           />
         </el-form-item>
+        <el-form-item label="标签" prop="tagIds">
+          <el-select v-model="form.tagIds" multiple filterable placeholder="选择标签" style="width: 100%" clearable>
+            <el-option v-for="t in tagList" :key="t.id" :label="t.name" :value="t.id" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="关联考试">
           <el-select
             v-model="selectedExamId"
@@ -224,6 +234,7 @@ import type { FormInstance, FormRules } from 'element-plus'
 import { QuestionFilled } from '@element-plus/icons-vue'
 import { getCoursePage, createCourse, updateCourse, deleteCourse, getCourseExam, setCourseExam, type Course } from '@/api/course'
 import { getDepartmentTree, type Department } from '@/api/department'
+import { getTagList, type Tag } from '@/api/tag'
 import {
   getChaptersByCourseId,
   createChapter,
@@ -264,6 +275,12 @@ const examOptionsLoading = ref(false)
 const selectedExamId = ref<number | null>(null)
 
 const departmentTreeOptions = computed(() => departmentTree.value || [])
+const tagList = ref<Tag[]>([])
+const tagNameMap = computed(() => {
+  const map = new Map<number, string>()
+  ;(tagList.value || []).forEach((t) => map.set(t.id, t.name))
+  return map
+})
 
 const departmentNameMap = computed(() => {
   const flat = flattenDepartments(departmentTree.value || [])
@@ -305,7 +322,8 @@ const form = reactive<Partial<Course>>({
   sort: 0,
   isRequired: 0,
   visibility: 1,
-  departmentIds: []
+  departmentIds: [],
+  tagIds: []
 })
 
 const rules: FormRules = {
@@ -411,7 +429,8 @@ const handleAdd = () => {
     sort: 0,
     isRequired: 0,
     visibility: 1,
-    departmentIds: []
+    departmentIds: [],
+    tagIds: []
   })
   selectedExamId.value = null
   dialogVisible.value = true
@@ -591,12 +610,22 @@ const handlePageChange = () => {
   loadData()
 }
 
+const loadTags = async () => {
+  try {
+    const list = await getTagList()
+    tagList.value = (list as unknown as { data?: Tag[] })?.data ?? (Array.isArray(list) ? list : [])
+  } catch {
+    tagList.value = []
+  }
+}
+
 onMounted(async () => {
   try {
     departmentTree.value = await getDepartmentTree()
   } catch {
     departmentTree.value = []
   }
+  loadTags()
   loadData()
 })
 </script>

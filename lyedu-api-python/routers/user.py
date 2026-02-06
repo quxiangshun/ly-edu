@@ -10,6 +10,7 @@ from openpyxl import load_workbook
 from common.result import ResultCode, error, error_result, success
 from models.schemas import UserRequest, ResetPasswordRequest
 from services import user_service
+from services import tag_service
 from util.jwt_util import parse_authorization
 
 router = APIRouter(prefix="/user", tags=["user"])
@@ -41,16 +42,17 @@ def page(
     role: Optional[str] = None,
     status: Optional[int] = None,
 ):
-    return success(
-        user_service.page(
-            page_num=page,
-            size=size,
-            keyword=keyword,
-            department_id=departmentId,
-            role=role,
-            status=status,
-        )
+    result = user_service.page(
+        page_num=page,
+        size=size,
+        keyword=keyword,
+        department_id=departmentId,
+        role=role,
+        status=status,
     )
+    for record in result.get("records") or []:
+        record["tagIds"] = tag_service.list_tag_ids_by_user(record.get("id") or 0)
+    return success(result)
 
 
 @router.get("/{id}")
@@ -59,6 +61,7 @@ def get_by_id(id: int):
     if not user:
         return error(404, "用户不存在")
     user.pop("password", None)
+    user["tagIds"] = tag_service.list_tag_ids_by_user(id)
     return success(user)
 
 
@@ -88,6 +91,9 @@ def create(body: UserRequest):
         role=body.role or "student",
         status=body.status if body.status is not None else 1,
     )
+    user = user_service.find_by_username(body.username.strip())
+    if user:
+        tag_service.set_tags_for_user(user["id"], body.tagIds or body.tag_ids or [])
     return success()
 
 
@@ -119,6 +125,7 @@ def update(id: int, body: UserRequest):
         role=body.role,
         status=body.status,
     )
+    tag_service.set_tags_for_user(id, body.tagIds or body.tag_ids or [])
     return success()
 
 

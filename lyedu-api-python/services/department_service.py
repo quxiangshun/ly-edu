@@ -63,12 +63,13 @@ def save(
     parent_id: Optional[int] = None,
     sort: int = 0,
     status: int = 1,
-) -> None:
+) -> Optional[int]:
     pid = parent_id if parent_id is not None else 0
-    db.execute(
+    new_id = db.execute_insert(
         "INSERT INTO ly_department (name, parent_id, sort, status) VALUES (%s, %s, %s, %s)",
         (name or "", pid, sort, status),
     )
+    return new_id if new_id else None
 
 
 def update(
