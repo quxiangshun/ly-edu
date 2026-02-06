@@ -25,6 +25,11 @@
         :max-height="tableMaxHeight"
       >
         <el-table-column prop="name" label="部门名称" min-width="200" />
+        <el-table-column prop="tagIds" label="标签" width="160">
+          <template #default="{ row }">
+            {{ (row.tagIds || []).map((id: number) => tagNameMap.get(id)).filter(Boolean).join('、') || '-' }}
+          </template>
+        </el-table-column>
         <el-table-column prop="sort" label="排序" width="100" />
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
@@ -36,43 +41,77 @@
         <el-table-column label="操作" width="280" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link @click="handleEdit(row)">编辑</el-button>
-            <el-button type="primary" link @click="handleCourses(row)">关联课程</el-button>
+            <el-button type="primary" link @click="handleCourses(row)">关联标签/课程</el-button>
             <el-button type="danger" link @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
     </el-card>
 
-    <!-- 关联课程对话框 -->
-    <el-dialog v-model="courseDialogVisible" :title="`关联课程 - ${currentDept?.name || ''}`" width="640px">
-      <div style="margin-bottom: 12px">
-        <el-select
-          v-model="courseSelectIds"
-          multiple
-          filterable
-          placeholder="选择课程后点击添加"
-          style="width: 100%"
-          value-key="id"
-        >
-          <el-option
-            v-for="c in allCourseOptions"
-            :key="c.id"
-            :label="c.title"
-            :value="c.id"
-            :disabled="linkedCourseIds.has(c.id)"
-          />
-        </el-select>
-        <el-button type="primary" size="small" style="margin-left: 8px; margin-top: 8px" @click="addSelectedCourses">添加</el-button>
-      </div>
-      <el-table :data="linkedCourses" border size="small" max-height="280">
-        <el-table-column prop="id" label="ID" width="70" />
-        <el-table-column prop="title" label="课程名称" />
-        <el-table-column label="操作" width="80">
-          <template #default="{ row }">
-            <el-button type="danger" link size="small" @click="removeCourse(row)">移除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+    <!-- 关联标签/课程对话框 -->
+    <el-dialog v-model="courseDialogVisible" :title="`关联标签/课程 - ${currentDept?.name || ''}`" width="640px">
+      <el-tabs v-model="linkTab">
+        <el-tab-pane label="标签" name="tag">
+          <div style="margin-bottom: 12px">
+            <el-select
+              v-model="tagSelectIds"
+              multiple
+              filterable
+              placeholder="选择标签后点击添加"
+              style="width: 100%"
+              value-key="id"
+            >
+              <el-option
+                v-for="t in tagList"
+                :key="t.id"
+                :label="t.name"
+                :value="t.id"
+                :disabled="linkedTagIdsSet.has(t.id)"
+              />
+            </el-select>
+            <el-button type="primary" size="small" style="margin-left: 8px; margin-top: 8px" @click="addSelectedTags">添加</el-button>
+          </div>
+          <el-table :data="linkedTagsDisplay" border size="small" max-height="280">
+            <el-table-column prop="id" label="ID" width="70" />
+            <el-table-column prop="name" label="标签名称" />
+            <el-table-column label="操作" width="80">
+              <template #default="{ row }">
+                <el-button type="danger" link size="small" @click="removeTag(row)">移除</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-tab-pane>
+        <el-tab-pane label="课程" name="course">
+          <div style="margin-bottom: 12px">
+            <el-select
+              v-model="courseSelectIds"
+              multiple
+              filterable
+              placeholder="选择课程后点击添加"
+              style="width: 100%"
+              value-key="id"
+            >
+              <el-option
+                v-for="c in allCourseOptions"
+                :key="c.id"
+                :label="c.title"
+                :value="c.id"
+                :disabled="linkedCourseIds.has(c.id)"
+              />
+            </el-select>
+            <el-button type="primary" size="small" style="margin-left: 8px; margin-top: 8px" @click="addSelectedCourses">添加</el-button>
+          </div>
+          <el-table :data="linkedCourses" border size="small" max-height="280">
+            <el-table-column prop="id" label="ID" width="70" />
+            <el-table-column prop="title" label="课程名称" />
+            <el-table-column label="操作" width="80">
+              <template #default="{ row }">
+                <el-button type="danger" link size="small" @click="removeCourse(row)">移除</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-tab-pane>
+      </el-tabs>
       <template #footer>
         <el-button @click="courseDialogVisible = false">关闭</el-button>
       </template>
@@ -96,6 +135,11 @@
             style="width: 100%"
             :render-after-expand="false"
           />
+        </el-form-item>
+        <el-form-item label="标签" prop="tagIds">
+          <el-select v-model="form.tagIds" multiple filterable placeholder="选择标签" style="width: 100%" clearable>
+            <el-option v-for="t in tagList" :key="t.id" :label="t.name" :value="t.id" />
+          </el-select>
         </el-form-item>
         <el-form-item label="状态" prop="status">
           <el-radio-group v-model="form.status">
@@ -122,15 +166,23 @@ import type { FormInstance, FormRules } from 'element-plus'
 import { QuestionFilled } from '@element-plus/icons-vue'
 import { getDepartmentTree, createDepartment, updateDepartment, deleteDepartment, getDepartmentCourses, addCoursesToDepartment, removeCourseFromDepartment, type Department } from '@/api/department'
 import { getCoursePage, type Course } from '@/api/course'
+import { getTagList, type Tag } from '@/api/tag'
 import { useHelp } from '@/hooks/useHelp'
 import { useTableMaxHeight } from '@/hooks/useTableHeight'
 
 const loading = ref(false)
 const courseDialogVisible = ref(false)
+const linkTab = ref<'tag' | 'course'>('tag')
 const currentDept = ref<Department | null>(null)
 const linkedCourses = ref<Course[]>([])
 const allCourseOptions = ref<Course[]>([])
 const courseSelectIds = ref<number[]>([])
+const linkedTagIds = ref<number[]>([])
+const tagSelectIds = ref<number[]>([])
+const linkedTagIdsSet = computed(() => new Set(linkedTagIds.value))
+const linkedTagsDisplay = computed(() =>
+  linkedTagIds.value.map((id) => ({ id, name: tagNameMap.value.get(id) ?? '' })).filter((t) => t.name)
+)
 const departmentList = ref<Department[]>([])
 const formRef = ref<FormInstance>()
 const dialogVisible = ref(false)
@@ -139,9 +191,17 @@ const isEdit = ref(false)
 const tableMaxHeight = useTableMaxHeight()
 const { openPageHelp } = useHelp()
 
+const tagList = ref<Tag[]>([])
+const tagNameMap = computed(() => {
+  const map = new Map<number, string>()
+  ;(tagList.value || []).forEach((t) => map.set(t.id, t.name))
+  return map
+})
+
 const form = reactive<Partial<Department>>({
   name: '',
   parentId: 0,
+  tagIds: [] as number[],
   status: 1,
   sort: 0
 })
@@ -187,6 +247,7 @@ const handleAdd = () => {
   Object.assign(form, {
     name: '',
     parentId: 0,
+    tagIds: [] as number[],
     status: 1,
     sort: 0
   })
@@ -196,7 +257,7 @@ const handleAdd = () => {
 const handleEdit = (row: Department) => {
   isEdit.value = true
   dialogTitle.value = '编辑部门'
-  Object.assign(form, { ...row, parentId: row.parentId ?? 0 })
+  Object.assign(form, { ...row, parentId: row.parentId ?? 0, tagIds: row.tagIds ?? [] })
   dialogVisible.value = true
 }
 
@@ -217,8 +278,11 @@ const linkedCourseIds = computed(() => new Set(linkedCourses.value.map((c) => c.
 
 const handleCourses = async (row: Department) => {
   currentDept.value = row
-  courseDialogVisible.value = true
+  linkedTagIds.value = row.tagIds ?? []
   courseSelectIds.value = []
+  tagSelectIds.value = []
+  linkTab.value = 'tag'
+  courseDialogVisible.value = true
   try {
     const list = await getDepartmentCourses(row.id)
     linkedCourses.value = Array.isArray(list) ? list : []
@@ -228,6 +292,33 @@ const handleCourses = async (row: Department) => {
     ElMessage.error('加载失败')
     linkedCourses.value = []
     allCourseOptions.value = []
+  }
+}
+
+const addSelectedTags = async () => {
+  if (!currentDept.value || tagSelectIds.value.length === 0) return
+  const merged = [...new Set([...linkedTagIds.value, ...tagSelectIds.value])]
+  try {
+    await updateDepartment(currentDept.value.id, { tagIds: merged })
+    ElMessage.success('添加成功')
+    linkedTagIds.value = merged
+    tagSelectIds.value = []
+    loadData()
+  } catch (e) {
+    ElMessage.error('添加失败')
+  }
+}
+
+const removeTag = async (row: { id: number }) => {
+  if (!currentDept.value) return
+  const next = linkedTagIds.value.filter((id) => id !== row.id)
+  try {
+    await updateDepartment(currentDept.value.id, { tagIds: next })
+    ElMessage.success('已移除')
+    linkedTagIds.value = next
+    loadData()
+  } catch (e) {
+    ElMessage.error('移除失败')
   }
 }
 
@@ -273,8 +364,18 @@ const handleSubmit = async () => {
   }
 }
 
+const loadTags = async () => {
+  try {
+    const list = await getTagList()
+    tagList.value = (list as unknown as { data?: Tag[] })?.data ?? (Array.isArray(list) ? list : [])
+  } catch (_e) {
+    // ignore
+  }
+}
+
 onMounted(() => {
   loadData()
+  loadTags()
 })
 </script>
 

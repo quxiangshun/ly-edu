@@ -4,6 +4,7 @@ const routeToSectionMap: Record<string, string> = {
   '/dashboard': 'dashboard',
   '/department': 'department',
   '/user': 'user',
+  '/tag': 'tag',
   '/course': 'course',
   '/course-comment': 'course-comment',
   '/video': 'video',

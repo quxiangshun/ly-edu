@@ -47,6 +47,14 @@ const routes: RouteRecordRaw[] = [
         }
       },
       {
+        path: 'tag',
+        name: 'Tag',
+        component: () => import('@/views/Tag.vue'),
+        meta: {
+          title: '标签管理'
+        }
+      },
+      {
         path: 'user-learning',
         name: 'UserLearning',
         component: () => import('@/views/UserLearning.vue'),

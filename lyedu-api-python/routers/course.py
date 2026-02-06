@@ -15,6 +15,7 @@ from services import user_course_service
 from services import course_attachment_service
 from services import course_comment_service
 from services import course_exam_service
+from services import tag_service
 from util.jwt_util import parse_authorization
 
 
@@ -44,9 +45,12 @@ def page(
     authorization: Optional[str] = Header(None, alias="Authorization"),
 ):
     user_id = _user_id(authorization)
-    return success(
-        course_service.page(page_num=page, size=size, keyword=keyword, category_id=categoryId, user_id=user_id)
+    result = course_service.page(
+        page_num=page, size=size, keyword=keyword, category_id=categoryId, user_id=user_id
     )
+    for record in result.get("records") or []:
+        record["tagIds"] = tag_service.list_tag_ids_by_course(record.get("id") or 0)
+    return success(result)
 
 
 @router.get("/recommended")
@@ -131,6 +135,7 @@ def get_by_id(id: int, authorization: Optional[str] = Header(None, alias="Author
         if course_exam_service.table_exists():
             exam_id = course_exam_service.get_exam_id_by_course(id)
             detail["examId"] = exam_id
+        course["tagIds"] = tag_service.list_tag_ids_by_course(id)
         if user_id and videos:
             try:
                 video_ids = [v["id"] for v in videos]
@@ -167,7 +172,7 @@ def get_by_id(id: int, authorization: Optional[str] = Header(None, alias="Author
 
 @router.post("")
 def create(body: CourseRequest):
-    course_service.save(
+    course_id = course_service.save(
         title=body.title,
         cover=body.cover,
         description=body.description,
@@ -178,6 +183,8 @@ def create(body: CourseRequest):
         visibility=body.visibility if body.visibility is not None else 1,
         department_ids=body.department_ids,
     )
+    if course_id:
+        tag_service.set_tags_for_course(course_id, body.tagIds or body.tag_ids or [])
     return success()
 
 
@@ -198,6 +205,7 @@ def update(id: int, body: CourseRequest):
         visibility=body.visibility if body.visibility is not None else 1,
         department_ids=body.department_ids,
     )
+    tag_service.set_tags_for_course(id, body.tagIds or body.tag_ids or [])
     return success()
 
 

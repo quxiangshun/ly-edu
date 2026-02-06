@@ -37,6 +37,8 @@ export interface User {
   departmentId?: number
   role: string
   status: number
+  /** 标签ID列表 */
+  tagIds?: number[]
 }
 
 export interface PageResult<T> {

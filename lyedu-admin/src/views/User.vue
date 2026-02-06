@@ -60,6 +60,11 @@
             {{ row.departmentId ? (departmentNameMap.get(row.departmentId) || row.departmentId) : '-' }}
           </template>
         </el-table-column>
+        <el-table-column prop="tagIds" label="标签" width="160">
+          <template #default="{ row }">
+            {{ (row.tagIds || []).map((id: number) => tagNameMap.get(id)).filter(Boolean).join('、') || '-' }}
+          </template>
+        </el-table-column>
         <el-table-column prop="role" label="角色" width="100">
           <template #default="{ row }">
             <el-tag :type="row.role === 'admin' ? 'danger' : row.role === 'teacher' ? 'warning' : 'success'">
@@ -130,6 +135,11 @@
         </el-form-item>
         <el-form-item label="入职日期" prop="entryDate">
           <el-date-picker v-model="form.entryDate" type="date" value-format="YYYY-MM-DD" placeholder="新员工任务可见性" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="标签" prop="tagIds">
+          <el-select v-model="form.tagIds" multiple filterable placeholder="选择标签" style="width: 100%" clearable>
+            <el-option v-for="t in tagList" :key="t.id" :label="t.name" :value="t.id" />
+          </el-select>
         </el-form-item>
         <el-form-item label="角色" prop="role">
           <el-select v-model="form.role" placeholder="请选择角色">
@@ -234,6 +244,7 @@ import {
   type User
 } from '@/api/user'
 import { getDepartmentTree, type Department } from '@/api/department'
+import { getTagList, type Tag } from '@/api/tag'
 import { useHelp } from '@/hooks/useHelp'
 import { useTableMaxHeight } from '@/hooks/useTableHeight'
 
@@ -268,6 +279,12 @@ const { openPageHelp } = useHelp()
 
 const departmentTree = ref<Department[]>([])
 const departmentTreeOptions = computed(() => departmentTree.value || [])
+const tagList = ref<Tag[]>([])
+const tagNameMap = computed(() => {
+  const map = new Map<number, string>()
+  ;(tagList.value || []).forEach((t) => map.set(t.id, t.name))
+  return map
+})
 
 function flattenDepartments(list: Department[]): Department[] {
   const out: Department[] = []
@@ -296,6 +313,7 @@ const form = reactive<Partial<User>>({
   mobile: '',
   avatar: '',
   departmentId: undefined,
+  tagIds: [],
   role: 'student',
   status: 1
 })
@@ -342,6 +360,15 @@ const loadData = async () => {
   }
 }
 
+const loadTags = async () => {
+  try {
+    const list = await getTagList()
+    tagList.value = (list as unknown as { data?: Tag[] })?.data ?? (Array.isArray(list) ? list : [])
+  } catch (_e) {
+    // ignore
+  }
+}
+
 const loadDepartments = async () => {
   try {
     const list = await getDepartmentTree()
@@ -383,6 +410,7 @@ const handleAdd = () => {
     mobile: '',
     avatar: '',
     departmentId: undefined,
+    tagIds: [] as number[],
     role: 'student',
     status: 1
   })
@@ -400,6 +428,7 @@ const handleEdit = (row: User) => {
     avatar: row.avatar,
     departmentId: row.departmentId,
     entryDate: row.entryDate ?? '',
+    tagIds: row.tagIds ?? [],
     role: row.role,
     status: row.status
   })
@@ -500,6 +529,7 @@ const handlePasswordSubmit = async () => {
 onMounted(() => {
   loadData()
   loadDepartments()
+  loadTags()
 })
 </script>
 
