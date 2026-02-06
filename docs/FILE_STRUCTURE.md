@@ -26,18 +26,8 @@
 | 文件/目录 | 作用 |
 |-----------|------|
 | **db/README.md** | 数据库迁移说明（Flyway 与 Alembic 版本对应） |
-| **db/flyway/** | Java 端使用的 Flyway SQL 脚本（按版本顺序执行） |
-| **db/flyway/V1__init_schema.sql** | 初始化表结构（用户、部门、课程等） |
-| **db/flyway/V2__add_feishu_open_id.sql** | 用户表增加飞书 open_id |
-| **db/flyway/V3__add_course_comment.sql** | 课程评论表 |
-| **db/flyway/V4__add_knowledge.sql** | 知识库相关表 |
-| **db/flyway/V5__add_exam.sql** | 考试、试卷、试题表 |
-| **db/flyway/V6__add_certificate.sql** | 证书与模板表 |
-| **db/flyway/V7__add_task.sql** | 培训任务表 |
-| **db/flyway/V8__add_entry_date_and_config.sql** | 用户入职日期、系统配置表 |
-| **db/flyway/V9__add_point.sql** | 积分规则与流水表 |
-| **db/flyway/V10__add_image.sql** | 图片库表 |
-| **db/flyway/V11__add_player_restrict_config.sql** | 播放器防拖拽/禁倍速配置 |
+| **db/flyway/** | Java 端使用的 Flyway SQL 脚本 |
+| **db/flyway/V1__init_schema.sql** | 完整初始化（整合原 V1～V18：用户/部门/课程/视频/考试/证书/任务/知识库/积分/配置等） |
 | **db/alembic/** | Python 端使用的 Alembic 迁移（与 Flyway 版本对应） |
 | **db/alembic/env.py** | Alembic 环境：从 lyedu-api-python/config 读库连接，执行迁移 |
 | **db/alembic/script.py.mako** | 生成新迁移脚本的模板 |

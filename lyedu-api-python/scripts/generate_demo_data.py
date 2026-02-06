@@ -69,11 +69,11 @@ def main():
             ids["file_hash"].append(lid)
         print("  ly_file_hash: 15")
 
-        # 6. ly_user（兼容有无 entry_date、open_id、total_points）
+        # 6. ly_user（兼容有无 entry_date、feishu_open_id、union_id、total_points）
         ids["user"] = []
         sql_full = (
-            "INSERT INTO ly_user (username, password, real_name, email, mobile, avatar, open_id, department_id, entry_date, total_points, role, status) "
-            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+            "INSERT INTO ly_user (username, password, real_name, email, mobile, avatar, feishu_open_id, union_id, department_id, entry_date, total_points, role, status) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
         )
         args_full = [
             (
@@ -82,6 +82,7 @@ def main():
                 f"演示用户{i}",
                 f"demo{i}@lyedu.com",
                 f"1380000{i:04d}",
+                None,
                 None,
                 None,
                 ids["department"][(i - 1) % N],
@@ -114,8 +115,8 @@ def main():
                 lid = insert_one(cur, sql_full, args_full[i])
                 ids["user"].append(lid)
         except Exception as e:
-            if "1054" in str(e) and ("entry_date" in str(e) or "open_id" in str(e) or "total_points" in str(e)):
-                print(f"\n警告: 数据库缺少字段 entry_date/open_id/total_points，使用简化版本插入。")
+            if "1054" in str(e) and ("entry_date" in str(e) or "feishu_open_id" in str(e) or "union_id" in str(e) or "total_points" in str(e)):
+                print(f"\n警告: 数据库缺少字段 entry_date/feishu_open_id/union_id/total_points，使用简化版本插入。")
                 print("建议: 先执行 'python -m alembic upgrade head' 确保表结构完整后再运行此脚本。")
                 ids["user"] = []
                 for i in range(N):
