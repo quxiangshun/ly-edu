@@ -1,12 +1,117 @@
 # -*- coding: utf-8 -*-
 """飞书开放平台 API（与 Java FeishuApiService 一致；扩展：后续可加 dingtalk_api / wecom_api）"""
-from typing import Any, Optional
+from typing import Any, List, Optional
 from urllib.parse import quote
 
 import config
 
 FEISHU_BASE = "https://open.feishu.cn/open-apis"
 SCOPE = "contact:user.base:readonly"
+
+# 通讯录同步需要：contact:department:readonly_as_app, contact:user:readonly_as_app
+# 在飞书开放平台应用权限中勾选「通讯录-部门信息」「通讯录-用户信息」只读
+
+
+def _get_tenant_access_token() -> Optional[str]:
+    """获取 tenant_access_token（用于通讯录等需要企业维度的接口）"""
+    if not (config.FEISHU_APP_ID and config.FEISHU_APP_SECRET):
+        return None
+    try:
+        import requests
+        url = f"{FEISHU_BASE}/auth/v3/tenant_access_token/internal"
+        resp = requests.post(
+            url,
+            json={"app_id": config.FEISHU_APP_ID, "app_secret": config.FEISHU_APP_SECRET},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        if data.get("code") == 0:
+            return (data or {}).get("tenant_access_token")
+    except Exception:
+        pass
+    return None
+
+
+def list_department_children(
+    department_id: str,
+    page_token: Optional[str] = None,
+    page_size: int = 50,
+) -> dict:
+    """
+    获取子部门列表。department_id=0 表示根部门。
+    返回 {"items": [{"department_id":"od-xxx","name":"xxx","parent_department_id":"0","order":"0"}, ...], "page_token": "xxx", "has_more": bool}
+    """
+    token = _get_tenant_access_token()
+    if not token:
+        return {"items": [], "page_token": "", "has_more": False}
+    try:
+        import requests
+        url = f"{FEISHU_BASE}/contact/v3/departments/{department_id}/children"
+        params = {"page_size": page_size}
+        if page_token:
+            params["page_token"] = page_token
+        resp = requests.get(
+            url,
+            headers={"Authorization": f"Bearer {token}"},
+            params=params,
+            timeout=15,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        if data.get("code") != 0:
+            return {"items": [], "page_token": "", "has_more": False}
+        d = data.get("data") or {}
+        return {
+            "items": d.get("items") or [],
+            "page_token": d.get("page_token") or "",
+            "has_more": bool(d.get("has_more")),
+        }
+    except Exception:
+        return {"items": [], "page_token": "", "has_more": False}
+
+
+def list_users_by_department(
+    department_id: str,
+    page_token: Optional[str] = None,
+    page_size: int = 50,
+    fetch_child: bool = True,
+) -> dict:
+    """
+    获取部门下用户列表（可含子部门）。department_id=0 表示全量。
+    返回 {"items": [{"user_id":"ou-xxx","open_id":"xxx","name":"xxx","mobile":"","email":"", "department_ids":["od-xxx"]}, ...], "page_token": "xxx", "has_more": bool}
+    """
+    token = _get_tenant_access_token()
+    if not token:
+        return {"items": [], "page_token": "", "has_more": False}
+    try:
+        import requests
+        url = f"{FEISHU_BASE}/contact/v3/users"
+        params = {
+            "department_id": department_id,
+            "page_size": page_size,
+            "fetch_child": str(fetch_child).lower(),
+        }
+        if page_token:
+            params["page_token"] = page_token
+        resp = requests.get(
+            url,
+            headers={"Authorization": f"Bearer {token}"},
+            params=params,
+            timeout=15,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        if data.get("code") != 0:
+            return {"items": [], "page_token": "", "has_more": False}
+        d = data.get("data") or {}
+        return {
+            "items": d.get("items") or [],
+            "page_token": d.get("page_token") or "",
+            "has_more": bool(d.get("has_more")),
+        }
+    except Exception:
+        return {"items": [], "page_token": "", "has_more": False}
 
 
 def build_authorize_url(redirect_uri: str, state: Optional[str] = None) -> str:

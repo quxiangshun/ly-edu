@@ -6,25 +6,46 @@ import db
 
 
 def _row_to_dept(row: dict) -> dict:
-    """转为前端需要的 camelCase：id, name, parentId, sort, status"""
+    """转为前端需要的 camelCase：id, name, parentId, sort, status, feishuDepartmentId"""
     if not row:
         return {}
-    return {
+    out = {
         "id": row["id"],
         "name": row.get("name"),
         "parentId": row.get("parent_id") if row.get("parent_id") is not None else 0,
         "sort": row.get("sort", 0),
         "status": row.get("status", 1),
     }
+    if row.get("feishu_department_id") is not None:
+        out["feishuDepartmentId"] = row.get("feishu_department_id")
+    return out
 
 
 def list_all() -> List[dict]:
-    """查询所有部门（未删除），按 sort、id 排序"""
-    rows = db.query_all(
-        "SELECT id, name, parent_id, sort, status, create_time, update_time, deleted "
-        "FROM ly_department WHERE deleted = 0 ORDER BY sort ASC, id ASC"
-    )
+    """查询所有部门（未删除），按 sort、id 排序（不含 feishu_department_id，以兼容未执行 v3 迁移的环境）"""
+    try:
+        rows = db.query_all(
+            "SELECT id, name, parent_id, sort, status, feishu_department_id, create_time, update_time, deleted "
+            "FROM ly_department WHERE deleted = 0 ORDER BY sort ASC, id ASC"
+        )
+    except Exception:
+        rows = db.query_all(
+            "SELECT id, name, parent_id, sort, status, create_time, update_time, deleted "
+            "FROM ly_department WHERE deleted = 0 ORDER BY sort ASC, id ASC"
+        )
     return [_row_to_dept(r) for r in rows]
+
+
+def get_by_feishu_department_id(feishu_department_id: str) -> Optional[dict]:
+    """根据飞书部门ID查询（用于通讯录同步）"""
+    if not (feishu_department_id or str(feishu_department_id).strip()):
+        return None
+    row = db.query_one(
+        "SELECT id, name, parent_id, sort, status, feishu_department_id FROM ly_department "
+        "WHERE feishu_department_id = %s AND deleted = 0 LIMIT 1",
+        (str(feishu_department_id).strip(),),
+    )
+    return _row_to_dept(row) if row else None
 
 
 def _build_tree(dept_list: List[dict], parent_id: int) -> List[dict]:
@@ -50,11 +71,18 @@ def list_tree() -> List[dict]:
 
 
 def get_by_id(dept_id: int) -> Optional[dict]:
-    row = db.query_one(
-        "SELECT id, name, parent_id, sort, status, create_time, update_time, deleted "
-        "FROM ly_department WHERE id = %s AND deleted = 0",
-        (dept_id,),
-    )
+    try:
+        row = db.query_one(
+            "SELECT id, name, parent_id, sort, status, feishu_department_id, create_time, update_time, deleted "
+            "FROM ly_department WHERE id = %s AND deleted = 0",
+            (dept_id,),
+        )
+    except Exception:
+        row = db.query_one(
+            "SELECT id, name, parent_id, sort, status, create_time, update_time, deleted "
+            "FROM ly_department WHERE id = %s AND deleted = 0",
+            (dept_id,),
+        )
     return _row_to_dept(row) if row else None
 
 
@@ -63,12 +91,19 @@ def save(
     parent_id: Optional[int] = None,
     sort: int = 0,
     status: int = 1,
+    feishu_department_id: Optional[str] = None,
 ) -> Optional[int]:
     pid = parent_id if parent_id is not None else 0
-    new_id = db.execute_insert(
-        "INSERT INTO ly_department (name, parent_id, sort, status) VALUES (%s, %s, %s, %s)",
-        (name or "", pid, sort, status),
-    )
+    if feishu_department_id is not None and str(feishu_department_id).strip():
+        new_id = db.execute_insert(
+            "INSERT INTO ly_department (name, parent_id, sort, status, feishu_department_id) VALUES (%s, %s, %s, %s, %s)",
+            (name or "", pid, sort, status, str(feishu_department_id).strip()),
+        )
+    else:
+        new_id = db.execute_insert(
+            "INSERT INTO ly_department (name, parent_id, sort, status) VALUES (%s, %s, %s, %s)",
+            (name or "", pid, sort, status),
+        )
     return new_id if new_id else None
 
 
@@ -78,9 +113,10 @@ def update(
     parent_id: Optional[int] = None,
     sort: Optional[int] = None,
     status: Optional[int] = None,
+    feishu_department_id: Optional[str] = None,
 ) -> int:
     row = db.query_one(
-        "SELECT id, name, parent_id, sort, status FROM ly_department WHERE id = %s AND deleted = 0",
+        "SELECT id, name, parent_id, sort, status, feishu_department_id FROM ly_department WHERE id = %s AND deleted = 0",
         (dept_id,),
     )
     if not row:
@@ -91,6 +127,11 @@ def update(
         pid = 0
     sort_val = sort if sort is not None else row["sort"]
     status_val = status if status is not None else row["status"]
+    if feishu_department_id is not None:
+        return db.execute(
+            "UPDATE ly_department SET name = %s, parent_id = %s, sort = %s, status = %s, feishu_department_id = %s WHERE id = %s AND deleted = 0",
+            (name, pid, sort_val, status_val, str(feishu_department_id).strip() if feishu_department_id else None, dept_id),
+        )
     return db.execute(
         "UPDATE ly_department SET name = %s, parent_id = %s, sort = %s, status = %s WHERE id = %s AND deleted = 0",
         (name, pid, sort_val, status_val, dept_id),

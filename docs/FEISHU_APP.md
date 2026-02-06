@@ -57,3 +57,26 @@ lyedu:
 - `POST /api/auth/feishu/callback`，Body：`{ "code": "xxx", "redirectUri": "xxx" }`：用 code 换用户信息，查找或创建用户，返回 `{ "token", "userInfo" }`。
 
 后端仅实现飞书；后续若有钉钉、企业微信，可增加 `/api/auth/dingtalk/*`、`/api/auth/wecom/*`，前端在 `auth.ts` 中按 `VITE_AUTH_PROVIDER` 或配置调用对应接口。
+
+---
+
+## 6. 飞书通讯录同步（部门与用户）
+
+飞书同步功能可将企业通讯录中的**机构（部门）**和**用户**同步至本系统：不存在则创建，存在则更新。可手动触发，也可由后端定时任务调用接口实现定时更新。
+
+### 6.1 权限与配置
+
+1. **飞书开放平台**：在自建应用中，**权限管理** → 申请并启用：
+   - **通讯录 - 部门信息（只读）**
+   - **通讯录 - 用户信息（只读）**
+2. **后端环境变量**：与登录一致，配置 `FEISHU_APP_ID`、`FEISHU_APP_SECRET`。
+3. **数据库**：需执行迁移（Alembic v3 / Flyway V3），为部门表增加 `feishu_department_id` 字段，用于与飞书部门一一对应。
+
+### 6.2 手动同步
+
+- **管理后台**：员工管理 → 「从第三方同步」→ 选择「飞书」→ 点击后触发同步，完成后提示部门/用户新增与更新数量。
+- **接口**：`POST /api/feishu/sync`，返回 `{ departments: { created, updated, errors }, users: { created, updated, errors } }`。
+
+### 6.3 定时更新
+
+由后端自行配置定时任务（如 cron、APScheduler）定期调用 `POST /api/feishu/sync` 即可。建议根据企业人员变动频率设置（如每日一次或每周一次）。

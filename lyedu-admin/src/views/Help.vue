@@ -263,6 +263,39 @@
       <p>配置完成课程、通过考试、完成任务等行为获得多少积分，用于激励员工学习。</p>
       </el-card>
 
+      <el-card id="feishu-sync" class="help-card" shadow="hover">
+        <template #header>
+          <div class="help-card-header">
+            <span class="help-card-icon">🔄</span>
+            <span>飞书通讯录同步</span>
+          </div>
+        </template>
+        <p><strong>功能说明</strong>：飞书同步功能可将企业通讯录中的<strong>机构（部门）</strong>和<strong>用户</strong>同步至本系统。同步逻辑：不存在则创建，存在则更新。支持手动触发与定时更新。</p>
+        <p><strong>使用前准备</strong>：</p>
+        <ul>
+          <li><strong>飞书开放平台配置</strong>：在自建应用中，<strong>权限管理</strong> → 申请并启用「通讯录 - 部门信息（只读）」「通讯录 - 用户信息（只读）」。</li>
+          <li><strong>后端环境变量配置</strong>：
+            <ul>
+              <li><strong>文件路径</strong>：<code>lyedu-api-python/.env</code>（如果不存在，可复制 <code>lyedu-api-python/.env.example</code> 为 <code>.env</code>）</li>
+              <li><strong>配置项</strong>：在 <code>.env</code> 文件中添加以下两行（去掉注释符号 <code>#</code> 并填入实际值）：
+                <pre style="background: #f5f7fa; padding: 8px; border-radius: 4px; font-size: 13px; margin: 8px 0;">FEISHU_APP_ID=your_app_id
+FEISHU_APP_SECRET=your_app_secret</pre>
+              </li>
+              <li><strong>说明</strong>：配置后重启后端服务（Python API）即可生效。与飞书登录配置使用相同的 App ID 和 App Secret。</li>
+            </ul>
+          </li>
+          <li><strong>数据库迁移</strong>：需执行数据库迁移（Alembic v3 / Flyway V3），为部门表增加 <code>feishu_department_id</code> 字段。</li>
+        </ul>
+        <p><strong>手动同步</strong>：</p>
+        <ul>
+          <li>管理后台 → <strong>员工管理</strong> → 点击「从第三方同步」→ 选择「飞书」→ 点击后触发同步。</li>
+          <li>同步完成后会提示部门/用户的新增与更新数量。</li>
+          <li>接口：<code>POST /api/feishu/sync</code>，返回同步结果（部门与用户的 created、updated、errors）。</li>
+        </ul>
+        <p><strong>定时更新</strong>：由后端自行配置定时任务（如 cron、APScheduler）定期调用 <code>POST /api/feishu/sync</code> 即可。建议根据企业人员变动频率设置（如每日一次或每周一次）。</p>
+        <p><strong>同步范围</strong>：同步时会拉取飞书企业通讯录中的全部部门（递归）和全部用户（含子部门用户），并自动建立部门层级关系与用户-部门关联。</p>
+      </el-card>
+
       <el-card id="settings" class="help-card" shadow="hover">
         <template #header>
           <div class="help-card-header">
@@ -271,6 +304,7 @@
           </div>
         </template>
         <p>配置站点标题、Logo、主题色等基础信息，以及其他全局参数。</p>
+        <p><strong>飞书应用</strong>：在「飞书应用」Tab 中可查看飞书同步配置说明与权限要求。</p>
       </el-card>
     </div>
   </div>

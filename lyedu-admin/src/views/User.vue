@@ -192,7 +192,8 @@
         <el-card shadow="hover" class="sync-card" @click="handleSyncPlatform('feishu')">
           <div class="sync-card-body">
             <span class="sync-label">飞书</span>
-            <el-tag size="small" type="info">即将支持</el-tag>
+            <el-tag size="small" type="success">同步</el-tag>
+            <el-button v-if="feishuSyncing" type="primary" size="small" loading>同步中…</el-button>
           </div>
         </el-card>
         <el-card shadow="hover" class="sync-card" @click="handleSyncPlatform('wecom')">
@@ -243,6 +244,7 @@ import {
   importUsersByExcel,
   type User
 } from '@/api/user'
+import { feishuSync } from '@/api/feishu'
 import { getDepartmentTree, type Department } from '@/api/department'
 import { getTagList, type Tag } from '@/api/tag'
 import { useHelp } from '@/hooks/useHelp'
@@ -259,6 +261,7 @@ const importDialogVisible = ref(false)
 const syncDialogVisible = ref(false)
 const importUploadRef = ref()
 const importResult = ref<{ successCount: number; failCount: number; messages?: string[] } | null>(null)
+const feishuSyncing = ref(false)
 const dialogTitle = ref('新增员工')
 const isEdit = ref(false)
 const currentUserId = ref<number>()
@@ -485,8 +488,28 @@ const closeImportDialog = () => {
   loadData()
 }
 
-const handleSyncPlatform = (platform: string) => {
+const handleSyncPlatform = async (platform: string) => {
   const names: Record<string, string> = { feishu: '飞书', wecom: '企业微信', dingtalk: '钉钉' }
+  if (platform === 'feishu') {
+    feishuSyncing.value = true
+    try {
+      const res = await feishuSync()
+      const data = (res as any)?.data ?? res
+      const dept = data?.departments ?? {}
+      const usr = data?.users ?? {}
+      const dc = (dept.created ?? 0) + (dept.updated ?? 0)
+      const uc = (usr.created ?? 0) + (usr.updated ?? 0)
+      ElMessage.success(`飞书同步完成：部门 ${dc} 个（新增 ${dept.created ?? 0}，更新 ${dept.updated ?? 0}），用户 ${uc} 个（新增 ${usr.created ?? 0}，更新 ${usr.updated ?? 0}）`)
+      syncDialogVisible.value = false
+      loadData()
+      loadDepartments()
+    } catch (e: any) {
+      ElMessage.error(e?.response?.data?.message || '飞书同步失败，请先在「系统设置」中配置飞书应用')
+    } finally {
+      feishuSyncing.value = false
+    }
+    return
+  }
   ElMessage.info(`${names[platform] || platform} 同步功能即将上线，请先在「系统设置」中配置应用`)
 }
 
