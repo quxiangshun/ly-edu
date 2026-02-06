@@ -10,10 +10,8 @@
 db/
 ├── README.md           # 本说明
 ├── flyway/             # Flyway 迁移（与 lyedu-api 中 classpath:db/migration 一致）
-│   ├── V1__init_schema.sql
-│   ├── V2__init_admin_user.sql
-│   └── ... V12 等
-└── alembic/            # Alembic 迁移（与 Flyway V1～V12 一一对应）
+│   └── V1__init_schema.sql   # 完整初始化（整合原 V1～V18 为单文件）
+└── alembic/            # Alembic 迁移（与 Flyway 版本对应）
     ├── env.py          # 从 lyedu-api-python/config 读数据库配置
     ├── script.py.mako
     └── versions/
@@ -40,15 +38,13 @@ db/
 
 ### 若出现 "Unknown column 'v.play_count' in 'field list'"
 
-说明 V14 迁移（视频播放次数、点赞）尚未执行，请任选其一：
+说明视频播放次数、点赞相关字段尚未执行。请在 **lyedu-api-python** 目录下执行一次迁移：
 
-1. **推荐**：在 **lyedu-api-python** 目录下执行一次迁移：
-   ```bash
-   python -m alembic -c alembic.ini upgrade head
-   ```
-   （Windows 下可先设置 `set PYTHONUTF8=1` 再执行，避免编码问题。）
+```bash
+python -m alembic -c alembic.ini upgrade head
+```
 
-2. **或**：在 MySQL 中手动执行 `db/flyway/V14__add_video_play_like.sql` 中的 SQL（添加 `ly_video.play_count`、`ly_video.like_count` 及表 `ly_video_like`）。
+（Windows 下可先设置 `set PYTHONUTF8=1` 再执行，避免编码问题。）
 
 ### 若出现 "Can't locate revision identified by 'v19'"
 
@@ -62,7 +58,7 @@ UPDATE alembic_version SET version_num = 'v13';
 
 ### 新增迁移时
 
-1. **Flyway**：在 `lyedu-api/.../db/migration` 新增 `Vn__xxx.sql` 后，**复制一份**到 `db/flyway/`。
-2. **Alembic**：在 `db/alembic/versions/` 或 `lyedu-api-python/alembic/versions/` 新增版本后，**同步到另一处**，并保持 `db/alembic` 与 Flyway 版本对应。
+1. **Flyway**：当前 `db/flyway` 仅保留一个 `V1__init_schema.sql`（完整初始化）。若需增量迁移，可在 `lyedu-api/.../db/migration` 新增 `V2__xxx.sql` 后复制到 `db/flyway/`。
+2. **Alembic**：在 `db/alembic/versions/` 新增版本后，保持与 Flyway 版本对应。
 
 这样 Java 与 Python 都有一份迁移副本，防止单语言启动时缺脚本。

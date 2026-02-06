@@ -31,7 +31,7 @@ def _column_exists(conn, table: str, column: str) -> bool:
 
 
 def upgrade() -> None:
-    # ----- 用户表（含 open_id、entry_date、total_points）-----
+    # ----- 用户表（含 feishu_open_id、union_id、entry_date、total_points）-----
     conn = op.get_bind()
     op.execute("""
         CREATE TABLE IF NOT EXISTS ly_user (
@@ -42,7 +42,8 @@ def upgrade() -> None:
             email VARCHAR(100) DEFAULT NULL COMMENT '邮箱',
             mobile VARCHAR(20) DEFAULT NULL COMMENT '手机号',
             avatar VARCHAR(255) DEFAULT NULL COMMENT '头像',
-            open_id VARCHAR(64) DEFAULT NULL COMMENT '开放平台ID（飞书/钉钉/企业微信等）',
+            feishu_open_id VARCHAR(64) DEFAULT NULL COMMENT '飞书 open_id，用于飞书扫码登录',
+            union_id VARCHAR(64) DEFAULT NULL COMMENT '开放平台 union_id，同一主体下多应用（飞书/小程序等）统一',
             department_id BIGINT DEFAULT NULL COMMENT '部门ID',
             entry_date DATE DEFAULT NULL COMMENT '入职日期',
             total_points INT DEFAULT 0 COMMENT '累计积分',
@@ -53,25 +54,26 @@ def upgrade() -> None:
             deleted TINYINT DEFAULT 0,
             PRIMARY KEY (id),
             UNIQUE KEY uk_username (username),
-            UNIQUE KEY uk_open_id (open_id),
+            UNIQUE KEY uk_feishu_open_id (feishu_open_id),
+            KEY idx_union_id (union_id),
             KEY idx_department_id (department_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户表'
     """)
     # 如果表已存在但缺少字段，则添加（兼容旧表结构）
-    # 检查 open_id（可能旧表是 feishu_open_id）
-    if not _column_exists(conn, "ly_user", "open_id"):
-        # 如果存在 feishu_open_id，先重命名
-        if _column_exists(conn, "ly_user", "feishu_open_id"):
-            op.execute("ALTER TABLE ly_user CHANGE COLUMN feishu_open_id open_id VARCHAR(64) DEFAULT NULL COMMENT '开放平台ID（飞书/钉钉/企业微信等）'")
-            # 重命名唯一键
-            try:
-                op.execute("ALTER TABLE ly_user DROP KEY uk_feishu_open_id")
-            except:
-                pass
-            op.execute("ALTER TABLE ly_user ADD UNIQUE KEY uk_open_id (open_id)")
-        else:
-            op.execute("ALTER TABLE ly_user ADD COLUMN open_id VARCHAR(64) DEFAULT NULL COMMENT '开放平台ID（飞书/钉钉/企业微信等）' AFTER avatar")
-            op.execute("ALTER TABLE ly_user ADD UNIQUE KEY uk_open_id (open_id)")
+    # 若有 open_id 旧列，统一改为 feishu_open_id
+    if _column_exists(conn, "ly_user", "open_id"):
+        try:
+            op.execute("ALTER TABLE ly_user DROP KEY uk_open_id")
+        except Exception:
+            pass
+        op.execute("ALTER TABLE ly_user CHANGE COLUMN open_id feishu_open_id VARCHAR(64) DEFAULT NULL COMMENT '飞书 open_id，用于飞书扫码登录'")
+        op.execute("ALTER TABLE ly_user ADD UNIQUE KEY uk_feishu_open_id (feishu_open_id)")
+    elif not _column_exists(conn, "ly_user", "feishu_open_id"):
+        op.execute("ALTER TABLE ly_user ADD COLUMN feishu_open_id VARCHAR(64) DEFAULT NULL COMMENT '飞书 open_id，用于飞书扫码登录' AFTER avatar")
+        op.execute("ALTER TABLE ly_user ADD UNIQUE KEY uk_feishu_open_id (feishu_open_id)")
+    if not _column_exists(conn, "ly_user", "union_id"):
+        op.execute("ALTER TABLE ly_user ADD COLUMN union_id VARCHAR(64) DEFAULT NULL COMMENT '开放平台 union_id，同一主体下多应用统一' AFTER feishu_open_id")
+        op.execute("ALTER TABLE ly_user ADD KEY idx_union_id (union_id)")
     if not _column_exists(conn, "ly_user", "entry_date"):
         op.execute("ALTER TABLE ly_user ADD COLUMN entry_date DATE DEFAULT NULL COMMENT '入职日期' AFTER department_id")
     if not _column_exists(conn, "ly_user", "total_points"):

@@ -76,6 +76,8 @@ class UserRequest(BaseModel):
     email: Optional[str] = None
     mobile: Optional[str] = None
     avatar: Optional[str] = None
+    union_id: Optional[str] = None
+    unionId: Optional[str] = None  # 前端驼峰，兼容处理
     department_id: Optional[int] = None
     departmentId: Optional[int] = None  # 前端使用的驼峰命名，兼容处理
     entry_date: Optional[str] = None  # YYYY-MM-DD
@@ -91,6 +93,8 @@ class UserRequest(BaseModel):
                 values['department_id'] = values.get('departmentId')
             if 'entryDate' in values and 'entry_date' not in values:
                 values['entry_date'] = values.get('entryDate')
+            if 'unionId' in values and 'union_id' not in values:
+                values['union_id'] = values.get('unionId')
         return values
 
 

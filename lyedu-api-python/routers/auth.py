@@ -111,26 +111,29 @@ def feishu_callback(body: FeishuCallbackRequest):
     feishu_user = feishu_api.get_user_info_by_code(code, redirect_uri or None)
     if not feishu_user:
         return error(400, "飞书授权失败或未配置飞书应用")
-    open_id = feishu_user.get("open_id") or feishu_user.get("sub")
-    if not open_id:
+    feishu_open_id = feishu_user.get("open_id") or feishu_user.get("sub")
+    if not feishu_open_id:
         return error(400, "飞书用户信息异常")
-    open_id = str(open_id).strip()
+    feishu_open_id = str(feishu_open_id).strip()
+    union_id_raw = feishu_user.get("union_id")
+    union_id = str(union_id_raw).strip() if union_id_raw else None
     name = (feishu_user.get("name") or feishu_user.get("name_cn") or "飞书用户").strip() or "飞书用户"
     avatar_url = feishu_user.get("avatar_url") or feishu_user.get("picture")
 
-    user = user_service.find_by_feishu_open_id(open_id)
+    user = user_service.find_by_feishu_open_id(feishu_open_id)
     if not user:
-        username = "feishu_" + open_id
+        username = "feishu_" + feishu_open_id
         user_service.save(
             username=username,
             password=None,
             real_name=name,
             avatar=avatar_url,
-            feishu_open_id=open_id,
+            feishu_open_id=feishu_open_id,
+            union_id=union_id,
             role="student",
             status=1,
         )
-        user = user_service.find_by_feishu_open_id(open_id)
+        user = user_service.find_by_feishu_open_id(feishu_open_id)
     if not user:
         return error(500, "用户创建失败")
     if user.get("status") == 0:
