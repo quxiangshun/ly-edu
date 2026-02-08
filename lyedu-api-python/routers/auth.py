@@ -2,11 +2,11 @@
 """认证路由，与 Java AuthController 对应（含飞书扫码/免登；扩展：后续可加钉钉/企业微信）"""
 from typing import Optional
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
 from common.result import ResultCode, error, error_result, success
-from services import user_service
+from services import user_service, login_log_service
 from util.jwt_util import generate_token
 from util import feishu_api
 
@@ -42,35 +42,86 @@ def _stored_password(user: dict) -> str:
 
 
 @router.post("/login")
-def login(body: LoginRequest):
+def login(body: LoginRequest, request: Request):
     username = (body.username or "").strip()
     password = (body.password or "").strip()
+    ip = request.client.host if request.client else None
+    ua = request.headers.get("user-agent", "")
+
     if not username or not password:
+        login_log_service.add_login_log(
+            user_id=None,
+            username=username,
+            ip=ip,
+            user_agent=ua,
+            channel="password",
+            success=False,
+            message="PARAM_ERROR",
+        )
         return error_result(ResultCode.PARAM_ERROR)
 
     user = user_service.find_by_username(username)
     if not user:
+        login_log_service.add_login_log(
+            user_id=None,
+            username=username,
+            ip=ip,
+            user_agent=ua,
+            channel="password",
+            success=False,
+            message="USER_NOT_FOUND",
+        )
         return error_result(ResultCode.USER_NOT_FOUND)
     if user.get("status") == 0:
+        login_log_service.add_login_log(
+            user_id=user.get("id"),
+            username=username,
+            ip=ip,
+            user_agent=ua,
+            channel="password",
+            success=False,
+            message="FORBIDDEN",
+        )
         return error_result(ResultCode.FORBIDDEN)
 
     stored = _stored_password(user)
     if not stored:
+        login_log_service.add_login_log(
+            user_id=user.get("id"),
+            username=username,
+            ip=ip,
+            user_agent=ua,
+            channel="password",
+            success=False,
+            message="NO_STORED_PASSWORD",
+        )
         return error_result(ResultCode.LOGIN_ERROR)
     # 使用 bcrypt 包校验，与 Java Spring BCrypt 哈希兼容（passlib 与部分 Java 哈希不兼容）
+    ok = False
     try:
         import bcrypt
+
         password_bytes = password.encode("utf-8")
         stored_bytes = stored.encode("utf-8") if isinstance(stored, str) else stored
-        if not bcrypt.checkpw(password_bytes, stored_bytes):
-            return error_result(ResultCode.LOGIN_ERROR)
+        ok = bool(bcrypt.checkpw(password_bytes, stored_bytes))
     except Exception:
         try:
             from passlib.hash import bcrypt as passlib_bcrypt
-            if not passlib_bcrypt.verify(password, stored):
-                return error_result(ResultCode.LOGIN_ERROR)
+
+            ok = bool(passlib_bcrypt.verify(password, stored))
         except Exception:
-            return error_result(ResultCode.LOGIN_ERROR)
+            ok = False
+    if not ok:
+        login_log_service.add_login_log(
+            user_id=user.get("id"),
+            username=username,
+            ip=ip,
+            user_agent=ua,
+            channel="password",
+            success=False,
+            message="LOGIN_ERROR",
+        )
+        return error_result(ResultCode.LOGIN_ERROR)
 
     uid = user.get("id")
     uid = int(uid) if uid is not None else 0
@@ -88,6 +139,15 @@ def login(body: LoginRequest):
             "role": _ensure_str(user.get("role")) or "student",
         },
     }
+    login_log_service.add_login_log(
+        user_id=uid,
+        username=uname,
+        ip=ip,
+        user_agent=ua,
+        channel="password",
+        success=True,
+        message="",
+    )
     return success(data)
 
 
@@ -102,17 +162,38 @@ def feishu_url(redirect_uri: str, state: Optional[str] = None):
 
 
 @router.post("/feishu/callback")
-def feishu_callback(body: FeishuCallbackRequest):
+def feishu_callback(body: FeishuCallbackRequest, request: Request):
     """飞书授权回调：用 code 换用户信息，查找或创建用户，返回 JWT（与 Java POST /auth/feishu/callback 一致）"""
     code = (body.code or "").strip()
     redirect_uri = (body.redirectUri or "").strip()
     if not code:
         return error(400, "缺少 code")
+    ip = request.client.host if request.client else None
+    ua = request.headers.get("user-agent", "")
+
     feishu_user = feishu_api.get_user_info_by_code(code, redirect_uri or None)
     if not feishu_user:
+        login_log_service.add_login_log(
+            user_id=None,
+            username=None,
+            ip=ip,
+            user_agent=ua,
+            channel="feishu",
+            success=False,
+            message="FEISHU_AUTH_FAILED",
+        )
         return error(400, "飞书授权失败或未配置飞书应用")
     feishu_open_id = feishu_user.get("open_id") or feishu_user.get("sub")
     if not feishu_open_id:
+        login_log_service.add_login_log(
+            user_id=None,
+            username=None,
+            ip=ip,
+            user_agent=ua,
+            channel="feishu",
+            success=False,
+            message="FEISHU_USER_INFO_INVALID",
+        )
         return error(400, "飞书用户信息异常")
     feishu_open_id = str(feishu_open_id).strip()
     union_id_raw = feishu_user.get("union_id")
@@ -135,8 +216,26 @@ def feishu_callback(body: FeishuCallbackRequest):
         )
         user = user_service.find_by_feishu_open_id(feishu_open_id)
     if not user:
+        login_log_service.add_login_log(
+            user_id=None,
+            username=None,
+            ip=ip,
+            user_agent=ua,
+            channel="feishu",
+            success=False,
+            message="USER_CREATE_FAILED",
+        )
         return error(500, "用户创建失败")
     if user.get("status") == 0:
+        login_log_service.add_login_log(
+            user_id=user.get("id") or 0,
+            username=_ensure_str(user.get("username")),
+            ip=ip,
+            user_agent=ua,
+            channel="feishu",
+            success=False,
+            message="FORBIDDEN",
+        )
         return error_result(ResultCode.FORBIDDEN)
     uid = user.get("id") or 0
     uid = int(uid)
@@ -153,4 +252,13 @@ def feishu_callback(body: FeishuCallbackRequest):
             "role": _ensure_str(user.get("role")) or "student",
         },
     }
+    login_log_service.add_login_log(
+        user_id=uid,
+        username=uname,
+        ip=ip,
+        user_agent=ua,
+        channel="feishu",
+        success=True,
+        message="",
+    )
     return success(data)
