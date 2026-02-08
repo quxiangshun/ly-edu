@@ -1,7 +1,16 @@
 # 仅启动 MySQL + Redis，开发环境直连 localhost
 # 使用: docker compose -f compose-mysql-redis.yml up -d
 # 然后本地启动: Python API(9700) / lyedu-admin(9900) / lyedu-pc(9800) / lyedu-h5(9801)
-# 连接: MySQL localhost:3306, Redis localhost:6379
+#
+# 客户端工具连接 MySQL（本机）：
+#   主机: 127.0.0.1 或 localhost
+#   端口: 3306
+#   用户: root  或  lyedu
+#   密码: lyedu123456
+#   数据库: lyedu
+# 若仍无法连接：1) 确认主机填 127.0.0.1、端口 3306；2) 若容器是之前就有的，
+# 需在容器内执行一次（允许 root 远程 + 传统认证）：
+#   docker exec -it lyedu-mysql mysql -uroot -plyedu123456 -e "CREATE USER IF NOT EXISTS 'root'@'%' IDENTIFIED WITH mysql_native_password BY 'lyedu123456'; GRANT ALL ON *.* TO 'root'@'%' WITH GRANT OPTION; ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'lyedu123456'; FLUSH PRIVILEGES;"
 services:
   mysql:
     image: ${DOCKER_REGISTRY:-}mysql:8.0
@@ -20,6 +29,8 @@ services:
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
+      # 使用传统认证，便于 Navicat/DBeaver 等客户端连接
+      - --default-authentication-plugin=mysql_native_password
     networks:
       - lyedu-network
     restart: unless-stopped
