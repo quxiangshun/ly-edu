@@ -22,7 +22,7 @@
 
       <el-form :inline="true" :model="searchForm" class="search-form">
         <el-form-item label="关键词">
-          <el-input v-model="searchForm.keyword" placeholder="用户名/姓名/邮箱/手机号" clearable />
+          <el-input v-model="searchForm.keyword" placeholder="用户名/昵称/邮箱/手机号" clearable />
         </el-form-item>
         <el-form-item label="角色">
           <el-select v-model="searchForm.role" placeholder="请选择" clearable>
@@ -48,9 +48,9 @@
       <el-table :data="userList" v-loading="loading" border :max-height="tableMaxHeight">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="username" label="用户名" width="120" />
-        <el-table-column prop="real_name" label="真实姓名" width="120">
+        <el-table-column prop="nickname" label="昵称" width="120">
           <template #default="{ row }">
-            {{ row.real_name || row.username || '-' }}
+            {{ row.nickname || '-' }}
           </template>
         </el-table-column>
         <el-table-column prop="email" label="邮箱" width="180" />
@@ -109,8 +109,8 @@
         <el-form-item v-if="!isEdit" label="密码" prop="password">
           <el-input v-model="form.password" type="password" placeholder="留空则使用默认密码123456" show-password />
         </el-form-item>
-        <el-form-item label="真实姓名" prop="real_name">
-          <el-input v-model="form.real_name" placeholder="请输入真实姓名" />
+        <el-form-item label="昵称" prop="nickname">
+          <el-input v-model="form.nickname" placeholder="请输入昵称" />
         </el-form-item>
         <el-form-item label="邮箱" prop="email">
           <el-input v-model="form.email" placeholder="请输入邮箱" />
@@ -312,6 +312,7 @@ const form = reactive<Partial<User>>({
   username: '',
   password: '',
   real_name: '',
+  nickname: '',
   email: '',
   mobile: '',
   avatar: '',
@@ -409,6 +410,7 @@ const handleAdd = () => {
     username: '',
     password: '',
     real_name: '',
+    nickname: '',
     email: '',
     mobile: '',
     avatar: '',
@@ -426,6 +428,7 @@ const handleEdit = (row: User) => {
   Object.assign(form, {
     username: row.username,
     real_name: row.real_name,
+    nickname: row.nickname,
     email: row.email,
     mobile: row.mobile,
     avatar: row.avatar,

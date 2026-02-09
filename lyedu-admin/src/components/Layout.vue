@@ -96,7 +96,7 @@
           <el-dropdown>
             <span class="user-info">
               <el-icon><User /></el-icon>
-              {{ userInfo?.realName || userInfo?.username || '管理员' }}
+              {{ userInfo?.nickname || userInfo?.realName || userInfo?.username || '管理员' }}
               <el-icon class="el-icon--right"><ArrowDown /></el-icon>
             </span>
             <template #dropdown>

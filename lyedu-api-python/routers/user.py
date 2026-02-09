@@ -29,6 +29,7 @@ def get_current_user(authorization: Optional[str] = Header(None, alias="Authoriz
         "id": user.get("id"),
         "username": user.get("username"),
         "realName": user.get("real_name"),
+        "nickname": user.get("nickname"),
         "role": user.get("role") or "student",
     })
 
@@ -82,6 +83,7 @@ def create(body: UserRequest):
         username=body.username.strip(),
         password=body.password,
         real_name=body.real_name,
+        nickname=body.nickname,
         email=body.email,
         mobile=body.mobile,
         avatar=body.avatar,
@@ -116,6 +118,7 @@ def update(id: int, body: UserRequest):
         id,
         username=body.username.strip() if body.username else None,
         real_name=body.real_name,
+        nickname=body.nickname,
         email=body.email,
         mobile=body.mobile,
         avatar=body.avatar,
