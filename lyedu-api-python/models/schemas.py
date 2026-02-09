@@ -77,6 +77,7 @@ class UserRequest(BaseModel):
     username: Optional[str] = None
     password: Optional[str] = None
     real_name: Optional[str] = None
+    nickname: Optional[str] = None
     email: Optional[str] = None
     mobile: Optional[str] = None
     avatar: Optional[str] = None
