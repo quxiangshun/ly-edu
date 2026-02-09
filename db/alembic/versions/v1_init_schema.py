@@ -39,14 +39,17 @@ def upgrade() -> None:
             username VARCHAR(50) NOT NULL COMMENT '用户名',
             password VARCHAR(255) NOT NULL COMMENT '密码',
             real_name VARCHAR(50) DEFAULT NULL COMMENT '真实姓名',
+            nickname VARCHAR(50) DEFAULT NULL COMMENT '昵称（同步自 fa_staff.name）',
             email VARCHAR(100) DEFAULT NULL COMMENT '邮箱',
             mobile VARCHAR(20) DEFAULT NULL COMMENT '手机号',
             avatar VARCHAR(255) DEFAULT NULL COMMENT '头像',
             feishu_open_id VARCHAR(64) DEFAULT NULL COMMENT '飞书 open_id，用于飞书扫码登录',
             union_id VARCHAR(64) DEFAULT NULL COMMENT '开放平台 union_id，同一主体下多应用（飞书/小程序等）统一',
+            last_login_time DATETIME DEFAULT NULL COMMENT '最后登录时间（同步自 fa_staff）',
             department_id BIGINT DEFAULT NULL COMMENT '部门ID',
             entry_date DATE DEFAULT NULL COMMENT '入职日期',
             total_points INT DEFAULT 0 COMMENT '累计积分',
+            study_time_long INT DEFAULT 0 COMMENT '学习时长（分钟）（同步自 fa_staff）',
             role VARCHAR(20) DEFAULT 'student' COMMENT '角色',
             status TINYINT DEFAULT 1 COMMENT '状态',
             create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -78,6 +81,12 @@ def upgrade() -> None:
         op.execute("ALTER TABLE ly_user ADD COLUMN entry_date DATE DEFAULT NULL COMMENT '入职日期' AFTER department_id")
     if not _column_exists(conn, "ly_user", "total_points"):
         op.execute("ALTER TABLE ly_user ADD COLUMN total_points INT DEFAULT 0 COMMENT '累计积分' AFTER entry_date")
+    if not _column_exists(conn, "ly_user", "nickname"):
+        op.execute("ALTER TABLE ly_user ADD COLUMN nickname VARCHAR(50) DEFAULT NULL COMMENT '昵称（同步自 fa_staff.name）' AFTER real_name")
+    if not _column_exists(conn, "ly_user", "last_login_time"):
+        op.execute("ALTER TABLE ly_user ADD COLUMN last_login_time DATETIME DEFAULT NULL COMMENT '最后登录时间（同步自 fa_staff）' AFTER union_id")
+    if not _column_exists(conn, "ly_user", "study_time_long"):
+        op.execute("ALTER TABLE ly_user ADD COLUMN study_time_long INT DEFAULT 0 COMMENT '学习时长（分钟）（同步自 fa_staff）' AFTER total_points")
     op.execute("""
         CREATE TABLE IF NOT EXISTS ly_department (
             id BIGINT NOT NULL AUTO_INCREMENT,
@@ -85,12 +94,91 @@ def upgrade() -> None:
             parent_id BIGINT DEFAULT 0,
             sort INT DEFAULT 0,
             status TINYINT DEFAULT 1,
+            feishu_department_id VARCHAR(64) DEFAULT NULL COMMENT '飞书部门ID，用于通讯录同步',
+            avatar VARCHAR(500) DEFAULT NULL COMMENT '头像（同步自 fa_team）',
+            description TEXT DEFAULT NULL COMMENT '描述（同步自 fa_team/fa_group info）',
+            old_id BIGINT DEFAULT NULL COMMENT '原表主键（t_id=fa_team.id, g_id=fa_group.id）',
+            old_source VARCHAR(10) DEFAULT NULL COMMENT '来源：team|group',
             create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
             update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             deleted TINYINT DEFAULT 0,
             PRIMARY KEY (id),
-            KEY idx_parent_id (parent_id)
+            KEY idx_parent_id (parent_id),
+            UNIQUE KEY uk_feishu_department_id (feishu_department_id),
+            KEY idx_old (old_source, old_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='部门表'
+    """)
+    # 兼容已存在表缺少 v3/v6 字段
+    if not _column_exists(conn, "ly_department", "feishu_department_id"):
+        op.execute("ALTER TABLE ly_department ADD COLUMN feishu_department_id VARCHAR(64) DEFAULT NULL COMMENT '飞书部门ID，用于通讯录同步' AFTER status")
+        op.execute("ALTER TABLE ly_department ADD UNIQUE KEY uk_feishu_department_id (feishu_department_id)")
+    if not _column_exists(conn, "ly_department", "avatar"):
+        op.execute("ALTER TABLE ly_department ADD COLUMN avatar VARCHAR(500) DEFAULT NULL COMMENT '头像（同步自 fa_team）' AFTER feishu_department_id")
+    if not _column_exists(conn, "ly_department", "description"):
+        op.execute("ALTER TABLE ly_department ADD COLUMN description TEXT DEFAULT NULL COMMENT '描述（同步自 fa_team/fa_group info）' AFTER avatar")
+    if not _column_exists(conn, "ly_department", "old_id"):
+        op.execute("ALTER TABLE ly_department ADD COLUMN old_id BIGINT DEFAULT NULL COMMENT '原表主键（t_id=fa_team.id, g_id=fa_group.id）' AFTER description")
+    if not _column_exists(conn, "ly_department", "old_source"):
+        op.execute("ALTER TABLE ly_department ADD COLUMN old_source VARCHAR(10) DEFAULT NULL COMMENT '来源：team|group' AFTER old_id")
+        op.execute("ALTER TABLE ly_department ADD KEY idx_old (old_source, old_id)")
+    op.execute("""
+        CREATE TABLE IF NOT EXISTS ly_login_log (
+            id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+            user_id BIGINT DEFAULT NULL COMMENT '用户ID',
+            username VARCHAR(100) DEFAULT NULL COMMENT '用户名（或登录名）',
+            ip VARCHAR(64) DEFAULT NULL COMMENT '登录 IP',
+            user_agent VARCHAR(255) DEFAULT NULL COMMENT 'User-Agent',
+            channel VARCHAR(32) DEFAULT NULL COMMENT '登录渠道：password/feishu 等',
+            success TINYINT DEFAULT 0 COMMENT '是否成功：0-失败，1-成功',
+            message VARCHAR(255) DEFAULT NULL COMMENT '失败原因或备注',
+            create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+            PRIMARY KEY (id),
+            KEY idx_user_id (user_id),
+            KEY idx_create_time (create_time)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='登录监控日志'
+    """)
+    op.execute("""
+        CREATE TABLE IF NOT EXISTS ly_tag (
+            id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+            name VARCHAR(50) NOT NULL COMMENT '标签名称',
+            sort INT DEFAULT 0 COMMENT '排序',
+            create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+            PRIMARY KEY (id),
+            UNIQUE KEY uk_name (name)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='标签表'
+    """)
+    op.execute("""
+        CREATE TABLE IF NOT EXISTS ly_user_tag (
+            id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+            user_id BIGINT NOT NULL COMMENT '用户ID',
+            tag_id BIGINT NOT NULL COMMENT '标签ID',
+            PRIMARY KEY (id),
+            UNIQUE KEY uk_user_tag (user_id, tag_id),
+            KEY idx_user_id (user_id),
+            KEY idx_tag_id (tag_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户-标签关联'
+    """)
+    op.execute("""
+        CREATE TABLE IF NOT EXISTS ly_department_tag (
+            id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+            department_id BIGINT NOT NULL COMMENT '部门ID',
+            tag_id BIGINT NOT NULL COMMENT '标签ID',
+            PRIMARY KEY (id),
+            UNIQUE KEY uk_department_tag (department_id, tag_id),
+            KEY idx_department_id (department_id),
+            KEY idx_tag_id (tag_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='部门-标签关联'
+    """)
+    op.execute("""
+        CREATE TABLE IF NOT EXISTS ly_course_tag (
+            id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+            course_id BIGINT NOT NULL COMMENT '课程ID',
+            tag_id BIGINT NOT NULL COMMENT '标签ID',
+            PRIMARY KEY (id),
+            UNIQUE KEY uk_course_tag (course_id, tag_id),
+            KEY idx_course_id (course_id),
+            KEY idx_tag_id (tag_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='课程-标签关联'
     """)
     op.execute("""
         CREATE TABLE IF NOT EXISTS ly_course_category (
@@ -171,6 +259,7 @@ def upgrade() -> None:
             course_id BIGINT NOT NULL,
             chapter_id BIGINT DEFAULT NULL,
             title VARCHAR(200) NOT NULL,
+            description TEXT DEFAULT NULL COMMENT '视频介绍（同步自 fa_video）',
             url VARCHAR(500) NOT NULL,
             cover VARCHAR(500) DEFAULT NULL COMMENT '视频封面URL',
             duration INT DEFAULT 0,
@@ -186,6 +275,8 @@ def upgrade() -> None:
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='视频表'
     """)
     # 如果表已存在但缺少字段，则添加（兼容旧表结构）
+    if not _column_exists(conn, "ly_video", "description"):
+        op.execute("ALTER TABLE ly_video ADD COLUMN description TEXT DEFAULT NULL COMMENT '视频介绍（同步自 fa_video）' AFTER title")
     if not _column_exists(conn, "ly_video", "cover"):
         op.execute("ALTER TABLE ly_video ADD COLUMN cover VARCHAR(500) DEFAULT NULL COMMENT '视频封面URL' AFTER url")
     if not _column_exists(conn, "ly_video", "play_count"):
@@ -651,28 +742,11 @@ def upgrade() -> None:
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='课程-考试关联（多课程可共用同一考试）'
     """)
 
-    # ----- 种子数据（v1 + v8 + v9 + v11）-----
+    # ----- 种子数据（v1 + v8 + v9 + v11）：仅保留管理员，id=999999999 避免与同步用户 id 冲突 -----
     op.execute("""
-        INSERT INTO ly_user (username, password, real_name, email, role, status)
-        VALUES ('admin', '$2a$10$YORpsv2uYZQNNt5hxVNrw.KyeVMcn.fjWYyX3CWGXSwdpL6hRpVSy', '管理员', 'admin@lyedu.com', 'admin', 1)
+        INSERT INTO ly_user (id, username, password, real_name, email, role, status)
+        VALUES (999999999, 'admin', '$2a$10$YORpsv2uYZQNNt5hxVNrw.KyeVMcn.fjWYyX3CWGXSwdpL6hRpVSy', '管理员', 'admin@lyedu.com', 'admin', 1)
         ON DUPLICATE KEY UPDATE password = VALUES(password), real_name = VALUES(real_name)
-    """)
-    op.execute("""
-        INSERT INTO ly_department (name, parent_id, sort, status) VALUES
-        ('技术部', 0, 1, 1),
-        ('产品部', 0, 2, 1),
-        ('运营部', 0, 3, 1)
-        ON DUPLICATE KEY UPDATE name = VALUES(name)
-    """)
-    op.execute("""
-        INSERT INTO ly_course (title, cover, description, status, sort) VALUES
-        ('Java 基础教程', 'https://via.placeholder.com/300x200?text=Java', 'Java 编程语言基础入门课程，适合零基础学员', 1, 1),
-        ('Vue3 前端开发', 'https://via.placeholder.com/300x200?text=Vue3', 'Vue3 框架学习，包含组合式 API 和 TypeScript', 1, 2),
-        ('SpringBoot 实战', 'https://via.placeholder.com/300x200?text=SpringBoot', 'SpringBoot 企业级应用开发实战', 1, 3),
-        ('MySQL 数据库', 'https://via.placeholder.com/300x200?text=MySQL', 'MySQL 数据库设计与优化', 1, 4),
-        ('Docker 容器化', 'https://via.placeholder.com/300x200?text=Docker', 'Docker 容器化部署实践', 1, 5),
-        ('Linux 系统管理', 'https://via.placeholder.com/300x200?text=Linux', 'Linux 系统管理与运维', 1, 6)
-        ON DUPLICATE KEY UPDATE title = VALUES(title)
     """)
     op.execute("""
         INSERT INTO ly_config (config_key, config_value, category, remark) VALUES
@@ -697,13 +771,11 @@ def upgrade() -> None:
         SELECT course_id, id, chapter_id, sort FROM ly_video WHERE deleted = 0
     """)
 
-
 def downgrade() -> None:
-    op.execute("DELETE FROM ly_course WHERE title IN ('Java 基础教程', 'Vue3 前端开发', 'SpringBoot 实战', 'MySQL 数据库', 'Docker 容器化', 'Linux 系统管理')")
-    op.execute("DELETE FROM ly_department WHERE name IN ('技术部', '产品部', '运营部')")
     op.execute("DELETE FROM ly_user WHERE username = 'admin'")
     op.execute("DELETE FROM ly_config WHERE config_key IN ('site.title','site.keywords','site.description','player.allow_download','student.default_page_size','player.disable_seek','player.disable_speed')")
     op.execute("DELETE FROM ly_point_rule WHERE rule_key IN ('course_finish','exam_pass','task_finish')")
+    op.execute("DROP TABLE IF EXISTS ly_login_log")
     op.execute("DROP TABLE IF EXISTS ly_course_exam")
     op.execute("DROP TABLE IF EXISTS ly_course_video")
     op.execute("DROP TABLE IF EXISTS ly_video_like")
@@ -735,6 +807,10 @@ def downgrade() -> None:
     op.execute("DROP TABLE IF EXISTS ly_course_attachment")
     op.execute("DROP TABLE IF EXISTS ly_course_chapter")
     op.execute("DROP TABLE IF EXISTS ly_course_department")
+    op.execute("DROP TABLE IF EXISTS ly_course_tag")
+    op.execute("DROP TABLE IF EXISTS ly_department_tag")
+    op.execute("DROP TABLE IF EXISTS ly_user_tag")
+    op.execute("DROP TABLE IF EXISTS ly_tag")
     op.execute("DROP TABLE IF EXISTS ly_course")
     op.execute("DROP TABLE IF EXISTS ly_course_category")
     op.execute("DROP TABLE IF EXISTS ly_department")
