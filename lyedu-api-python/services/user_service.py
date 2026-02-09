@@ -13,6 +13,23 @@ _has_entry_date: Optional[bool] = None
 _has_feishu_open_id: Optional[bool] = None
 # 数据库是否包含 union_id 列（V18 迁移），首次访问时检测
 _has_union_id: Optional[bool] = None
+# 数据库是否包含 nickname 列（v5 同步用），首次访问时检测
+_has_nickname: Optional[bool] = None
+
+
+def _check_nickname() -> bool:
+    global _has_nickname
+    if _has_nickname is not None:
+        return _has_nickname
+    try:
+        db.query_one("SELECT nickname FROM ly_user LIMIT 1")
+        _has_nickname = True
+    except (pymysql.err.OperationalError, pymysql.err.ProgrammingError) as e:
+        if getattr(e, "args", (None,))[0] == 1054:
+            _has_nickname = False
+        else:
+            raise
+    return _has_nickname
 
 
 def _check_entry_date() -> bool:
@@ -62,7 +79,10 @@ def _check_union_id() -> bool:
 
 def _user_cols(include_create_time: bool = False) -> str:
     """用户表查询列，按库表是否有 feishu_open_id / union_id / entry_date 动态拼接"""
-    parts = ["id", "username", "password", "real_name", "email", "mobile", "avatar"]
+    parts = ["id", "username", "password", "real_name"]
+    if _check_nickname():
+        parts.append("nickname")
+    parts.extend(["email", "mobile", "avatar"])
     if _check_feishu_open_id():
         parts.append("feishu_open_id")
     if _check_union_id():
@@ -121,6 +141,7 @@ def _row_to_user(row: dict) -> dict:
         "username": row.get("username"),
         "password": row.get("password"),
         "real_name": row.get("real_name"),
+        "nickname": row.get("nickname"),
         "email": row.get("email"),
         "mobile": row.get("mobile"),
         "avatar": row.get("avatar"),
@@ -158,9 +179,13 @@ def page(
     where = ["deleted = 0"]
     params: List[Any] = []
     if keyword and keyword.strip():
-        where.append("(username LIKE %s OR real_name LIKE %s OR email LIKE %s OR mobile LIKE %s)")
         like = "%" + keyword.strip() + "%"
-        params.extend([like, like, like, like])
+        if _check_nickname():
+            where.append("(username LIKE %s OR real_name LIKE %s OR nickname LIKE %s OR email LIKE %s OR mobile LIKE %s)")
+            params.extend([like, like, like, like, like])
+        else:
+            where.append("(username LIKE %s OR real_name LIKE %s OR email LIKE %s OR mobile LIKE %s)")
+            params.extend([like, like, like, like])
     if department_id is not None:
         where.append("department_id = %s")
         params.append(department_id)
@@ -189,6 +214,7 @@ def save(
     username: str,
     password: Optional[str] = None,
     real_name: Optional[str] = None,
+    nickname: Optional[str] = None,
     email: Optional[str] = None,
     mobile: Optional[str] = None,
     avatar: Optional[str] = None,
@@ -205,8 +231,14 @@ def save(
     has_feishu = _check_feishu_open_id()
     has_union = _check_union_id()
     has_entry = _check_entry_date()
-    cols = ["username", "password", "real_name", "email", "mobile", "avatar"]
-    vals = [username, encoded, real_name, email, mobile, avatar]
+    has_nick = _check_nickname()
+    cols = ["username", "password", "real_name"]
+    vals = [username, encoded, real_name]
+    if has_nick:
+        cols.append("nickname")
+        vals.append(nickname)
+    cols.extend(["email", "mobile", "avatar"])
+    vals.extend([email, mobile, avatar])
     if has_feishu:
         cols.append("feishu_open_id")
         vals.append(feishu_open_id)
@@ -231,6 +263,7 @@ def save(
 def update(
     user_id: int,
     real_name: Optional[str] = None,
+    nickname: Optional[str] = None,
     email: Optional[str] = None,
     mobile: Optional[str] = None,
     avatar: Optional[str] = None,
@@ -249,6 +282,9 @@ def update(
     if real_name is not None:
         set_parts.append("real_name = %s")
         params.append(real_name)
+    if nickname is not None and _check_nickname():
+        set_parts.append("nickname = %s")
+        params.append(nickname)
     if email is not None:
         set_parts.append("email = %s")
         params.append(email)

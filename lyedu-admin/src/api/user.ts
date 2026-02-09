@@ -31,6 +31,8 @@ export interface User {
   username: string
   /** 后端字段 real_name */
   real_name?: string
+  /** 昵称（同步自 fa_staff.name 或手动维护） */
+  nickname?: string
   email?: string
   mobile?: string
   avatar?: string
