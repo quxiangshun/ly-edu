@@ -106,7 +106,7 @@ docker-compose build api
 docker-compose up -d
 ```
 
-**国内镜像源**：若访问 Docker Hub 不稳定，可配置 `.env` 中的 `DOCKER_REGISTRY` / `NPM_REGISTRY`。若遇 JDK 25 镜像问题，可参考 [JDK25_DOCKER_FIX.md](docs/JDK25_DOCKER_FIX.md) 或 [QUICK_FIX_JDK25.md](docs/QUICK_FIX_JDK25.md)。
+**国内镜像源**：若访问 Docker Hub 不稳定，可配置 `.env` 中的 `DOCKER_REGISTRY` / `NPM_REGISTRY`。
 
 访问地址：
 - 管理后台：http://localhost:9900
@@ -137,7 +137,7 @@ lyedu/
 
 ## 功能模块
 
-功能设计对照 [PlayEdu 功能明细](https://www.playeduos.com/function.html)，详见 [功能设计文档](docs/FEATURES_DESIGN.md)。
+功能设计对照 [PlayEdu 功能明细](https://www.playeduos.com/function.html)。
 
 **已实现**
 - [x] 用户/部门管理（含入职日期）

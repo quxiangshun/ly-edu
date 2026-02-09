@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """标签服务：标签 CRUD 及与用户/部门/课程的关联"""
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import pymysql
 
@@ -118,6 +118,32 @@ def list_tag_ids_by_department(department_id: int) -> List[int]:
     except (pymysql.err.OperationalError, pymysql.err.ProgrammingError) as e:
         if getattr(e, "args", (None,))[0] in (1054, 1146):
             return []
+        raise
+
+
+def list_tag_ids_by_department_batch(department_ids: List[int]) -> Dict[int, List[int]]:
+    """批量查询部门对应的标签 ID 列表，一次 SQL，用于部门树等避免 N+1。返回 { department_id: [tag_id, ...] }"""
+    out: Dict[int, List[int]] = {}
+    if not _table_exists() or not department_ids:
+        return out
+    ids = [int(x) for x in department_ids if x is not None]
+    if not ids:
+        return out
+    try:
+        placeholders = ",".join(["%s"] * len(ids))
+        rows = db.query_all(
+            "SELECT department_id, tag_id FROM ly_department_tag WHERE department_id IN (" + placeholders + ")",
+            tuple(ids),
+        )
+        for r in (rows or []):
+            did = r.get("department_id")
+            tid = r.get("tag_id")
+            if did is not None and tid is not None:
+                out.setdefault(int(did), []).append(int(tid))
+        return out
+    except (pymysql.err.OperationalError, pymysql.err.ProgrammingError) as e:
+        if getattr(e, "args", (None,))[0] in (1054, 1146):
+            return out
         raise
 
 

@@ -19,18 +19,34 @@ class DepartmentCoursesRequest(BaseModel):
     courseIds: Optional[List[int]] = None
 
 
-def _add_tag_ids_to_tree(nodes: list) -> None:
+def _collect_dept_ids(nodes: list) -> list:
+    """从树中收集所有部门 id（用于批量查标签，避免 N+1）"""
+    ids = []
     for node in nodes or []:
-        node["tagIds"] = tag_service.list_tag_ids_by_department(node.get("id") or 0)
+        nid = node.get("id")
+        if nid is not None:
+            ids.append(nid)
         if node.get("children"):
-            _add_tag_ids_to_tree(node["children"])
+            ids.extend(_collect_dept_ids(node["children"]))
+    return ids
+
+
+def _apply_tag_ids_to_tree(nodes: list, dept_tag_map: dict) -> None:
+    """根据批量查询结果给树节点挂上 tagIds（内存操作，无额外查询）"""
+    for node in nodes or []:
+        nid = node.get("id")
+        node["tagIds"] = dept_tag_map.get(nid, []) if nid is not None else []
+        if node.get("children"):
+            _apply_tag_ids_to_tree(node["children"], dept_tag_map)
 
 
 @router.get("/tree")
 def tree():
-    """获取部门树/列表（全部部门扁平列表）"""
+    """获取部门树（含标签）；批量查部门-标签关联，避免 N+1"""
     data = department_service.list_tree()
-    _add_tag_ids_to_tree(data)
+    dept_ids = _collect_dept_ids(data)
+    dept_tag_map = tag_service.list_tag_ids_by_department_batch(dept_ids)
+    _apply_tag_ids_to_tree(data, dept_tag_map)
     return success(data)
 
 

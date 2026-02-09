@@ -50,12 +50,8 @@
 | **PROJECT_STRUCTURE.md** | 项目结构、技术选型、开发规范、部署说明 |
 | **FILE_STRUCTURE.md** | 本文件：目录与每个文件的作用说明 |
 | **DOCKER_SETUP.md** | Docker 部署步骤、常见问题、仅 MySQL+Redis 与完整启动方式 |
-| **FEATURES_DESIGN.md** | 功能设计说明 |
 | **FEISHU_APP.md** | 飞书应用配置与登录对接说明 |
-| **CHANGELOG.md** | 版本更新记录 |
-| **COMMIT_UTF8.md** | Git 提交中文乱码的解决与 UTF-8 配置 |
 | **GRADLE_SETUP.md** | Gradle 环境与构建说明 |
-| **JDK25_DOCKER_FIX.md** / **QUICK_FIX_JDK25.md** | JDK 25 在 Docker 下的问题与修复 |
 | **SUPPORT.md** | 用户支持与打赏说明 |
 | **支付宝收款码.jpg** / **微信收款码.jpg** | 打赏用图片 |
 

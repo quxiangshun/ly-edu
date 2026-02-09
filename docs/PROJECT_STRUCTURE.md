@@ -79,8 +79,7 @@ lyedu/
 ├── .gitignore              # Git 忽略文件
 ├── .dockerignore           # Docker 忽略文件
 ├── README.md               # 项目说明
-├── LICENSE                 # 许可证
-└── CHANGELOG.md            # 更新日志
+└── LICENSE                 # 许可证
 ```
 
 ## 技术选型说明
