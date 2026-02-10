@@ -1,0 +1,73 @@
+import { get, post } from '../utils/request'
+import type { PageResult } from './course'
+
+export type Exam = {
+	id: number
+	title: string
+	paperId: number
+	startTime?: string
+	endTime?: string
+	durationMinutes?: number
+	passScore?: number
+	visibility: number
+	status: number
+}
+
+export type PaperQuestionDto = {
+	questionId: number
+	score: number
+	sort: number
+	question?: {
+		id: number
+		type: string
+		title: string
+		options?: string
+		score?: number
+		sort?: number
+	}
+}
+
+export type ExamRecord = {
+	id: number
+	examId: number
+	userId: number
+	paperId: number
+	score?: number
+	passed?: number
+	submitTime?: string
+}
+
+export type ExamStatus = {
+	examId: number
+	canStart: boolean
+	status: string
+	message: string
+	startTime?: string
+	endTime?: string
+	durationMinutes?: number
+	unlimited: boolean
+}
+
+export function getExamPage(params: { page: number; size: number; keyword?: string }): Promise<PageResult<Exam>> {
+	return get<PageResult<Exam>>('/exam/page', params as Record<string, any>)
+}
+
+export function getExamById(id: number): Promise<Exam> {
+	return get<Exam>('/exam/' + id)
+}
+
+export function getExamStatus(id: number): Promise<ExamStatus> {
+	return get<ExamStatus>('/exam-status/' + id)
+}
+
+export function getPaperQuestions(paperId: number): Promise<PaperQuestionDto[]> {
+	return get<PaperQuestionDto[]>('/paper/' + paperId + '/questions')
+}
+
+export function submitExam(examId: number, answers: string): Promise<ExamRecord> {
+	return post<ExamRecord>('/exam-record/submit', { examId: examId, answers: answers })
+}
+
+export function getMyRecords(): Promise<ExamRecord[]> {
+	return get<ExamRecord[]>('/exam-record/my')
+}

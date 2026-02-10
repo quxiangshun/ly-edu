@@ -1,0 +1,239 @@
+<template>
+	<scroll-view class="page" scroll-y="true" style="flex:1">
+		<view class="banner">
+			<text class="banner-title">欢迎来到 LyEdu</text>
+			<text class="banner-desc">随时随地，轻松学习</text>
+		</view>
+		<view class="features">
+			<view class="feature-item" @click="navTo('/pages/courses/courses')">
+				<text class="feature-text">课程中心</text>
+			</view>
+			<view class="feature-item" @click="navTo('/pages/my-learning/my-learning')">
+				<text class="feature-text">我的课程</text>
+			</view>
+			<view class="feature-item" @click="navTo('/pages/knowledge/knowledge')">
+				<text class="feature-text">知识中心</text>
+			</view>
+		</view>
+
+		<view v-if="hasToken && recentCourses.length > 0" class="section">
+			<view class="section-header">
+				<text class="section-title">最近学习</text>
+				<text class="section-more" @click="navTo('/pages/my-learning/my-learning')">更多 ></text>
+			</view>
+			<view v-for="c in recentCourses.slice(0, 4)" :key="'r-' + c.course.id" class="course-card" @click="navToCourse(c.course.id)">
+				<image class="course-cover" :src="coverUrl(c.course.cover)" mode="aspectFill"></image>
+				<view class="course-info">
+					<text class="course-title">{{ c.course.title }}</text>
+					<text class="course-desc">{{ c.course.description != null ? c.course.description : '暂无描述' }}</text>
+					<text class="course-tag">继续学习</text>
+				</view>
+			</view>
+		</view>
+
+		<view class="section">
+			<view class="section-header">
+				<text class="section-title">推荐课程</text>
+				<text class="section-more" @click="navTo('/pages/courses/courses')">更多 ></text>
+			</view>
+			<view v-if="recommendLoading" class="loading-wrap">
+				<text class="loading-text">加载中...</text>
+			</view>
+			<template v-else>
+				<view v-for="c in recommendedCourses" :key="c.id" class="course-card" @click="handleCourseClick(c)">
+					<image class="course-cover" :src="coverUrl(c.cover)" mode="aspectFill"></image>
+					<view class="course-info">
+						<text class="course-title">{{ c.title }}</text>
+						<text class="course-desc">{{ c.description != null ? c.description : '暂无描述' }}</text>
+						<button class="course-btn" size="mini" @click.stop="handleCourseClick(c)">开始学习</button>
+					</view>
+				</view>
+				<view v-if="recommendedCourses.length === 0" class="empty-wrap">
+					<text class="empty-text">暂无推荐课程</text>
+				</view>
+			</template>
+		</view>
+	</scroll-view>
+</template>
+
+<script setup lang="uts">
+	import { getRecommendedCourses, type Course } from '../../api/course'
+	import { getWatchedCourses, joinCourse } from '../../api/learning'
+	import { isLoggedIn } from '../../utils/auth'
+
+	const hasToken = ref(isLoggedIn())
+	const recommendedCourses = ref<Course[]>([])
+	const recentCourses = ref<any[]>([])
+	const recommendLoading = ref(false)
+
+	onShow(() => {
+		hasToken.value = isLoggedIn()
+		loadRecommended()
+		if (hasToken.value) loadRecentCourses()
+	})
+
+	function coverUrl(cover: string | null | undefined): string {
+		if (cover != null && cover.length > 0) {
+			if (cover.startsWith('http')) return cover
+			return '/api' + (cover.startsWith('/') ? cover : '/' + cover)
+		}
+		return '/static/logo.png'
+	}
+
+	async function loadRecommended(): Promise<void> {
+		recommendLoading.value = true
+		try {
+			const list = await getRecommendedCourses(6)
+			recommendedCourses.value = list != null ? list : []
+		} catch (_e) {
+			recommendedCourses.value = []
+		} finally {
+			recommendLoading.value = false
+		}
+	}
+
+	async function loadRecentCourses(): Promise<void> {
+		if (!hasToken.value) return
+		try {
+			const list = await getWatchedCourses()
+			recentCourses.value = list != null ? list : []
+		} catch (_e) {
+			recentCourses.value = []
+		}
+	}
+
+	function navTo(url: string): void {
+		uni.navigateTo({ url: url })
+	}
+
+	function navToCourse(id: number): void {
+		uni.navigateTo({ url: '/pages/course-detail/course-detail?id=' + id })
+	}
+
+	async function handleCourseClick(course: Course): Promise<void> {
+		if (!hasToken.value) {
+			uni.showToast({ title: '请先登录', icon: 'none' })
+			uni.navigateTo({ url: '/pages/login/login?redirect=' + encodeURIComponent('/pages/course-detail/course-detail?id=' + course.id) })
+			return
+		}
+		try {
+			await joinCourse(course.id)
+			uni.showToast({ title: '已加入课程', icon: 'success' })
+			uni.navigateTo({ url: '/pages/course-detail/course-detail?id=' + course.id })
+		} catch (_e) {
+			uni.showToast({ title: '加入课程失败', icon: 'none' })
+		}
+	}
+</script>
+
+<style>
+.page {
+	flex: 1;
+}
+.banner {
+	flex-direction: column;
+	align-items: center;
+	background-color: #667eea;
+	padding: 40px 20px;
+	margin-bottom: 20px;
+}
+.banner-title {
+	font-size: 28px;
+	color: #ffffff;
+	font-weight: 600;
+}
+.banner-desc {
+	font-size: 14px;
+	color: rgba(255,255,255,0.9);
+	margin-top: 10px;
+}
+.features {
+	flex-direction: row;
+	background-color: #ffffff;
+	padding: 20px;
+	margin-bottom: 20px;
+}
+.feature-item {
+	flex: 1;
+	flex-direction: column;
+	align-items: center;
+	padding: 12px 0;
+}
+.feature-text {
+	font-size: 14px;
+	color: #323233;
+}
+.section {
+	background-color: #ffffff;
+	padding: 20px;
+	margin-bottom: 20px;
+}
+.section-header {
+	flex-direction: row;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 15px;
+}
+.section-title {
+	font-size: 18px;
+	color: #323233;
+}
+.section-more {
+	font-size: 14px;
+	color: #969799;
+}
+.course-card {
+	flex-direction: column;
+	margin-bottom: 16px;
+	border-radius: 8px;
+	overflow: hidden;
+	background-color: #f7f8fa;
+}
+.course-cover {
+	width: 100%;
+	height: 120px;
+	background-color: #ebedf0;
+}
+.course-info {
+	flex-direction: column;
+	padding: 12px;
+}
+.course-title {
+	font-size: 16px;
+	font-weight: 600;
+	color: #323233;
+}
+.course-desc {
+	font-size: 13px;
+	color: #646566;
+	margin-top: 6px;
+}
+.course-tag {
+	font-size: 12px;
+	color: #1989fa;
+	margin-top: 8px;
+}
+.course-btn {
+	background-color: #1989fa;
+	color: #ffffff;
+	border-radius: 16px;
+	margin-top: 8px;
+	align-self: flex-end;
+}
+.loading-wrap {
+	padding: 24px 0;
+	align-items: center;
+}
+.loading-text {
+	font-size: 14px;
+	color: #969799;
+}
+.empty-wrap {
+	padding: 24px 0;
+	align-items: center;
+}
+.empty-text {
+	font-size: 14px;
+	color: #969799;
+}
+</style>

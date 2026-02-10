@@ -1,0 +1,155 @@
+<template>
+	<scroll-view class="page" scroll-y="true" style="flex:1">
+		<view class="content">
+			<text class="subtitle">可参加的考试（按部门可见）</text>
+			<view v-if="loading" class="loading-wrap">
+				<text class="loading-text">加载中...</text>
+			</view>
+			<template v-else>
+				<view v-if="examList.length === 0" class="empty-wrap">
+					<text class="empty-text">暂无考试</text>
+				</view>
+				<view v-else>
+					<view v-for="row in examList" :key="row.id" class="exam-card" @click="row.record != null ? goResult(row) : goTake(row)">
+						<text class="exam-title">{{ row.title }}</text>
+						<view class="exam-info">
+							<text v-if="row.startTime != null">开始：{{ formatTime(row.startTime) }}</text>
+							<text v-if="row.endTime != null">结束：{{ formatTime(row.endTime) }}</text>
+						</view>
+						<view class="exam-info">
+							<text v-if="row.durationMinutes != null">时长 {{ row.durationMinutes }} 分钟</text>
+							<text v-if="row.passScore != null">及格分 {{ row.passScore }} 分</text>
+						</view>
+						<view class="exam-action">
+							<text v-if="row.record != null" class="done-tag">已考 {{ row.record.score }} 分</text>
+							<button v-else class="take-btn" size="mini">参加考试</button>
+						</view>
+					</view>
+				</view>
+			</template>
+		</view>
+	</scroll-view>
+</template>
+
+<script setup lang="uts">
+	import { getExamPage, getMyRecords } from '../../api/exam'
+
+	const loading = ref(false)
+	const examList = ref<any[]>([])
+	const pagination = { page: 1, size: 15, total: 0 }
+
+	onShow(() => {
+		loadList()
+	})
+
+	function formatTime(s: string): string {
+		if (s == null || s.length === 0) return '-'
+		return s.replace('T', ' ').substring(0, 16)
+	}
+
+	async function loadList(): Promise<void> {
+		loading.value = true
+		try {
+			const [examRes, recordsRes] = await Promise.all([
+				getExamPage({ page: pagination.page, size: pagination.size }),
+				getMyRecords()
+			])
+			const list = examRes != null && examRes.records != null ? examRes.records : []
+			const records = recordsRes != null ? recordsRes : []
+			const rMap = new Map<number, any>()
+			for (let i = 0; i < records.length; i++) {
+				const r = records[i] as any
+				rMap.set(r.examId, r)
+			}
+			const result: any[] = []
+			for (let i = 0; i < list.length; i++) {
+				const row = list[i] as any
+				result.push({ ...row, record: rMap.get(row.id) })
+			}
+			examList.value = result
+		} catch (_e) {
+			examList.value = []
+		} finally {
+			loading.value = false
+		}
+	}
+
+	function goTake(row: any): void {
+		uni.navigateTo({ url: '/pages/exam-take/exam-take?id=' + row.id })
+	}
+
+	function goResult(row: any): void {
+		const r = row.record
+		if (r != null) {
+			uni.navigateTo({ url: '/pages/exam-result/exam-result?id=' + row.id })
+		}
+	}
+</script>
+
+<style>
+.page {
+	flex: 1;
+}
+.content {
+	flex-direction: column;
+	padding: 16px;
+}
+.subtitle {
+	font-size: 13px;
+	color: #969799;
+	margin-bottom: 16px;
+}
+.loading-wrap {
+	padding: 40px 0;
+	align-items: center;
+}
+.loading-text {
+	font-size: 14px;
+	color: #969799;
+}
+.empty-wrap {
+	padding: 40px 0;
+	align-items: center;
+}
+.empty-text {
+	font-size: 14px;
+	color: #969799;
+}
+.exam-card {
+	flex-direction: column;
+	padding: 16px;
+	background-color: #ffffff;
+	border-radius: 8px;
+	margin-bottom: 12px;
+}
+.exam-title {
+	font-size: 16px;
+	font-weight: 600;
+	color: #323233;
+	margin-bottom: 8px;
+}
+.exam-info {
+	flex-direction: row;
+	flex-wrap: wrap;
+	margin-bottom: 4px;
+}
+.exam-info text {
+	font-size: 12px;
+	color: #969799;
+	margin-right: 16px;
+}
+.exam-action {
+	flex-direction: row;
+	justify-content: flex-end;
+	margin-top: 12px;
+}
+.done-tag {
+	font-size: 13px;
+	color: #07c160;
+}
+.take-btn {
+	background-color: #1989fa;
+	color: #ffffff;
+	border-radius: 16px;
+}
+</style>

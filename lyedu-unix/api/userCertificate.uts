@@ -1,0 +1,25 @@
+import { get } from '../utils/request'
+
+export type UserCertificate = {
+	id: number
+	userId: number
+	certificateId: number
+	templateId: number
+	certificateNo: string
+	title: string
+	issuedAt?: string
+	createTime?: string
+}
+
+export type UserCertificateWithTemplate = {
+	userCertificate: UserCertificate
+	template: { id: number; name: string; description?: string; config?: string } | null
+}
+
+export function getMyCertificates(): Promise<UserCertificate[]> {
+	return get<UserCertificate[]>('/user-certificate/my')
+}
+
+export function getCertificateDetail(id: number): Promise<UserCertificateWithTemplate> {
+	return get<UserCertificateWithTemplate>('/user-certificate/' + id)
+}

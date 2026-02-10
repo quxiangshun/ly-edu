@@ -1,0 +1,24 @@
+/**
+ * 登录方式配置：local=仅账号密码，feishu=仅飞书，both=两者
+ * uni-app x 无 import.meta.env，在此配置
+ */
+export type AuthProviderType = 'feishu' | 'local' | 'both'
+
+let _authProvider: AuthProviderType = 'local'
+
+export function setAuthProvider(p: AuthProviderType): void {
+	_authProvider = p
+}
+
+export function getAuthProvider(): AuthProviderType {
+	return _authProvider
+}
+
+export function isFeishuEnabled(): boolean {
+	const p = getAuthProvider()
+	return p === 'feishu' || p === 'both'
+}
+
+export function isFeishuOnly(): boolean {
+	return getAuthProvider() === 'feishu'
+}

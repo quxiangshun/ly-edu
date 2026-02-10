@@ -1,0 +1,143 @@
+<template>
+	<scroll-view class="page" scroll-y="true" style="flex:1">
+		<view class="content">
+			<view class="section">
+				<text class="section-title">播放规则</text>
+				<view class="config-row">
+					<text class="config-label">防拖拽进度条</text>
+					<text class="config-value">{{ playerConfig.disableSeek ? '已开启' : '未开启' }}</text>
+				</view>
+				<view class="config-row">
+					<text class="config-label">禁止倍速播放</text>
+					<text class="config-value">{{ playerConfig.disableSpeed ? '已开启' : '未开启' }}</text>
+				</view>
+			</view>
+			<text class="config-tip">以上规则由管理员在后台设置，学习时请按要求完成观看。</text>
+
+			<view class="section">
+				<view class="config-row" @click="handleClearCache">
+					<text class="config-label">清除缓存</text>
+					<text class="config-value">清除本地缓存数据</text>
+				</view>
+			</view>
+
+			<view v-if="isLoggedInRef" class="logout-wrap">
+				<button class="logout-btn" @click="handleLogout">退出登录</button>
+			</view>
+		</view>
+	</scroll-view>
+</template>
+
+<script setup lang="uts">
+	import { getConfigByKey } from '../../api/config'
+	import { isLoggedIn, logout } from '../../utils/auth'
+
+	const isLoggedInRef = ref(isLoggedIn())
+	const playerConfig = ref({ disableSeek: false, disableSpeed: false })
+
+	onShow(() => {
+		isLoggedInRef.value = isLoggedIn()
+		loadPlayerConfig()
+	})
+
+	async function loadPlayerConfig(): Promise<void> {
+		try {
+			const [seek, speed] = await Promise.all([
+				getConfigByKey('player.disable_seek').catch(() => '0'),
+				getConfigByKey('player.disable_speed').catch(() => '0')
+			])
+			playerConfig.value = {
+				disableSeek: seek === '1',
+				disableSpeed: speed === '1'
+			}
+		} catch (_e) {}
+	}
+
+	function handleClearCache(): void {
+		uni.showModal({
+			title: '清除缓存',
+			content: '将清除本地缓存，是否继续？',
+			success: (res) => {
+				if (res.confirm) {
+					const token = uni.getStorageSync('token')
+					const user = uni.getStorageSync('user')
+					uni.clearStorageSync()
+					if (token != null) uni.setStorageSync('token', token)
+					if (user != null) uni.setStorageSync('user', user)
+					uni.showToast({ title: '已清除缓存' })
+				}
+			}
+		})
+	}
+
+	function handleLogout(): void {
+		uni.showModal({
+			title: '退出登录',
+			content: '确定要退出登录吗？',
+			success: (res) => {
+				if (res.confirm) {
+					logout()
+					isLoggedInRef.value = false
+					uni.showToast({ title: '已退出登录' })
+					uni.reLaunch({ url: '/pages/login/login' })
+				}
+			}
+		})
+	}
+</script>
+
+<style>
+.page {
+	flex: 1;
+}
+.content {
+	flex-direction: column;
+	padding: 16px;
+}
+.section {
+	flex-direction: column;
+	background-color: #ffffff;
+	border-radius: 8px;
+	padding: 16px;
+	margin-bottom: 16px;
+}
+.section-title {
+	font-size: 14px;
+	color: #969799;
+	margin-bottom: 12px;
+}
+.config-row {
+	flex-direction: row;
+	justify-content: space-between;
+	align-items: center;
+	padding: 12px 0;
+	border-bottom-width: 1px;
+	border-bottom-color: #ebedf0;
+}
+.config-row:last-child {
+	border-bottom-width: 0;
+}
+.config-label {
+	font-size: 16px;
+	color: #323233;
+}
+.config-value {
+	font-size: 14px;
+	color: #969799;
+}
+.config-tip {
+	font-size: 12px;
+	color: #969799;
+	margin: 0 0 16px 16px;
+	line-height: 1.5;
+}
+.logout-wrap {
+	margin-top: 32px;
+}
+.logout-btn {
+	background-color: #ee0a24;
+	color: #ffffff;
+	border-radius: 24px;
+	height: 44px;
+}
+</style>

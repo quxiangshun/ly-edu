@@ -1,0 +1,30 @@
+import { get } from '../utils/request'
+
+export type PointLogItem = {
+	id: number
+	userId: number
+	points: number
+	ruleKey?: string
+	remark?: string
+	createTime?: string
+}
+
+export type RankingItem = {
+	userId: number
+	realName?: string
+	username?: string
+	totalPoints: number
+	rank: number
+}
+
+export function getMyTotal(): Promise<number> {
+	return get<number>('/point/my')
+}
+
+export function getMyLog(params: { page?: number; size?: number } | null): Promise<PointLogItem[]> {
+	return get<PointLogItem[]>('/point/log', params != null ? params as Record<string, any> : null)
+}
+
+export function getRanking(params: { limit?: number } | null): Promise<RankingItem[]> {
+	return get<RankingItem[]>('/point/ranking', params != null ? params as Record<string, any> : null)
+}

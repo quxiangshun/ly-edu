@@ -1,0 +1,6 @@
+/**
+ * API 基础地址
+ * - 开发时：若前端无代理，填后端完整地址如 http://localhost:9700/api
+ * - 生产或代理已配置：使用 /api（相对路径）
+ */
+export const API_BASE_URL = 'http://localhost:9700/api'

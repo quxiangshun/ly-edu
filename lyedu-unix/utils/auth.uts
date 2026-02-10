@@ -1,0 +1,64 @@
+/**
+ * 鉴权工具
+ * token 与用户信息存取、登录态校验
+ */
+
+const TOKEN_KEY = 'token'
+const USER_KEY = 'user'
+
+export function getToken(): string {
+	const t = uni.getStorageSync(TOKEN_KEY)
+	return t != null ? t as string : ''
+}
+
+export function setToken(token: string): void {
+	uni.setStorageSync(TOKEN_KEY, token)
+}
+
+export function removeToken(): void {
+	uni.removeStorageSync(TOKEN_KEY)
+}
+
+export function getUser(): Record<string, any> | null {
+	const u = uni.getStorageSync(USER_KEY)
+	if (u == null || (u as string).length === 0) return null
+	try {
+		const parsed = JSON.parse(u as string)
+		return parsed != null ? parsed as Record<string, any> : null
+	} catch (_e) {
+		return null
+	}
+}
+
+export function setUser(user: Record<string, any>): void {
+	uni.setStorageSync(USER_KEY, JSON.stringify(user))
+}
+
+export function removeUser(): void {
+	uni.removeStorageSync(USER_KEY)
+}
+
+export function isLoggedIn(): boolean {
+	return getToken().length > 0
+}
+
+export function logout(): void {
+	removeToken()
+	removeUser()
+}
+
+/**
+ * 需要登录的页面调用，未登录则跳转登录页
+ * @param redirect 登录后跳回路径，不传则使用当前页面
+ */
+export function requireAuth(redirect: string | null = null): boolean {
+	if (isLoggedIn()) return true
+	const pages = getCurrentPages()
+	const curPage = pages.length > 0 ? (pages[pages.length - 1] as any) : null
+	const path = curPage != null ? (curPage.route ?? '') : ''
+	const target = redirect != null && redirect.length > 0 ? redirect : path
+	uni.navigateTo({
+		url: '/pages/login/login' + (target.length > 0 ? '?redirect=' + encodeURIComponent(target) : '')
+	})
+	return false
+}

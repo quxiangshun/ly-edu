@@ -1,0 +1,18 @@
+import { get, post } from '../utils/request'
+
+type FeishuUrlRes = { url: string }
+type FeishuCallbackRes = { token: string; userInfo: Record<string, any> }
+type LoginRes = { token: string; userInfo: Record<string, any> }
+
+export function getFeishuAuthUrl(redirectUri: string, state: string | null = null): Promise<FeishuUrlRes> {
+	const params: Record<string, string> = { redirect_uri: redirectUri, state: state != null ? state : '' }
+	return get<FeishuUrlRes>('/auth/feishu/url', params)
+}
+
+export function feishuCallback(code: string, redirectUri: string): Promise<FeishuCallbackRes> {
+	return post<FeishuCallbackRes>('/auth/feishu/callback', { code: code, redirectUri: redirectUri })
+}
+
+export function login(username: string, password: string): Promise<LoginRes> {
+	return post<LoginRes>('/auth/login', { username: username, password: password })
+}

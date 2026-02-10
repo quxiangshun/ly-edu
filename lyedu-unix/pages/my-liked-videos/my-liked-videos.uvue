@@ -1,0 +1,104 @@
+<template>
+	<scroll-view class="page" scroll-y="true" style="flex:1" @scrolltolower="loadList">
+		<view class="content">
+			<view v-for="v in videoList" :key="v.id" class="video-row" @click="playVideo(v.id)">
+				<text class="video-title">{{ v.title }}</text>
+				<text class="video-meta">{{ v.duration != null ? formatDuration(v.duration) : '' }} · {{ v.playCount ?? 0 }} 播放 · {{ v.likeCount ?? 0 }} 赞</text>
+			</view>
+			<view v-if="!loading && videoList.length === 0" class="empty-wrap">
+				<text class="empty-text">暂无点赞的视频</text>
+			</view>
+			<view v-if="loading" class="loading-wrap">
+				<text class="loading-text">加载中...</text>
+			</view>
+		</view>
+	</scroll-view>
+</template>
+
+<script setup lang="uts">
+	import { getLikedVideos } from '../../api/video'
+
+	const loading = ref(false)
+	const videoList = ref<any[]>([])
+	const pageNum = ref(1)
+	const size = 20
+	const hasMore = ref(true)
+
+	onShow(() => {
+		videoList.value = []
+		pageNum.value = 1
+		hasMore.value = true
+		loadList()
+	})
+
+	function formatDuration(seconds: number): string {
+		const m = Math.floor(seconds / 60)
+		const s = seconds % 60
+		return m.toString() + ':' + (s < 10 ? '0' : '') + s.toString()
+	}
+
+	async function loadList(): Promise<void> {
+		if (!hasMore.value || loading.value) return
+		loading.value = true
+		try {
+			const res = await getLikedVideos({ page: pageNum.value, size: size })
+			const list = res != null && res.records != null ? res.records : []
+			if (list.length > 0) {
+				for (let i = 0; i < list.length; i++) {
+					videoList.value.push(list[i])
+				}
+				pageNum.value = pageNum.value + 1
+			}
+			if (list.length < size) hasMore.value = false
+		} catch (_e) {
+			hasMore.value = false
+		} finally {
+			loading.value = false
+		}
+	}
+
+	function playVideo(id: number): void {
+		uni.navigateTo({ url: '/pages/video-player/video-player?id=' + id })
+	}
+</script>
+
+<style>
+.page {
+	flex: 1;
+}
+.content {
+	flex-direction: column;
+	padding: 16px;
+}
+.video-row {
+	flex-direction: column;
+	padding: 14px 0;
+	border-bottom-width: 1px;
+	border-bottom-color: #ebedf0;
+}
+.video-title {
+	font-size: 16px;
+	color: #323233;
+}
+.video-meta {
+	font-size: 12px;
+	color: #969799;
+	margin-top: 4px;
+}
+.empty-wrap {
+	padding: 40px 0;
+	align-items: center;
+}
+.empty-text {
+	font-size: 14px;
+	color: #969799;
+}
+.loading-wrap {
+	padding: 16px 0;
+	align-items: center;
+}
+.loading-text {
+	font-size: 14px;
+	color: #969799;
+}
+</style>

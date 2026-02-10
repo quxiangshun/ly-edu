@@ -1,0 +1,25 @@
+import { get } from '../utils/request'
+
+export type UserTask = {
+	id: number
+	userId: number
+	taskId: number
+	progress?: string
+	status: number
+	completedAt?: string
+	createTime?: string
+	updateTime?: string
+}
+
+export type TaskWithUserProgress = {
+	task: { id: number; title?: string }
+	userTask: UserTask | null
+}
+
+export function getMyTasks(): Promise<TaskWithUserProgress[]> {
+	return get<TaskWithUserProgress[]>('/user-task/my')
+}
+
+export function getTaskDetail(taskId: number): Promise<any> {
+	return get('/user-task/task/' + taskId)
+}

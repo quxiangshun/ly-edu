@@ -1,0 +1,93 @@
+<template>
+	<scroll-view class="page" scroll-y="true" style="flex:1">
+		<view class="content">
+			<view v-if="loading" class="loading-wrap">
+				<text class="loading-text">加载中...</text>
+			</view>
+			<view v-else class="cert-list">
+				<view v-for="item in certList" :key="item.id" class="cert-card">
+					<text class="cert-title">{{ item.title }}</text>
+					<text class="cert-no">证书编号：{{ item.certificateNo }}</text>
+					<text class="cert-time">{{ item.issuedAt != null ? item.issuedAt : (item.createTime != null ? item.createTime : '') }}</text>
+				</view>
+				<view v-if="certList.length === 0" class="empty-wrap">
+					<text class="empty-text">暂无证书</text>
+				</view>
+			</view>
+		</view>
+	</scroll-view>
+</template>
+
+<script setup lang="uts">
+	import { getMyCertificates } from '../../api/userCertificate'
+
+	const loading = ref(false)
+	const certList = ref<any[]>([])
+
+	onShow(() => {
+		loadList()
+	})
+
+	async function loadList(): Promise<void> {
+		loading.value = true
+		try {
+			const list = await getMyCertificates()
+			certList.value = Array.isArray(list) ? list : []
+		} catch (_e) {
+			certList.value = []
+		} finally {
+			loading.value = false
+		}
+	}
+</script>
+
+<style>
+.page {
+	flex: 1;
+}
+.content {
+	flex-direction: column;
+	padding: 16px;
+}
+.loading-wrap {
+	padding: 40px 0;
+	align-items: center;
+}
+.loading-text {
+	font-size: 14px;
+	color: #969799;
+}
+.cert-list {
+	flex-direction: column;
+}
+.cert-card {
+	flex-direction: column;
+	padding: 16px;
+	background-color: #ffffff;
+	border-radius: 8px;
+	margin-bottom: 12px;
+}
+.cert-title {
+	font-size: 16px;
+	font-weight: 600;
+	color: #323233;
+}
+.cert-no {
+	font-size: 13px;
+	color: #646566;
+	margin-top: 8px;
+}
+.cert-time {
+	font-size: 12px;
+	color: #969799;
+	margin-top: 4px;
+}
+.empty-wrap {
+	padding: 40px 0;
+	align-items: center;
+}
+.empty-text {
+	font-size: 14px;
+	color: #969799;
+}
+</style>

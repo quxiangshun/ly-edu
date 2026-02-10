@@ -1,0 +1,107 @@
+/**
+ * 网络请求封装
+ * 使用 uni.request，自动携带 token，统一处理 401
+ */
+
+import { API_BASE_URL } from '../config/api'
+
+type ApiResponse<T = any> = {
+	code: number
+	message: string
+	data: T
+	timestamp: number
+}
+
+const BASE_URL = API_BASE_URL
+const TIMEOUT = 30000
+
+function getToken(): string {
+	const token = uni.getStorageSync('token')
+	return token != null ? token as string : ''
+}
+
+function toLogin(redirect: string | null = null): void {
+	const pages = getCurrentPages()
+	const curPage = pages[pages.length - 1] as any
+	const route = curPage != null ? (curPage.route ?? '') : ''
+	const redirectPath = redirect != null && redirect.length > 0 ? redirect : route
+	uni.removeStorageSync('token')
+	uni.removeStorageSync('user')
+	uni.navigateTo({
+		url: '/pages/login/login' + (redirectPath.length > 0 ? '?redirect=' + encodeURIComponent(redirectPath) : '')
+	})
+}
+
+function buildUrl(baseUrl: string, data: Record<string, any> | null): string {
+	if (data == null || Object.keys(data).length === 0) return baseUrl
+	const parts: string[] = []
+	for (const k in data) {
+		const v = data[k]
+		if (v != null) {
+			parts.push(encodeURIComponent(k) + '=' + encodeURIComponent(String(v)))
+		}
+	}
+	if (parts.length === 0) return baseUrl
+	return baseUrl + (baseUrl.indexOf('?') >= 0 ? '&' : '?') + parts.join('&')
+}
+
+export function request<T = any>(options: UniApp.RequestOptions): Promise<T> {
+	const token = getToken()
+	const method = options.method ?? 'GET'
+	const data = (options.data ?? {}) as Record<string, any>
+	const baseUrl = options.url.startsWith('http') ? options.url : BASE_URL + (options.url.startsWith('/') ? options.url : '/' + options.url)
+	const url = method === 'GET' ? buildUrl(baseUrl, data) : baseUrl
+	const header: Record<string, string> = {
+		'Content-Type': 'application/json;charset=UTF-8',
+		...((options.header ?? {}) as Record<string, string>)
+	}
+	if (token.length > 0) {
+		header['Authorization'] = 'Bearer ' + token
+	}
+	return new Promise((resolve, reject) => {
+		uni.request({
+			url: url,
+			method: method,
+			data: method === 'GET' ? {} : data,
+			header: header,
+			timeout: options.timeout ?? TIMEOUT,
+			success: (res) => {
+				const data = res.data as ApiResponse<T>
+				if (data == null) {
+					uni.showToast({ title: '请求失败', icon: 'none' })
+					reject(new Error('响应为空'))
+					return
+				}
+				if (data.code === 200) {
+					resolve((data.data != null ? data.data : data as any) as T)
+					return
+				}
+				uni.showToast({ title: (data.message != null ? data.message : '请求失败') as string, icon: 'none' })
+				if (data.code === 401) {
+					toLogin()
+				}
+				reject(new Error((data.message != null ? data.message : '请求失败') as string))
+			},
+			fail: (err) => {
+				uni.showToast({ title: '网络错误', icon: 'none' })
+				reject(err)
+			}
+		})
+	})
+}
+
+export function get<T = any>(url: string, data: Record<string, any> | null = null): Promise<T> {
+	return request<T>({ url: url, method: 'GET', data: data ?? {} })
+}
+
+export function post<T = any>(url: string, data: Record<string, any> | null = null): Promise<T> {
+	return request<T>({ url: url, method: 'POST', data: data ?? {} })
+}
+
+export function put<T = any>(url: string, data: Record<string, any> | null = null): Promise<T> {
+	return request<T>({ url: url, method: 'PUT', data: data ?? {} })
+}
+
+export function del<T = any>(url: string, data: Record<string, any> | null = null): Promise<T> {
+	return request<T>({ url: url, method: 'DELETE', data: data ?? {} })
+}

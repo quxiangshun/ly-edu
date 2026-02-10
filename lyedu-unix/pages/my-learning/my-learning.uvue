@@ -1,0 +1,188 @@
+<template>
+	<scroll-view class="page" scroll-y="true" style="flex:1">
+		<view class="content">
+			<text class="desc">展示您已加入的课程</text>
+			<view v-if="!hasToken" class="empty-wrap">
+				<text class="empty-text">请先登录后查看学习记录</text>
+				<button class="primary-btn" @click="navTo('/pages/login/login')">去登录</button>
+			</view>
+			<view v-else-if="loading" class="loading-wrap">
+				<text class="loading-text">加载中...</text>
+			</view>
+			<view v-else-if="courseList.length === 0" class="empty-wrap">
+				<text class="empty-text">暂无已加入课程，去课程中心看看吧</text>
+				<button class="primary-btn" @click="navTo('/pages/courses/courses')">去选课</button>
+			</view>
+			<view v-else class="course-list">
+				<view v-for="item in courseList" :key="item.course.id" class="course-card" @click="navToCourse(item.course.id)">
+					<image class="course-cover" :src="coverUrl(item.course.cover)" mode="aspectFill"></image>
+					<view class="course-body">
+						<text class="course-title">{{ item.course.title }}</text>
+						<text class="course-desc">{{ item.course.description != null ? item.course.description : '暂无描述' }}</text>
+						<view class="progress-row">
+							<text class="progress-text">进度 {{ item.progress ?? 0 }}%</text>
+							<text class="tag-text">继续学习</text>
+						</view>
+					</view>
+				</view>
+			</view>
+		</view>
+	</scroll-view>
+</template>
+
+<script setup lang="uts">
+	import { getMyCourses } from '../../api/learning'
+	import { getCourseById } from '../../api/course'
+	import { isLoggedIn } from '../../utils/auth'
+
+	const hasToken = ref(isLoggedIn())
+	const loading = ref(false)
+	const courseList = ref<any[]>([])
+
+	onShow(() => {
+		hasToken.value = isLoggedIn()
+		if (hasToken.value) loadMyCourses()
+	})
+
+	function coverUrl(cover: string | null | undefined): string {
+		if (cover != null && cover.length > 0) {
+			if (cover.startsWith('http')) return cover
+			return '/api' + (cover.startsWith('/') ? cover : '/' + cover)
+		}
+		return '/static/logo.png'
+	}
+
+	async function loadMyCourses(): Promise<void> {
+		if (!hasToken.value) return
+		loading.value = true
+		try {
+			const res = await getMyCourses()
+			const rows = Array.isArray(res) ? res : []
+			const courseIds: number[] = []
+			for (let i = 0; i < rows.length; i++) {
+				const r = rows[i] as any
+				const id = Number(r.courseId ?? r.course_id ?? 0)
+				if (id > 0) courseIds.push(id)
+			}
+			const uniqIds = Array.from(new Set(courseIds))
+			const details: any[] = []
+			for (let i = 0; i < uniqIds.length; i++) {
+				try {
+					const d = await getCourseById(uniqIds[i])
+					details.push(d != null && d.course != null ? d.course : null)
+				} catch (_e) {
+					details.push(null)
+				}
+			}
+			const idToCourse = new Map<number, any>()
+			for (let i = 0; i < details.length; i++) {
+				const c = details[i]
+				if (c != null && c.id != null) idToCourse.set(c.id, c)
+			}
+			const result: any[] = []
+			for (let i = 0; i < rows.length; i++) {
+				const r = rows[i] as any
+				const cid = Number(r.courseId ?? r.course_id ?? 0)
+				const course = idToCourse.get(cid)
+				if (course != null) {
+					result.push({ course: course, progress: Number(r.progress ?? 0) })
+				}
+			}
+			courseList.value = result
+		} catch (_e) {
+			courseList.value = []
+		} finally {
+			loading.value = false
+		}
+	}
+
+	function navTo(url: string): void {
+		uni.navigateTo({ url: url })
+	}
+
+	function navToCourse(id: number): void {
+		uni.navigateTo({ url: '/pages/course-detail/course-detail?id=' + id })
+	}
+</script>
+
+<style>
+.page {
+	flex: 1;
+}
+.content {
+	flex-direction: column;
+	padding: 16px;
+}
+.desc {
+	font-size: 14px;
+	color: #969799;
+	margin-bottom: 16px;
+}
+.empty-wrap {
+	flex-direction: column;
+	align-items: center;
+	padding: 40px 0;
+}
+.empty-text {
+	font-size: 14px;
+	color: #969799;
+	margin-bottom: 16px;
+}
+.primary-btn {
+	background-color: #1989fa;
+	color: #ffffff;
+	border-radius: 24px;
+	padding: 8px 24px;
+}
+.loading-wrap {
+	padding: 40px 0;
+	align-items: center;
+}
+.loading-text {
+	font-size: 14px;
+	color: #969799;
+}
+.course-list {
+	flex-direction: column;
+}
+.course-card {
+	flex-direction: column;
+	margin-bottom: 16px;
+	border-radius: 8px;
+	overflow: hidden;
+	background-color: #ffffff;
+}
+.course-cover {
+	width: 100%;
+	height: 120px;
+	background-color: #ebedf0;
+}
+.course-body {
+	flex-direction: column;
+	padding: 12px;
+}
+.course-title {
+	font-size: 16px;
+	font-weight: 600;
+	color: #323233;
+}
+.course-desc {
+	font-size: 13px;
+	color: #646566;
+	margin-top: 6px;
+}
+.progress-row {
+	flex-direction: row;
+	align-items: center;
+	margin-top: 8px;
+}
+.progress-text {
+	font-size: 12px;
+	color: #969799;
+}
+.tag-text {
+	font-size: 12px;
+	color: #1989fa;
+	margin-left: 8px;
+}
+</style>

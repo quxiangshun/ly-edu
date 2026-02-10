@@ -1,0 +1,23 @@
+import { get } from '../utils/request'
+import type { PageResult } from './course'
+
+export type Knowledge = {
+	id: number
+	title: string
+	category?: string
+	fileName?: string
+	fileUrl: string
+	fileSize?: number
+	fileType?: string
+	sort: number
+	visibility: number
+	createTime?: string
+}
+
+export function getKnowledgePage(params: { page: number; size: number; keyword?: string; category?: string }): Promise<PageResult<Knowledge>> {
+	return get<PageResult<Knowledge>>('/knowledge/page', params as Record<string, any>)
+}
+
+export function getKnowledgeById(id: number): Promise<Knowledge> {
+	return get<Knowledge>('/knowledge/' + id)
+}

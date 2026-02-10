@@ -1,0 +1,175 @@
+<template>
+	<scroll-view class="page" scroll-y="true" style="flex:1">
+		<view class="content">
+			<view class="logo-block">
+				<image class="login-logo" :src="logoSrc" mode="aspectFit"></image>
+				<text class="login-title">{{ siteTitle }}</text>
+				<text class="login-subtitle">企业培训平台</text>
+			</view>
+
+			<view class="form-block">
+				<view class="field-row">
+					<text class="field-label">用户名</text>
+					<input class="field-input" v-model="username" placeholder="请输入用户名" />
+				</view>
+				<view class="field-row">
+					<text class="field-label">密码</text>
+					<input class="field-input" type="password" v-model="password" placeholder="请输入密码" :password="!showPassword" />
+					<text class="eye-btn" @click="showPassword = !showPassword">{{ showPassword ? '隐藏' : '显示' }}</text>
+				</view>
+				<button class="submit-btn" :loading="loading" @click="handleLogin">登录</button>
+			</view>
+		</view>
+	</scroll-view>
+</template>
+
+<script setup lang="uts">
+	import { login } from '../../api/auth'
+	import { getConfigByKey } from '../../api/config'
+	import { setToken, setUser } from '../../utils/auth'
+
+	const siteTitle = ref('LyEdu')
+	const siteLogo = ref('')
+	const logoSrc = computed(() => {
+		const raw = siteLogo.value.length > 0 ? siteLogo.value : '/static/logo.png'
+		if (raw.startsWith('http://') || raw.startsWith('https://')) return raw
+		return raw
+	})
+
+	const username = ref('')
+	const password = ref('')
+	const showPassword = ref(false)
+	const loading = ref(false)
+
+	onLoad((options: any) => {
+		loadBranding()
+	})
+
+	async function loadBranding(): Promise<void> {
+		try {
+			const title = await getConfigByKey('site.title')
+			if (title != null && title.length > 0) {
+				siteTitle.value = title
+			}
+		} catch (_e) {}
+
+		try {
+			const logo = await getConfigByKey('site.logo')
+			if (logo != null && logo.length > 0) {
+				siteLogo.value = logo
+			}
+		} catch (_e) {}
+	}
+
+	async function handleLogin(): Promise<void> {
+		const u = username.value.trim()
+		const p = password.value.trim()
+		if (u.length === 0) {
+			uni.showToast({ title: '请输入用户名', icon: 'none' })
+			return
+		}
+		if (p.length === 0) {
+			uni.showToast({ title: '请输入密码', icon: 'none' })
+			return
+		}
+		loading.value = true
+		try {
+			const res = await login(u, p)
+			if (res != null && res.token != null) {
+				setToken(res.token)
+				if (res.userInfo != null) {
+					setUser(res.userInfo)
+				}
+				uni.showToast({ title: '登录成功', icon: 'success' })
+				const pages = getCurrentPages()
+				const cur = pages.length > 0 ? (pages[pages.length - 1] as any) : null
+				let redirectPath = '/pages/index/index'
+				if (cur != null && cur.options != null && cur.options['redirect'] != null) {
+					const r = decodeURIComponent((cur.options['redirect'] as string).trim())
+					if (r.length > 0 && r.indexOf('login') < 0) {
+						redirectPath = r.startsWith('/') ? r : '/' + r
+					}
+				}
+				setTimeout(() => {
+					const tabPaths = ['/pages/index/index', '/pages/courses/courses', '/pages/my/my']
+					const isTab = tabPaths.indexOf(redirectPath) >= 0 || redirectPath === 'pages/index/index' || redirectPath === 'pages/courses/courses' || redirectPath === 'pages/my/my'
+					if (isTab) {
+						uni.switchTab({ url: redirectPath.startsWith('/') ? redirectPath : '/' + redirectPath })
+					} else {
+						const fullPath = redirectPath.startsWith('/') ? redirectPath : '/' + redirectPath
+						uni.reLaunch({ url: fullPath })
+					}
+				}, 500)
+			}
+		} catch (_e) {
+			// 错误由 request 拦截器提示
+		} finally {
+			loading.value = false
+		}
+	}
+</script>
+
+<style>
+.page {
+	flex: 1;
+}
+.content {
+	flex-direction: column;
+	padding: 40px 24px;
+}
+.logo-block {
+	flex-direction: column;
+	align-items: center;
+	margin-bottom: 40px;
+}
+.login-logo {
+	width: 72px;
+	height: 72px;
+	margin-bottom: 12px;
+}
+.login-title {
+	font-size: 28px;
+	color: #1989fa;
+	font-weight: 600;
+}
+.login-subtitle {
+	font-size: 16px;
+	color: #969799;
+	margin-top: 8px;
+}
+.form-block {
+	flex-direction: column;
+}
+.field-row {
+	flex-direction: row;
+	align-items: center;
+	margin-bottom: 16px;
+	border-bottom-width: 1px;
+	border-bottom-color: #ebedf0;
+}
+.field-label {
+	font-size: 14px;
+	color: #323233;
+	width: 70px;
+}
+.field-input {
+	flex: 1;
+	font-size: 14px;
+	height: 44px;
+	padding: 0 8px;
+}
+.eye-btn {
+	font-size: 12px;
+	color: #1989fa;
+	margin-left: 8px;
+}
+.submit-btn {
+	background-color: #1989fa;
+	color: #ffffff;
+	border-radius: 24px;
+	height: 44px;
+	line-height: 44px;
+	font-size: 16px;
+	margin-top: 30px;
+}
+</style>

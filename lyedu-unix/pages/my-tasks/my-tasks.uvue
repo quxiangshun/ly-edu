@@ -1,0 +1,87 @@
+<template>
+	<scroll-view class="page" scroll-y="true" style="flex:1">
+		<view class="content">
+			<view v-if="loading" class="loading-wrap">
+				<text class="loading-text">加载中...</text>
+			</view>
+			<view v-else class="task-list">
+				<view v-for="item in taskList" :key="item.task.id" class="task-card">
+					<text class="task-title">{{ item.task.title != null ? item.task.title : '任务' }}</text>
+					<text class="task-status">{{ item.userTask != null && item.userTask.status === 1 ? '已完成' : '进行中' }}</text>
+				</view>
+				<view v-if="taskList.length === 0" class="empty-wrap">
+					<text class="empty-text">暂无任务</text>
+				</view>
+			</view>
+		</view>
+	</scroll-view>
+</template>
+
+<script setup lang="uts">
+	import { getMyTasks } from '../../api/userTask'
+
+	const loading = ref(false)
+	const taskList = ref<any[]>([])
+
+	onShow(() => {
+		loadList()
+	})
+
+	async function loadList(): Promise<void> {
+		loading.value = true
+		try {
+			const list = await getMyTasks()
+			taskList.value = Array.isArray(list) ? list : []
+		} catch (_e) {
+			taskList.value = []
+		} finally {
+			loading.value = false
+		}
+	}
+</script>
+
+<style>
+.page {
+	flex: 1;
+}
+.content {
+	flex-direction: column;
+	padding: 16px;
+}
+.loading-wrap {
+	padding: 40px 0;
+	align-items: center;
+}
+.loading-text {
+	font-size: 14px;
+	color: #969799;
+}
+.task-list {
+	flex-direction: column;
+}
+.task-card {
+	flex-direction: row;
+	justify-content: space-between;
+	align-items: center;
+	padding: 16px;
+	background-color: #ffffff;
+	border-radius: 8px;
+	margin-bottom: 12px;
+}
+.task-title {
+	font-size: 16px;
+	color: #323233;
+}
+.task-status {
+	font-size: 13px;
+	color: #1989fa;
+}
+.empty-wrap {
+	padding: 40px 0;
+	align-items: center;
+}
+.empty-text {
+	font-size: 14px;
+	color: #969799;
+}
+</style>

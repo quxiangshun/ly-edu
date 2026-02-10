@@ -1,0 +1,100 @@
+<template>
+	<scroll-view class="page" scroll-y="true" style="flex:1">
+		<view class="content">
+			<view class="logo-block">
+				<image class="logo-img" src="/static/logo.png" mode="aspectFit"></image>
+				<text class="app-name">LyEdu</text>
+				<text class="tagline">企业培训系统</text>
+			</view>
+			<view class="info-group">
+				<view class="info-row">
+					<text class="info-label">版本</text>
+					<text class="info-value">1.0.0</text>
+				</view>
+				<view class="info-row">
+					<text class="info-label">开源协议</text>
+					<text class="info-value">Apache 2.0</text>
+				</view>
+			</view>
+			<text class="desc">LyEdu 是 100% 开源的企业培训系统，支持部门/学员管理、在线视频学习、进度追踪、知识中心、考试、证书、积分与任务等，管理后台、PC 端、H5 多端一致体验。</text>
+			<view class="footer">
+				<text class="footer-text">以爱之名，为教育赋能</text>
+			</view>
+		</view>
+	</scroll-view>
+</template>
+
+<script setup lang="uts">
+</script>
+
+<style>
+.page {
+	flex: 1;
+}
+.content {
+	flex-direction: column;
+	padding: 24px 16px;
+}
+.logo-block {
+	flex-direction: column;
+	align-items: center;
+	padding: 32px 0 24px;
+}
+.logo-img {
+	width: 80px;
+	height: 80px;
+	margin-bottom: 16px;
+}
+.app-name {
+	font-size: 24px;
+	font-weight: 600;
+	color: #323233;
+}
+.tagline {
+	font-size: 14px;
+	color: #969799;
+	margin-top: 8px;
+}
+.info-group {
+	flex-direction: column;
+	margin-bottom: 20px;
+	background-color: #ffffff;
+	border-radius: 8px;
+	padding: 0 16px;
+}
+.info-row {
+	flex-direction: row;
+	justify-content: space-between;
+	padding: 14px 0;
+	border-bottom-width: 1px;
+	border-bottom-color: #ebedf0;
+}
+.info-row:last-child {
+	border-bottom-width: 0;
+}
+.info-label {
+	font-size: 16px;
+	color: #323233;
+}
+.info-value {
+	font-size: 14px;
+	color: #969799;
+}
+.desc {
+	font-size: 14px;
+	color: #646566;
+	line-height: 1.6;
+	margin-bottom: 24px;
+}
+.footer {
+	flex-direction: row;
+	justify-content: center;
+	padding-top: 24px;
+	border-top-width: 1px;
+	border-top-color: #ebedf0;
+}
+.footer-text {
+	font-size: 13px;
+	color: #969799;
+}
+</style>

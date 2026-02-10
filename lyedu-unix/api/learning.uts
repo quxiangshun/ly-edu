@@ -1,0 +1,27 @@
+import { get, post } from '../utils/request'
+import type { Course } from './course'
+
+export type WatchedCourseItem = {
+	course: Course
+	progress: number
+}
+
+export function joinCourse(courseId: number): Promise<any> {
+	return post('/learning/join', { course_id: courseId })
+}
+
+export function getMyCourses(): Promise<any[]> {
+	return get<any[]>('/learning/my-courses')
+}
+
+export function updateVideoProgress(videoId: number, progress: number, duration: number): Promise<any> {
+	return post('/learning/video-progress', { videoId: videoId, progress: progress, duration: duration })
+}
+
+export function getWatchedCourses(): Promise<WatchedCourseItem[]> {
+	return get<WatchedCourseItem[]>('/learning/watched-courses')
+}
+
+export function playPing(videoId: number): Promise<any> {
+	return post('/learning/play-ping', { videoId: videoId })
+}

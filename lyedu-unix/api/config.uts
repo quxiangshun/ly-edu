@@ -1,0 +1,6 @@
+import { get } from '../utils/request'
+
+/** 获取单条配置（无需登录） */
+export function getConfigByKey(key: string): Promise<string> {
+	return get<string>('/config/key/' + encodeURIComponent(key))
+}

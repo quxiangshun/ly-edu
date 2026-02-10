@@ -1,0 +1,23 @@
+import { get, post, del } from '../utils/request'
+import type { Video } from './course'
+import type { PageResult } from './course'
+
+export function getVideoById(id: number): Promise<Video> {
+	return get<Video>('/video/' + id)
+}
+
+export function getLikedVideos(params: { page: number; size: number }): Promise<PageResult<Video>> {
+	return get<PageResult<Video>>('/video/liked', params as Record<string, any>)
+}
+
+export function recordPlay(id: number): Promise<any> {
+	return post('/video/' + id + '/play')
+}
+
+export function likeVideo(id: number): Promise<any> {
+	return post('/video/' + id + '/like')
+}
+
+export function unlikeVideo(id: number): Promise<any> {
+	return del('/video/' + id + '/like')
+}

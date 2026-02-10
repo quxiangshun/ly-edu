@@ -1,0 +1,248 @@
+<template>
+	<scroll-view class="page" scroll-y="true" style="flex:1">
+		<view class="content">
+			<view class="user-block" @click="handleUserClick">
+				<image class="user-avatar" :src="avatarUrl" mode="aspectFill"></image>
+				<view class="user-info">
+					<text class="user-name">{{ displayName }}</text>
+					<text class="user-desc">{{ userDesc }}</text>
+				</view>
+			</view>
+
+			<view v-if="hasToken" class="stats-row">
+				<view class="stat-item" @click="navTo('/pages/my-learning/my-learning')">
+					<text class="stat-value">{{ personalStats.courseCount }}</text>
+					<text class="stat-label">学习课程</text>
+				</view>
+				<view class="stat-item">
+					<text class="stat-value">{{ personalStats.avgProgress }}%</text>
+					<text class="stat-label">平均进度</text>
+				</view>
+				<view class="stat-item" @click="navTo('/pages/my-points/my-points')">
+					<text class="stat-value">{{ personalStats.totalPoints }}</text>
+					<text class="stat-label">积分</text>
+				</view>
+				<view class="stat-item" @click="navTo('/pages/my-certificates/my-certificates')">
+					<text class="stat-value">{{ personalStats.certificateCount }}</text>
+					<text class="stat-label">证书</text>
+				</view>
+				<view class="stat-item" @click="navTo('/pages/my-tasks/my-tasks')">
+					<text class="stat-value">{{ personalStats.taskCompletedCount }}</text>
+					<text class="stat-label">已完成</text>
+				</view>
+			</view>
+
+			<view class="menu-section">
+				<view class="menu-item" @click="navTo('/pages/my-learning/my-learning')">
+					<text class="menu-text">我的学习</text>
+				</view>
+				<view class="menu-item" @click="navTo('/pages/my-liked-videos/my-liked-videos')">
+					<text class="menu-text">我点赞的视频</text>
+				</view>
+				<view class="menu-item" @click="navTo('/pages/courses/courses')">
+					<text class="menu-text">课程中心</text>
+				</view>
+				<view class="menu-item" @click="navTo('/pages/exam-list/exam-list')">
+					<text class="menu-text">考试中心</text>
+				</view>
+				<view class="menu-item" @click="navTo('/pages/my-points/my-points')">
+					<text class="menu-text">我的积分</text>
+				</view>
+				<view class="menu-item" @click="navTo('/pages/my-certificates/my-certificates')">
+					<text class="menu-text">我的证书</text>
+				</view>
+				<view class="menu-item" @click="navTo('/pages/my-tasks/my-tasks')">
+					<text class="menu-text">我的任务</text>
+				</view>
+			</view>
+
+			<view class="menu-section">
+				<view class="menu-item" @click="navTo('/pages/settings/settings')">
+					<text class="menu-text">设置</text>
+				</view>
+				<view class="menu-item" @click="navTo('/pages/about/about')">
+					<text class="menu-text">关于</text>
+				</view>
+			</view>
+		</view>
+	</scroll-view>
+</template>
+
+<script setup lang="uts">
+	import { getUser, isLoggedIn } from '../../utils/auth'
+	import { getWatchedCourses } from '../../api/learning'
+	import { getMyTotal } from '../../api/point'
+	import { getMyCertificates } from '../../api/userCertificate'
+	import { getMyTasks } from '../../api/userTask'
+
+	const hasToken = ref(isLoggedIn())
+	const user = ref<Record<string, any>>({})
+	const personalStats = ref({
+		courseCount: 0,
+		avgProgress: 0,
+		totalPoints: 0,
+		certificateCount: 0,
+		taskCompletedCount: 0
+	})
+
+	const displayName = computed(() => {
+		if (!hasToken.value) return '学员'
+		const u = user.value
+		const name = (u['nickname'] ?? u['realName'] ?? u['username']) as string
+		return name != null && name.length > 0 ? name : '学员'
+	})
+
+	const userDesc = computed(() => {
+		if (!hasToken.value) return '点击登录'
+		const role = user.value['role'] as string
+		return role === 'admin' ? '管理员' : '学员'
+	})
+
+	const avatarUrl = computed(() => {
+		const a = user.value['avatar'] as string
+		if (a != null && a.length > 0) return a
+		return '/static/logo.png'
+	})
+
+	onShow(() => {
+		loadUser()
+		if (hasToken.value) loadPersonalStats()
+	})
+
+	function loadUser(): void {
+		hasToken.value = isLoggedIn()
+		const u = getUser()
+		user.value = u != null ? u : {}
+	}
+
+	async function loadPersonalStats(): Promise<void> {
+		if (!hasToken.value) return
+		try {
+			const [watched, points, certs, tasks] = await Promise.all([
+				getWatchedCourses().catch(() => []),
+				getMyTotal().catch(() => 0),
+				getMyCertificates().catch(() => []),
+				getMyTasks().catch(() => [])
+			])
+			const list = Array.isArray(watched) ? watched : []
+			const courseCount = list.length
+			let avgProgress = 0
+			if (courseCount > 0) {
+				let sum = 0
+				for (let i = 0; i < list.length; i++) {
+					const item = list[i] as any
+					sum = sum + (item.progress ?? 0)
+				}
+				avgProgress = Math.round(sum / courseCount)
+			}
+			const certList = Array.isArray(certs) ? certs : []
+			const taskList = Array.isArray(tasks) ? tasks : []
+			let taskCompletedCount = 0
+			for (let i = 0; i < taskList.length; i++) {
+				const t = taskList[i] as any
+				const ut = t.userTask
+				if (ut != null && ut.status === 1) taskCompletedCount++
+			}
+			personalStats.value = {
+				courseCount: courseCount,
+				avgProgress: avgProgress,
+				totalPoints: typeof points === 'number' ? points : 0,
+				certificateCount: certList.length,
+				taskCompletedCount: taskCompletedCount
+			}
+		} catch (_e) {}
+	}
+
+	function handleUserClick(): void {
+		if (!hasToken.value) {
+			uni.navigateTo({ url: '/pages/login/login?redirect=' + encodeURIComponent('pages/my/my') })
+			return
+		}
+		uni.navigateTo({ url: '/pages/profile/profile' })
+	}
+
+	function navTo(url: string): void {
+		uni.navigateTo({ url: url })
+	}
+</script>
+
+<style>
+.page {
+	flex: 1;
+}
+.content {
+	flex-direction: column;
+	padding: 20px 16px;
+}
+.user-block {
+	flex-direction: row;
+	align-items: center;
+	padding: 16px;
+	background-color: #ffffff;
+	border-radius: 12px;
+	margin-bottom: 16px;
+}
+.user-avatar {
+	width: 60px;
+	height: 60px;
+	border-radius: 30px;
+	background-color: #ebedf0;
+}
+.user-info {
+	flex-direction: column;
+	margin-left: 16px;
+}
+.user-name {
+	font-size: 18px;
+	font-weight: 600;
+	color: #323233;
+}
+.user-desc {
+	font-size: 14px;
+	color: #969799;
+	margin-top: 4px;
+}
+.stats-row {
+	flex-direction: row;
+	background-color: #ffffff;
+	border-radius: 12px;
+	padding: 16px 0;
+	margin-bottom: 16px;
+}
+.stat-item {
+	flex: 1;
+	flex-direction: column;
+	align-items: center;
+}
+.stat-value {
+	font-size: 18px;
+	font-weight: 600;
+	color: #323233;
+}
+.stat-label {
+	font-size: 12px;
+	color: #969799;
+	margin-top: 4px;
+}
+.menu-section {
+	flex-direction: column;
+	background-color: #ffffff;
+	border-radius: 12px;
+	margin-bottom: 16px;
+	overflow: hidden;
+}
+.menu-item {
+	flex-direction: row;
+	align-items: center;
+	padding: 14px 16px;
+	border-bottom-width: 1px;
+	border-bottom-color: #ebedf0;
+}
+.menu-item:last-child {
+	border-bottom-width: 0;
+}
+.menu-text {
+	font-size: 16px;
+	color: #323233;
+}
+</style>

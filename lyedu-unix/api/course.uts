@@ -1,0 +1,97 @@
+import { get, post, del } from '../utils/request'
+
+export type Course = {
+	id: number
+	title: string
+	cover?: string
+	description?: string
+	categoryId?: number
+	status: number
+	sort: number
+	isRequired?: number
+}
+
+export type Video = {
+	id: number
+	courseId: number
+	chapterId?: number
+	title: string
+	url: string
+	duration?: number
+	sort: number
+	playCount?: number
+	likeCount?: number
+	liked?: boolean
+}
+
+export type ChapterItem = {
+	id: number | null
+	title: string
+	sort: number
+	hours: Video[]
+}
+
+export type CourseAttachment = {
+	id: number
+	courseId: number
+	name: string
+	type?: string
+	fileUrl: string
+	sort: number
+}
+
+export type CourseDetail = {
+	course: Course
+	videos: Video[]
+	chapters?: ChapterItem[]
+	attachments?: CourseAttachment[]
+	courseProgress?: number
+	learnRecord?: Record<string, any>
+	examId?: number
+}
+
+export type PageResult<T> = {
+	records: T[]
+	total: number
+	current: number
+	size: number
+	pages: number
+}
+
+export type CourseCommentDto = {
+	id: number
+	courseId: number
+	chapterId?: number
+	userId: number
+	userRealName?: string
+	parentId?: number
+	content: string
+	status: number
+	createTime?: string
+}
+
+export function getCoursePage(params: { page: number; size: number; keyword?: string; categoryId?: number }): Promise<PageResult<Course>> {
+	return get<PageResult<Course>>('/course/page', params as Record<string, any>)
+}
+
+export function getCourseById(id: number): Promise<CourseDetail> {
+	return get<CourseDetail>('/course/' + id)
+}
+
+export function getRecommendedCourses(limit: number): Promise<Course[]> {
+	return get<Course[]>('/course/recommended', { limit: limit })
+}
+
+export function getCourseComments(courseId: number, chapterId: number | null): Promise<CourseCommentDto[]> {
+	const params: Record<string, any> = {}
+	if (chapterId != null) params['chapterId'] = chapterId
+	return get<CourseCommentDto[]>('/course/' + courseId + '/comment', Object.keys(params).length > 0 ? params : null)
+}
+
+export function addCourseComment(courseId: number, body: { chapterId?: number; parentId?: number; content: string }): Promise<any> {
+	return post('/course/' + courseId + '/comment', body)
+}
+
+export function deleteCourseComment(commentId: number): Promise<any> {
+	return del('/course/comment/' + commentId)
+}

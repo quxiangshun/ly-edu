@@ -1,0 +1,175 @@
+<template>
+	<scroll-view class="page" scroll-y="true" style="flex:1">
+		<view class="content">
+			<view class="total-card">
+				<text class="total-value">{{ total }}</text>
+				<text class="total-label">当前积分</text>
+			</view>
+			<view class="tabs-row">
+				<text :class="['tab-item', activeTab === 'log' ? 'tab-active' : '']" @click="activeTab = 'log'">积分流水</text>
+				<text :class="['tab-item', activeTab === 'rank' ? 'tab-active' : '']" @click="activeTab = 'rank'">积分排行</text>
+			</view>
+			<view v-if="activeTab === 'log'">
+				<view v-if="logLoading" class="loading-wrap">
+					<text class="loading-text">加载中...</text>
+				</view>
+				<view v-else class="log-list">
+					<view v-for="item in logList" :key="item.id" class="log-row">
+						<text class="log-title">{{ item.remark != null ? item.remark : '积分变动' }}</text>
+						<text class="log-point">+{{ item.points }}</text>
+						<text class="log-time">{{ item.createTime != null ? item.createTime : '' }}</text>
+					</view>
+					<view v-if="logList.length === 0" class="empty-wrap">
+						<text class="empty-text">暂无积分流水</text>
+					</view>
+				</view>
+			</view>
+			<view v-if="activeTab === 'rank'">
+				<view v-if="rankLoading" class="loading-wrap">
+					<text class="loading-text">加载中...</text>
+				</view>
+				<view v-else class="rank-list">
+					<view v-for="r in rankingList" :key="r.userId" class="rank-row">
+						<text class="rank-name">{{ r.realName != null ? r.realName : (r.username != null ? r.username : '-') }}</text>
+						<text class="rank-point">{{ r.totalPoints }} 分</text>
+						<text class="rank-pos">第 {{ r.rank }} 名</text>
+					</view>
+					<view v-if="rankingList.length === 0" class="empty-wrap">
+						<text class="empty-text">暂无排行</text>
+					</view>
+				</view>
+			</view>
+		</view>
+	</scroll-view>
+</template>
+
+<script setup lang="uts">
+	import { getMyTotal, getMyLog, getRanking } from '../../api/point'
+
+	const total = ref(0)
+	const activeTab = ref('log')
+	const logList = ref<any[]>([])
+	const rankingList = ref<any[]>([])
+	const logLoading = ref(false)
+	const rankLoading = ref(false)
+
+	onShow(() => {
+		loadTotal()
+		loadLog()
+	})
+	watch(activeTab, (val) => {
+		if (val === 'rank' && rankingList.value.length === 0) loadRanking()
+	})
+
+	async function loadTotal(): Promise<void> {
+		try {
+			const n = await getMyTotal()
+			total.value = typeof n === 'number' ? n : 0
+		} catch (_e) {
+			total.value = 0
+		}
+	}
+
+	async function loadLog(): Promise<void> {
+		logLoading.value = true
+		try {
+			const list = await getMyLog({ page: 1, size: 50 })
+			logList.value = Array.isArray(list) ? list : []
+		} catch (_e) {
+			logList.value = []
+		} finally {
+			logLoading.value = false
+		}
+	}
+
+	async function loadRanking(): Promise<void> {
+		rankLoading.value = true
+		try {
+			const list = await getRanking({ limit: 50 })
+			rankingList.value = Array.isArray(list) ? list : []
+		} catch (_e) {
+			rankingList.value = []
+		} finally {
+			rankLoading.value = false
+		}
+	}
+</script>
+
+<style>
+.page {
+	flex: 1;
+}
+.content {
+	flex-direction: column;
+	padding: 16px;
+}
+.total-card {
+	flex-direction: column;
+	align-items: center;
+	background-color: #667eea;
+	border-radius: 12px;
+	padding: 24px;
+	margin-bottom: 16px;
+}
+.total-value {
+	font-size: 36px;
+	font-weight: 600;
+	color: #ffffff;
+}
+.total-label {
+	font-size: 14px;
+	color: rgba(255,255,255,0.9);
+	margin-top: 8px;
+}
+.tabs-row {
+	flex-direction: row;
+	margin-bottom: 16px;
+}
+.tab-item {
+	font-size: 14px;
+	color: #969799;
+	margin-right: 24px;
+}
+.tab-active {
+	color: #1989fa;
+}
+.log-list, .rank-list {
+	flex-direction: column;
+}
+.log-row, .rank-row {
+	flex-direction: column;
+	padding: 12px 0;
+	border-bottom-width: 1px;
+	border-bottom-color: #ebedf0;
+}
+.log-title, .rank-name {
+	font-size: 14px;
+	color: #323233;
+}
+.log-point, .rank-point {
+	font-size: 14px;
+	color: #1989fa;
+	margin-top: 4px;
+}
+.log-time, .rank-pos {
+	font-size: 12px;
+	color: #969799;
+	margin-top: 4px;
+}
+.loading-wrap {
+	padding: 24px 0;
+	align-items: center;
+}
+.loading-text {
+	font-size: 14px;
+	color: #969799;
+}
+.empty-wrap {
+	padding: 24px 0;
+	align-items: center;
+}
+.empty-text {
+	font-size: 14px;
+	color: #969799;
+}
+</style>

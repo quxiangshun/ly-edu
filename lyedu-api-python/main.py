@@ -8,6 +8,8 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
 from starlette.responses import FileResponse
 
 import config
@@ -73,6 +75,21 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title='LyEdu API', version='1.0.0', lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
+
+
+class NoCacheMiddleware(BaseHTTPMiddleware):
+    """禁止 API 响应被缓存，避免返回 304 导致客户端解析 HTML 报错"""
+
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        if request.url.path.startswith(API_PREFIX) and not request.url.path.startswith(API_PREFIX + "/uploads/"):
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
+        return response
+
+
+app.add_middleware(NoCacheMiddleware)
 
 # 与前端 baseURL: '/api' 一致，所有接口挂到 /api 下
 API_PREFIX = '/api'

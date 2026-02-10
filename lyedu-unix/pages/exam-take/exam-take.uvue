@@ -1,0 +1,349 @@
+<template>
+	<scroll-view class="page" scroll-y="true" style="flex:1">
+		<view class="content">
+			<view v-if="submitted" class="result-block">
+				<text class="result-title">{{ record != null && record.passed === 1 ? '考试通过' : '未通过' }}</text>
+				<text class="result-score">得分：{{ record != null ? (record.score ?? 0) : 0 }} 分</text>
+				<button class="back-btn" @click="navBack">返回考试列表</button>
+			</view>
+			<template v-else>
+				<view class="timer-row">
+					<text class="timer-text">{{ examStatus != null && examStatus.unlimited ? '已用时：' + formatSeconds(elapsedSeconds) : '剩余：' + formatSeconds(remainingSeconds) }}</text>
+				</view>
+				<view v-if="loading" class="loading-wrap">
+					<text class="loading-text">加载题目...</text>
+				</view>
+				<template v-else-if="questions.length > 0">
+					<view v-for="(item, index) in questions" :key="item.questionId" class="question-block">
+						<text class="question-title">{{ index + 1 }}. {{ item.question != null ? item.question.title : '' }}（{{ item.score }} 分）</text>
+						<view class="answer-area">
+							<template v-if="item.question != null && item.question.type === 'single'">
+								<view v-for="(opt, i) in parseOptions(item.question.options)" :key="i" class="radio-row" @click="setAnswer(String(item.questionId), optLabel(i))">
+									<text class="radio-text">{{ optLabel(i) }}. {{ opt }}</text>
+									<text v-if="answers[String(item.questionId)] === optLabel(i)" class="radio-check">✓</text>
+								</view>
+							</template>
+							<template v-else-if="item.question != null && item.question.type === 'multi'">
+								<view v-for="(opt, i) in parseOptions(item.question.options)" :key="i" class="radio-row" @click="toggleMulti(item.questionId, optLabel(i))">
+									<text class="radio-text">{{ optLabel(i) }}. {{ opt }}</text>
+									<text v-if="multiChecked(item.questionId, optLabel(i))" class="radio-check">✓</text>
+								</view>
+							</template>
+							<template v-else-if="item.question != null && item.question.type === 'judge'">
+								<view class="radio-row" @click="setAnswer(String(item.questionId), 'T')">
+									<text class="radio-text">正确</text>
+									<text v-if="answers[String(item.questionId)] === 'T'" class="radio-check">✓</text>
+								</view>
+								<view class="radio-row" @click="setAnswer(String(item.questionId), 'F')">
+									<text class="radio-text">错误</text>
+									<text v-if="answers[String(item.questionId)] === 'F'" class="radio-check">✓</text>
+								</view>
+							</template>
+							<template v-else>
+								<input class="text-input" v-model="answers[String(item.questionId)]" placeholder="请输入答案" />
+							</template>
+						</view>
+					</view>
+					<view class="submit-row">
+						<button class="submit-btn" :loading="submitting" @click="handleSubmit">交卷</button>
+					</view>
+				</template>
+				<view v-else class="empty-wrap">
+					<text class="empty-text">暂无题目</text>
+				</view>
+			</template>
+		</view>
+	</scroll-view>
+</template>
+
+<script setup lang="uts">
+	import { getExamById, getPaperQuestions, submitExam, getExamStatus } from '../../api/exam'
+
+	const examId = ref(0)
+	const loading = ref(true)
+	const submitting = ref(false)
+	const submitted = ref(false)
+	const exam = ref<any>(null)
+	const examStatus = ref<any>(null)
+	const questions = ref<any[]>([])
+	const answers = ref<Record<string, string>>({})
+	const multiAnswers = ref<Record<string, string[]>>({})
+	const record = ref<any>(null)
+	const elapsedSeconds = ref(0)
+	const remainingSeconds = ref(0)
+	let timerId: number | null = null
+
+	onLoad((options: any) => {
+		if (options != null && options['id'] != null) {
+			examId.value = parseInt(options['id'] as string)
+		}
+		loadExam()
+	})
+
+	onUnload(() => {
+		if (timerId != null) {
+			clearInterval(timerId)
+		}
+	})
+
+	function parseOptions(opts: string | null | undefined): string[] {
+		if (opts == null || opts.length === 0) return []
+		try {
+			const arr = JSON.parse(opts)
+			return Array.isArray(arr) ? arr : []
+		} catch (_e) {
+			return []
+		}
+	}
+
+	function optLabel(i: number): string {
+		return String.fromCharCode(65 + i)
+	}
+
+	function setAnswer(qid: string, val: string): void {
+		const a = answers.value
+		const next: Record<string, string> = {}
+		for (const k in a) { next[k] = a[k] }
+		next[qid] = val
+		answers.value = next
+	}
+
+	function toggleMulti(qid: number, label: string): void {
+		const m = multiAnswers.value
+		const arr = m[String(qid)] != null ? m[String(qid)]!.slice() : []
+		const idx = arr.indexOf(label)
+		if (idx >= 0) {
+			arr.splice(idx, 1)
+		} else {
+			arr.push(label)
+			arr.sort()
+		}
+		const next: Record<string, string[]> = {}
+		for (const k in m) { next[k] = m[k]! }
+		next[String(qid)] = arr
+		multiAnswers.value = next
+	}
+
+	function multiChecked(qid: number, label: string): boolean {
+		const arr = multiAnswers.value[String(qid)]
+		return arr != null && arr.indexOf(label) >= 0
+	}
+
+	function buildAnswersJson(): string {
+		const out: Record<string, string> = { ...answers.value }
+		const m = multiAnswers.value
+		for (const qid in m) {
+			const arr = m[qid]
+			out[qid] = Array.isArray(arr) ? arr.join('') : ''
+		}
+		let str = '{'
+		let first = true
+		for (const k in out) {
+			if (!first) str += ','
+			str += '"' + k + '":"' + (out[k] ?? '').replace(/"/g, '\\"') + '"'
+			first = false
+		}
+		str += '}'
+		return str
+	}
+
+	function formatSeconds(sec: number): string {
+		const s = Math.max(0, Math.floor(sec))
+		const m = Math.floor(s / 60)
+		const h = Math.floor(m / 60)
+		const mm = (m % 60).toString()
+		const ss = (s % 60).toString()
+		const mm2 = mm.length >= 2 ? mm : '0' + mm
+		const ss2 = ss.length >= 2 ? ss : '0' + ss
+		if (h > 0) return h.toString() + ':' + mm2 + ':' + ss2
+		return mm2 + ':' + ss2
+	}
+
+	function startTimer(): void {
+		const dur = examStatus.value != null ? examStatus.value.durationMinutes : null
+		const unlim = examStatus.value != null && examStatus.value.unlimited === true
+		if (unlim) {
+			remainingSeconds.value = 999999
+			timerId = setInterval(() => {
+				elapsedSeconds.value = elapsedSeconds.value + 1
+			}, 1000) as unknown as number
+		} else if (dur != null && dur > 0) {
+			remainingSeconds.value = dur * 60
+			timerId = setInterval(() => {
+				remainingSeconds.value = remainingSeconds.value - 1
+				if (remainingSeconds.value <= 0 && timerId != null) {
+					clearInterval(timerId)
+				}
+			}, 1000) as unknown as number
+		}
+	}
+
+	function stopTimer(): void {
+		if (timerId != null) {
+			clearInterval(timerId)
+			timerId = null
+		}
+	}
+
+	async function loadExam(): Promise<void> {
+		if (examId.value <= 0) {
+			uni.navigateBack()
+			return
+		}
+		loading.value = true
+		try {
+			const status = await getExamStatus(examId.value)
+			examStatus.value = status
+			if (status != null && status.canStart === false) {
+				uni.showToast({ title: status.message != null ? status.message : '考试未开始或已结束', icon: 'none' })
+				uni.navigateBack()
+				return
+			}
+			exam.value = await getExamById(examId.value)
+			if (exam.value == null) {
+				uni.showToast({ title: '考试不存在', icon: 'none' })
+				uni.navigateBack()
+				return
+			}
+			const list = await getPaperQuestions(exam.value.paperId)
+			questions.value = list != null ? list : []
+			const multi: Record<string, string[]> = {}
+			for (let i = 0; i < questions.value.length; i++) {
+				const q = questions.value[i]
+				if (q.question != null && q.question.type === 'multi') {
+					multi[String(q.questionId)] = []
+				}
+			}
+			multiAnswers.value = multi
+			startTimer()
+		} catch (_e) {
+			uni.showToast({ title: '加载失败', icon: 'none' })
+			uni.navigateBack()
+		} finally {
+			loading.value = false
+		}
+	}
+
+	async function handleSubmit(): Promise<void> {
+		submitting.value = true
+		try {
+			const json = buildAnswersJson()
+			const res = await submitExam(examId.value, json)
+			record.value = res
+			submitted.value = true
+			uni.showToast({ title: '交卷成功' })
+			stopTimer()
+			uni.setStorageSync('exam_result_' + examId.value, JSON.stringify(res))
+		} catch (_e) {}
+		finally {
+			submitting.value = false
+		}
+	}
+
+	function navBack(): void {
+		uni.navigateTo({ url: '/pages/exam-list/exam-list' })
+	}
+</script>
+
+<style>
+.page {
+	flex: 1;
+}
+.content {
+	flex-direction: column;
+	padding: 16px;
+}
+.result-block {
+	flex-direction: column;
+	align-items: center;
+	padding: 40px 0;
+}
+.result-title {
+	font-size: 20px;
+	font-weight: 600;
+	color: #323233;
+}
+.result-score {
+	font-size: 18px;
+	color: #323233;
+	margin-top: 12px;
+}
+.back-btn {
+	background-color: #1989fa;
+	color: #ffffff;
+	border-radius: 24px;
+	margin-top: 24px;
+	padding: 10px 32px;
+}
+.timer-row {
+	margin-bottom: 16px;
+}
+.timer-text {
+	font-size: 16px;
+	color: #323233;
+}
+.loading-wrap {
+	padding: 40px 0;
+	align-items: center;
+}
+.loading-text {
+	font-size: 14px;
+	color: #969799;
+}
+.question-block {
+	flex-direction: column;
+	margin-bottom: 24px;
+	padding-bottom: 24px;
+	border-bottom-width: 1px;
+	border-bottom-color: #ebedf0;
+}
+.question-title {
+	font-size: 16px;
+	color: #323233;
+	margin-bottom: 12px;
+}
+.answer-area {
+	flex-direction: column;
+}
+.radio-row {
+	flex-direction: row;
+	justify-content: space-between;
+	align-items: center;
+	padding: 12px 0;
+	border-bottom-width: 1px;
+	border-bottom-color: #f0f0f0;
+}
+.radio-text {
+	font-size: 15px;
+	color: #323233;
+}
+.radio-check {
+	font-size: 16px;
+	color: #1989fa;
+}
+.text-input {
+	font-size: 14px;
+	padding: 12px;
+	border-width: 1px;
+	border-color: #ebedf0;
+	border-radius: 8px;
+	margin-top: 8px;
+}
+.submit-row {
+	margin-top: 24px;
+}
+.submit-btn {
+	background-color: #1989fa;
+	color: #ffffff;
+	border-radius: 24px;
+	height: 48px;
+}
+.empty-wrap {
+	padding: 40px 0;
+	align-items: center;
+}
+.empty-text {
+	font-size: 14px;
+	color: #969799;
+}
+</style>

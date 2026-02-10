@@ -1,0 +1,92 @@
+<template>
+	<scroll-view class="page" scroll-y="true" style="flex:1">
+		<view class="content">
+			<view class="user-block">
+				<image class="avatar" :src="avatarUrl" mode="aspectFill"></image>
+				<view class="user-info">
+					<text class="name">{{ displayName }}</text>
+					<text class="role">{{ userRole }}</text>
+				</view>
+			</view>
+			<view class="tip-block">
+				<text class="tip-text">个人资料由管理员维护，如有变更请联系管理员。</text>
+			</view>
+		</view>
+	</scroll-view>
+</template>
+
+<script setup lang="uts">
+	import { getUser } from '../../utils/auth'
+
+	const user = ref<Record<string, any>>({})
+
+	onShow(() => {
+		const u = getUser()
+		user.value = u != null ? u : {}
+	})
+
+	const displayName = computed(() => {
+		const u = user.value
+		const name = (u['nickname'] ?? u['realName'] ?? u['username']) as string
+		return name != null && name.length > 0 ? name : '学员'
+	})
+
+	const userRole = computed(() => {
+		const r = user.value['role'] as string
+		return r === 'admin' ? '管理员' : '学员'
+	})
+
+	const avatarUrl = computed(() => {
+		const a = user.value['avatar'] as string
+		if (a != null && a.length > 0) return a
+		return '/static/logo.png'
+	})
+</script>
+
+<style>
+.page {
+	flex: 1;
+}
+.content {
+	flex-direction: column;
+	padding: 16px;
+}
+.user-block {
+	flex-direction: row;
+	align-items: center;
+	padding: 24px;
+	background-color: #ffffff;
+	border-radius: 12px;
+	margin-bottom: 16px;
+}
+.avatar {
+	width: 72px;
+	height: 72px;
+	border-radius: 36px;
+	background-color: #ebedf0;
+}
+.user-info {
+	flex-direction: column;
+	margin-left: 20px;
+}
+.name {
+	font-size: 20px;
+	font-weight: 600;
+	color: #323233;
+}
+.role {
+	font-size: 14px;
+	color: #969799;
+	margin-top: 6px;
+}
+.tip-block {
+	padding: 16px;
+	background-color: #f7f8fa;
+	border-radius: 8px;
+}
+.tip-text {
+	font-size: 13px;
+	color: #969799;
+	line-height: 1.5;
+}
+</style>
