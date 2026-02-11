@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-FA 数据同步到 LyEdu（fa_* @ localhost:3307 -> ly_* @ localhost:3306）
+FA 数据同步到 LyEdu（fa_* -> ly_*）
 
-数据源：localhost:3307，库 xjty，用户 root/root
-目标：  localhost:3306，库 lyedu，用户 root/lyedu123456
+数据源/目标从 .env 或 config 读取，见 .env.example 中 FA_SOURCE_* / FA_TARGET_*。
 
 前置：目标库已执行 Alembic 至 v6（含 ly_user v5 字段、ly_video.description、ly_department.avatar/description/old_id/old_source）。仅做数据同步，不修改表结构。
 
@@ -19,23 +18,24 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import pymysql
 import bcrypt
 
-# 源库（fa 数据）
+import config
+
+# 源库（fa 数据）、目标库（ly 数据）从 config 读取
 SOURCE = {
-    "host": "127.0.0.1",
-    "port": 3307,
-    "user": "root",
-    "password": "root",
-    "database": "xjty",
+    "host": config.FA_SOURCE_HOST,
+    "port": config.FA_SOURCE_PORT,
+    "user": config.FA_SOURCE_USER,
+    "password": config.FA_SOURCE_PASSWORD,
+    "database": config.FA_SOURCE_DATABASE,
     "charset": "utf8mb4",
 }
-# 目标库（ly 数据）
 TARGET = {
-    "host": "127.0.0.1",
-    "port": 3306,
-    "user": "root",
-    "password": "lyedu123456",
-    "database": "lyedu",
-    "charset": "utf8mb4",
+    "host": config.FA_TARGET_HOST,
+    "port": config.FA_TARGET_PORT,
+    "user": config.FA_TARGET_USER,
+    "password": config.FA_TARGET_PASSWORD,
+    "database": config.FA_TARGET_DATABASE,
+    "charset": config.MYSQL_CHARSET,
 }
 
 
@@ -459,7 +459,7 @@ def sync_teamcourse_to_course_department(src, tgt):
 
 
 def main():
-    print("Sync FA (3307/xjty) -> Ly (3306/lyedu)")
+    print(f"Sync FA ({SOURCE['host']}:{SOURCE['port']}/{SOURCE['database']}) -> Ly ({TARGET['host']}:{TARGET['port']}/{TARGET['database']})")
     src = get_conn(SOURCE)
     tgt = get_conn(TARGET)
     try:
