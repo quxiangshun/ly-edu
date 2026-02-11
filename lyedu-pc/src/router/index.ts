@@ -168,6 +168,15 @@ const routes: RouteRecordRaw[] = [
     meta: {
       title: '使用说明'
     }
+  },
+  {
+    path: '/ppt',
+    name: 'PPTist',
+    component: () => import('@/views/PPTist.vue'),
+    meta: {
+      title: 'PPT 制作',
+      requiresAuth: true
+    }
   }
 ]
 

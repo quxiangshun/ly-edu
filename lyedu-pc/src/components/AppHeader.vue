@@ -13,15 +13,26 @@
       >
         <el-menu-item index="home">首页</el-menu-item>
         <el-menu-item index="courses">课程中心</el-menu-item>
-        <el-menu-item index="knowledge" @click="$router.push('/knowledge')">知识中心</el-menu-item>
-        <el-menu-item index="exam" @click="$router.push('/exam')">考试中心</el-menu-item>
-        <el-menu-item index="certificates" @click="$router.push('/certificates')">我的证书</el-menu-item>
-        <el-menu-item index="tasks" @click="$router.push('/tasks')">我的任务</el-menu-item>
-        <el-menu-item index="points" @click="$router.push('/points')">积分</el-menu-item>
-        <el-menu-item index="my" @click="$router.push('/my-learning')">我的学习</el-menu-item>
-        <el-menu-item index="help" @click="$router.push('/help')">使用说明</el-menu-item>
+        <el-sub-menu index="learn">
+          <template #title>学习与考试</template>
+          <el-menu-item index="knowledge">知识中心</el-menu-item>
+          <el-menu-item index="exam">考试中心</el-menu-item>
+          <el-menu-item index="tasks">我的任务</el-menu-item>
+          <el-menu-item index="ppt">PPT 制作</el-menu-item>
+        </el-sub-menu>
+        <el-sub-menu index="my-menu">
+          <template #title>我的</template>
+          <el-menu-item index="my">我的学习</el-menu-item>
+          <el-menu-item index="certificates">我的证书</el-menu-item>
+          <el-menu-item index="points">积分</el-menu-item>
+        </el-sub-menu>
       </el-menu>
       <div class="header-right">
+        <el-tooltip content="使用说明" placement="bottom">
+          <div class="help-icon" @click="$router.push('/help')">
+            <el-icon :size="20"><QuestionFilled /></el-icon>
+          </div>
+        </el-tooltip>
         <template v-if="!isLoggedIn">
           <el-button type="primary" @click="$router.push('/login')">登录</el-button>
         </template>
@@ -56,7 +67,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { User, ArrowDown, SwitchButton } from '@element-plus/icons-vue'
+import { User, ArrowDown, SwitchButton, QuestionFilled } from '@element-plus/icons-vue'
 import { getCurrentUser, type CurrentUserInfo } from '@/api/user'
 import { getConfigByKey } from '@/api/config'
 
@@ -109,22 +120,26 @@ const activeMenu = computed(() => {
   if (path.startsWith('/exam')) return 'exam'
   if (path.startsWith('/certificates')) return 'certificates'
   if (path.startsWith('/tasks') || path.startsWith('/task/')) return 'tasks'
+  if (path.startsWith('/ppt')) return 'ppt'
   if (path.startsWith('/points')) return 'points'
   if (path.startsWith('/my-learning')) return 'my'
-  if (path.startsWith('/help')) return 'help'
   return 'home'
 })
 
 const handleMenuSelect = (index: string) => {
-  if (index === 'home') {
-    router.push('/')
-  } else if (index === 'courses') {
-    router.push('/courses')
-  } else if (index === 'my') {
-    router.push('/my-learning')
-  } else if (index === 'help') {
-    router.push('/help')
+  const routes: Record<string, string> = {
+    home: '/',
+    courses: '/courses',
+    knowledge: '/knowledge',
+    exam: '/exam',
+    tasks: '/tasks',
+    ppt: '/ppt',
+    my: '/my-learning',
+    certificates: '/certificates',
+    points: '/points'
   }
+  const path = routes[index]
+  if (path) router.push(path)
 }
 
 const handleLogout = () => {
@@ -243,6 +258,22 @@ watch(() => route.path, () => {
       display: flex;
       align-items: center;
       gap: 12px;
+
+      .help-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        color: #606266;
+        cursor: pointer;
+        border-radius: 4px;
+
+        &:hover {
+          color: var(--el-color-primary);
+          background: var(--el-fill-color-light);
+        }
+      }
 
       .user-info.user-dropdown-trigger {
         display: flex;

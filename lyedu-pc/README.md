@@ -38,6 +38,7 @@ npm run dev
 | 变量 | 说明 | 示例 |
 |------|------|------|
 | `VITE_AUTH_PROVIDER` | 登录方式 | `local`（仅账号密码）、`feishu`（仅飞书）、`both`（飞书 + 账号密码） |
+| `VITE_PPTIST_URL` | PPT 制作 iframe 地址（可选） | 不设置时使用相对路径 `/pptist/`，需将 PPTist 构建产物放到 `public/pptist/` |
 
 ## 构建与部署
 
@@ -65,6 +66,27 @@ docker run -p 80:80 lyedu-pc
 - `location /`：SPA 回退到 `index.html`
 - `location /api`：代理到后端 API
 - `location /uploads`：代理到后端静态资源（上传文件）
+
+### PPT 制作（PPTist 集成）
+
+PC 端通过 **iframe** 集成 [PPTist](https://github.com/pipipi-pikachu/PPTist)（在线 PPT 编辑/演示）。入口：顶栏「学习与考试」→「PPT 制作」，路由 `/ppt`。
+
+**使用前需自行构建并部署 PPTist 静态资源：**
+
+1. 克隆 PPTist 仓库并构建：
+   ```bash
+   git clone https://github.com/pipipi-pikachu/PPTist.git
+   cd PPTist
+   npm install
+   ```
+2. 在 PPTist 的 `vite.config.ts` 中设置 `base: '/pptist/'`（便于放入 lyedu-pc 同域子路径）。
+3. 构建：`npm run build`。
+4. 将 PPTist 的 `dist/` 目录下**所有文件**复制到 lyedu-pc 的 `public/pptist/` 目录（若目录不存在请先创建）。
+5. 启动或构建 lyedu-pc 后，访问「PPT 制作」页面即可在 iframe 内使用 PPTist。
+
+若将 PPTist 部署到独立地址（如 `https://ppt.example.com`），可在 lyedu-pc 的 `.env` 中设置 `VITE_PPTIST_URL=https://ppt.example.com`，页面将优先使用该地址作为 iframe 的 `src`。
+
+**注意**：PPTist 采用 AGPL-3.0 协议，商业使用请遵守协议或联系作者获取授权。
 
 ## 项目结构
 
@@ -110,13 +132,14 @@ lyedu-pc/
 | **我的证书** | 证书列表、打印页 |
 | **我的任务** | 任务列表与详情 |
 | **积分** | 积分与排行榜 |
+| **PPT 制作** | 集成 PPTist，在线编辑/演示 PPT（需自建 PPTist 静态资源，见下文） |
 | **个人中心** | 查看/编辑昵称、头像、邮箱、手机；头像支持本地上传（POST /image/upload） |
-| **使用说明** | 静态帮助页，入口在顶栏菜单 |
+| **使用说明** | 静态帮助页，入口在顶栏问号图标 |
 | **全局** | 非登录页也应用后台主题（Logo/主题色）；路由 meta 设置页面标题；Header 用户区下拉（个人信息、退出） |
 
 ### 顶栏与路由
 
-- **顶栏**：Logo（点击回首页）、首页 / 课程中心 / 知识中心 / 考试中心 / 我的证书 / 我的任务 / 积分 / 我的学习 / 使用说明；未登录显示「登录」，已登录显示用户头像（或站点 Logo）+ 用户名下拉（个人信息、退出登录）。
+- **顶栏**：Logo（点击回首页）、首页 / 课程中心 / 学习与考试（知识中心、考试中心、我的任务、PPT 制作）/ 我的（我的学习、我的证书、积分）/ 右侧问号（使用说明）；未登录显示「登录」，已登录显示用户头像（或站点 Logo）+ 用户名下拉（个人信息、退出登录）。
 - **路由**：见 `src/router/index.ts`；需登录页面带 `meta.requiresAuth: true`，未登录会跳转登录页并带 `redirect` 参数。
 
 ## 配置说明
