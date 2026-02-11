@@ -59,7 +59,30 @@ def _row_to_video_with_names(row: dict, extra: Optional[dict] = None) -> dict:
     return base
 
 
-def _page_sql(where_sql: str, params: List[Any], size: int, offset: int, with_play_like: bool) -> tuple:
+def _order_by_clause(sort: Optional[str], with_play_like: bool) -> str:
+    """根据 sort 参数返回 ORDER BY 子句（不含 ORDER BY 前缀）。"""
+    if not sort or (sort or "").strip().lower() == "default":
+        return "v.sort ASC, v.id DESC"
+    s = (sort or "").strip().lower()
+    if s == "latest":
+        return "v.create_time DESC, v.id DESC"
+    if s == "play" and with_play_like:
+        return "v.play_count DESC, v.id DESC"
+    if s == "like" and with_play_like:
+        return "v.like_count DESC, v.id DESC"
+    if s == "comment":
+        return "v.create_time DESC, v.id DESC"
+    return "v.sort ASC, v.id DESC"
+
+
+def _page_sql(
+    where_sql: str,
+    params: List[Any],
+    size: int,
+    offset: int,
+    with_play_like: bool,
+    order_by: Optional[str] = None,
+) -> tuple:
     """构建分页 SQL；with_play_like=False 时不含 play_count/like_count（兼容未执行 V13 的库）。"""
     base = (
         "SELECT v.id, v.course_id, v.chapter_id, v.title, v.url, v.cover, v.duration, v.sort, v.create_time, "
@@ -70,12 +93,13 @@ def _page_sql(where_sql: str, params: List[Any], size: int, offset: int, with_pl
             "SELECT v.id, v.course_id, v.chapter_id, v.title, v.url, v.cover, v.duration, v.sort, v.create_time, "
             "v.play_count, v.like_count, c.title AS course_name, ch.title AS chapter_name "
         )
+    order = order_by if order_by else "v.sort ASC, v.id DESC"
     sql = (
         base
         + "FROM ly_video v "
         "LEFT JOIN ly_course c ON v.course_id = c.id AND c.deleted = 0 "
         "LEFT JOIN ly_course_chapter ch ON v.chapter_id = ch.id AND ch.deleted = 0 "
-        "WHERE " + where_sql + " ORDER BY v.sort ASC, v.id DESC LIMIT %s OFFSET %s"
+        "WHERE " + where_sql + " ORDER BY " + order + " LIMIT %s OFFSET %s"
     )
     return sql, tuple(params) + (size, offset)
 
@@ -181,6 +205,7 @@ def page(
     course_id: Optional[int] = None,
     keyword: Optional[str] = None,
     tag_id: Optional[int] = None,
+    sort: Optional[str] = None,
     user_id: Optional[int] = None,
 ) -> dict:
     offset = (page_num - 1) * size
@@ -217,14 +242,20 @@ def page(
         tuple(params),
     )
     total = total_row["cnt"] or 0
-    sql, query_params = _page_sql(where_sql, list(params), size, offset, with_play_like=True)
+    order_by = _order_by_clause(sort, with_play_like=True)
+    sql, query_params = _page_sql(
+        where_sql, list(params), size, offset, with_play_like=True, order_by=order_by
+    )
     try:
         rows = db.query_all(sql, query_params)
     except pymysql.err.OperationalError as e:
         err = (e.args[0] or 0)
         msg = (e.args[1] or "") if len(e.args) > 1 else ""
         if err == 1054 and "play_count" in str(msg):
-            sql, query_params = _page_sql(where_sql, list(params), size, offset, with_play_like=False)
+            order_by = _order_by_clause(sort, with_play_like=False)
+            sql, query_params = _page_sql(
+                where_sql, list(params), size, offset, with_play_like=False, order_by=order_by
+            )
             rows = db.query_all(sql, query_params)
             for r in rows:
                 r.setdefault("play_count", 0)

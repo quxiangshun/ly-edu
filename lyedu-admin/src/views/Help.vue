@@ -21,6 +21,21 @@
           <p>
             本页集中展示各个功能模块（菜单）的使用说明和主要业务逻辑。你可以通过<strong>右上角帮助图标</strong>或各页面的<strong>问号图标</strong>快速跳转到对应模块的说明位置。
           </p>
+          <p><strong>项目整体逻辑</strong></p>
+          <ul>
+            <li><strong>管理后台</strong>（本系统）：负责组织架构、用户、标签、课程、视频、考试、任务、证书、积分等配置与数据管理；课程/考试可见性依赖部门与标签（见「标签管理」）。</li>
+            <li><strong>学员端</strong>（uni-app x / H5）：学员登录后使用首页、课程中心、我的学习、考试、任务、证书等；可见内容由用户有效标签、部门、课程可见性等规则决定。</li>
+            <li><strong>后端接口</strong>（lyedu-api-python）：提供 REST API，对接管理后台与学员端；课程与视频的可见性、分页、排序、筛选逻辑在接口层统一实现。</li>
+            <li><strong>学员端首页逻辑</strong>：
+              <ul>
+                <li><strong>标签</strong>：调用 <code>/tag/effective</code> 获取用户有效标签，展示「全部」+ 各标签 Tab；选「全部」不传 tagId，选某标签则传 <code>tagId</code>。</li>
+                <li><strong>排序</strong>：综合排序、最新发布、最多播放、最多点赞、最多评论 对应参数 <code>sort=default|latest|play|like|comment</code>，请求 <code>/video/page</code> 时一并传入。</li>
+                <li><strong>模糊查询</strong>：搜索框关键词请求时传 <code>keyword</code>，接口按视频标题 LIKE 匹配。</li>
+                <li><strong>视频列表</strong>：调用 <code>GET /video/page</code>（参数 <code>page</code>、<code>size</code>、<code>tagId</code>、<code>keyword</code>、<code>sort</code>），两列展示，滚动触底分页加载。</li>
+                <li><strong>相关课程</strong>：同屏调用 <code>GET /course/page</code>（相同 <code>tagId</code>、<code>keyword</code>），在视频列表上方展示「相关课程」区块，点击进入课程详情。</li>
+              </ul>
+            </li>
+          </ul>
           <p>
             如需详细的企业内部规范或流程图，可在后续补充到此页面，或链接到公司内部文档。
           </p>
@@ -229,6 +244,12 @@
         </li>
         <li>自动获取时长：上传完成后系统会自动读取视频时长并回填到“时长（秒）”字段，便于统计学习进度。</li>
         <li>播放/点赞统计：后台可看到每个视频的播放次数与点赞次数，用于评估内容受欢迎程度（数据来自学员端实际观看与点赞行为）。</li>
+      </ul>
+      <p><strong>学员端首页与接口逻辑</strong></p>
+      <ul>
+        <li><strong>视频分页接口</strong> <code>GET /video/page</code>：支持 <code>page</code>、<code>size</code>、<code>courseId</code>、<code>keyword</code>（视频标题模糊查询）、<code>tagId</code>（标签筛选，不传为「全部」）、<code>sort</code>（排序方式）。</li>
+        <li><strong>排序方式</strong> <code>sort</code>：<code>default</code> 综合排序，<code>latest</code> 最新发布，<code>play</code> 最多播放，<code>like</code> 最多点赞，<code>comment</code> 最多评论；服务端按对应字段排序后返回。</li>
+        <li>学员端首页：顶部为搜索栏、标签横向滚动、排序方式横向滚动（均不随页面滚动）；下方为「相关课程」区块（调用 <code>/course/page</code>，与当前标签/关键词一致）和视频两列列表；视频列表滚动触底分页加载，每次请求携带当前标签、关键词、排序参数。</li>
       </ul>
       </el-card>
 

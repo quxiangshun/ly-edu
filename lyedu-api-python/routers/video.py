@@ -23,8 +23,10 @@ def page(
     courseId: Optional[int] = None,
     keyword: Optional[str] = None,
     tagId: Optional[int] = None,
+    sort: Optional[str] = None,
     authorization: Optional[str] = Header(None, alias="Authorization"),
 ):
+    """分页列表。sort: default 综合排序, latest 最新发布, play 最多播放, like 最多点赞, comment 最多评论。"""
     uid = _uid(authorization)
     return success(
         video_service.page(
@@ -33,6 +35,7 @@ def page(
             course_id=courseId,
             keyword=keyword,
             tag_id=tagId,
+            sort=sort,
             user_id=uid,
         )
     )

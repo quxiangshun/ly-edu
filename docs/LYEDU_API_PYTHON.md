@@ -56,6 +56,8 @@
 
 ### `/course/page`
 
+分页查询课程，支持**模糊查询**（keyword）、**标签筛选**（tagId）。
+
 - **请求方式**：`GET`
 - **请求参数**
 
@@ -63,9 +65,9 @@
 | --- | --- | --- | --- |
 | `page` | `number` | 否 | 页码（默认 1） |
 | `size` | `number` | 否 | 单页数量（默认 10） |
-| `keyword` | `string` | 否 | 课程标题或描述关键字 |
+| `keyword` | `string` | 否 | 课程标题或描述**模糊查询**关键字 |
 | `categoryId` | `number` | 否 | 分类 ID |
-| `tagId` | `number` | 否 | 标签 ID（与用户有效标签无关，可用于固定筛选） |
+| `tagId` | `number` | 否 | 标签 ID，按标签筛选课程 |
 
 - **响应 `data.records` 中字段**
 
@@ -142,6 +144,8 @@
 
 ### `/video/page`
 
+视频分页列表，支持**模糊查询**（关键字）、**标签筛选**（tagId）、**排序**（sort）；结合课程可见性与用户有效标签。
+
 - **请求方式**：`GET`
 - **请求参数**
 
@@ -149,9 +153,10 @@
 | --- | --- | --- | --- |
 | `page` | `number` | 否 | 页码（默认 1） |
 | `size` | `number` | 否 | 每页条数（默认 10） |
-| `courseId` | `number` | 否 | 按课程筛选 |
-| `keyword` | `string` | 否 | 视频标题关键字 |
-| `tagId` | `number` | 否 | 标签 ID。若省略且用户非管理员，则返回其“有效标签”集合内所有课程的视频；管理员会返回全部视频 |
+| `courseId` | `number` | 否 | 按课程 ID 筛选 |
+| `keyword` | `string` | 否 | 视频标题**模糊查询**（服务端按 `title LIKE %keyword%` 匹配） |
+| `tagId` | `number` | 否 | **标签筛选**。不传或选「全部」时，返回用户有效标签下所有视频；管理员返回全部视频；传具体标签 ID 时仅返回该标签关联课程下的视频 |
+| `sort` | `string` | 否 | **排序方式**：`default` 综合排序（按 sort 升序、id 降序），`latest` 最新发布（按 create_time 降序），`play` 最多播放（按 play_count 降序），`like` 最多点赞（按 like_count 降序），`comment` 最多评论（当前按最新发布；若库中有评论数则按评论数降序） |
 
 - **请求头**：除公开课程外，需要携带 `Authorization: Bearer <token>`，以便根据用户角色、部门及标签控制可见性。
 
@@ -168,8 +173,9 @@
 | `likeCount` | `number` | 点赞次数 |
 | `courseId` | `number` | 所属课程 ID |
 | `courseName` | `string` | 所属课程标题 |
+| `createTime` | `string` | 创建时间 |
 
-- **分页元信息**：`total`、`current`、`size`、`pages` 同课程分页。
+- **分页元信息**：`total` 总记录数，`current` 当前页，`size` 每页数量，`pages` 总页数。
 
 ## 学习记录模块 `/learning`
 

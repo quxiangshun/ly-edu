@@ -75,8 +75,17 @@
 			</view>
 		</view>
 
-		<scroll-view class="page-body" scroll-y="true" style="flex:1" @scrolltolower="handleScrollLower" lower-threshold="80">
+		<scroll-view class="page-body" scroll-y="true" style="flex:1" :scroll-top="pageBodyScrollTop" @scrolltolower="handleScrollLower" lower-threshold="80">
 			<view class="video-wrap">
+				<view v-if="courseList.length > 0" class="course-section">
+					<text class="section-title">相关课程</text>
+					<view class="course-grid">
+						<view v-for="c in courseList" :key="c.id" class="course-card" @click="navToCourse(c.id)">
+							<image class="course-cover" :src="coverUrl(c.cover)" mode="aspectFill"></image>
+							<text class="course-title">{{ c.title }}</text>
+						</view>
+					</view>
+				</view>
 				<view class="video-section">
 					<view v-if="loading && !isAppending" class="loading-wrap">
 						<text class="loading-text">加载中...</text>
@@ -114,8 +123,9 @@
 </template>
 
 <script setup lang="uts">
-	import { computed, ref } from 'vue'
+	import { computed, ref, nextTick } from 'vue'
 	import { getVideoPage, type Video } from '../../api/video'
+	import { getCoursePage, type Course } from '../../api/course'
 	import { getEffectiveTags, type Tag } from '../../api/tag'
 
 	type CategoryTab = {
@@ -146,6 +156,10 @@
 	const currentPage = ref(1)
 	const pageSize = 12
 	const videoList = ref<Video[]>([])
+	const courseList = ref<Course[]>([])
+	const courseLoading = ref(false)
+	// 控制列表滚动位置：切换标签/排序时置顶，需先改值再设 0 才能生效
+	const pageBodyScrollTop = ref(0)
 
 	onShow(() => {
 		refreshData()
@@ -153,6 +167,7 @@
 
 	async function refreshData(): Promise<void> {
 		await loadTags()
+		loadCourses()
 		await loadVideos(false)
 	}
 
@@ -221,12 +236,16 @@
 		if (index === activeCategoryIndex.value) return
 		activeCategoryIndex.value = index
 		currentPage.value = 1
+		scrollBodyToTop()
 		loadVideos(false)
 	}
 
 	function handleSortChange(index: number): void {
 		if (index === activeSortIndex.value) return
 		activeSortIndex.value = index
+		currentPage.value = 1
+		scrollBodyToTop()
+		loadVideos(false)
 	}
 
 	function handleSearchInput(event: any): void {
@@ -236,13 +255,42 @@
 
 	function handleSearchConfirm(): void {
 		currentPage.value = 1
+		scrollBodyToTop()
+		loadCourses()
 		loadVideos(false)
 	}
 
 	function clearKeyword(): void {
 		keyword.value = ''
 		currentPage.value = 1
+		scrollBodyToTop()
+		loadCourses()
 		loadVideos(false)
+	}
+
+	function scrollBodyToTop(): void {
+		pageBodyScrollTop.value = 1
+		nextTick(() => {
+			pageBodyScrollTop.value = 0
+		})
+	}
+
+	async function loadCourses(): Promise<void> {
+		if (courseLoading.value) return
+		courseLoading.value = true
+		try {
+			const params: { page: number; size: number; keyword?: string; tagId?: number } = { page: 1, size: 8 }
+			const manualKeyword = keyword.value.trim()
+			if (manualKeyword.length > 0) params.keyword = manualKeyword
+			const tagId = selectedTagId.value
+			if (tagId != null) params.tagId = tagId
+			const res = await getCoursePage(params)
+			courseList.value = res != null && Array.isArray(res.records) ? res.records : []
+		} catch (_e) {
+			courseList.value = []
+		} finally {
+			courseLoading.value = false
+		}
 	}
 
 	async function loadVideos(append: boolean): Promise<void> {
@@ -252,18 +300,24 @@
 		if (append) {
 			loadMoreStatus.value = 'loading'
 		} else {
+			// 切换标签或排序：清空原数据，从第一页开始加载
+			videoList.value = []
+			currentPage.value = 1
 			loadMoreStatus.value = 'idle'
 		}
 		try {
 			const nextPage = append ? currentPage.value + 1 : 1
-			const params: { page: number; size: number; keyword?: string; tagId?: number } = {
+			const sortValue = sortTabs[activeSortIndex.value]?.value ?? 'default'
+			const params: { page: number; size: number; keyword?: string; tagId?: number; sort?: string } = {
 				page: nextPage,
-				size: pageSize
+				size: pageSize,
+				sort: sortValue
 			}
 			const manualKeyword = keyword.value.trim()
 			if (manualKeyword.length > 0) {
 				params.keyword = manualKeyword
 			}
+			// 全部：不传 tagId，接口返回用户有效标签下所有视频
 			const tagId = selectedTagId.value
 			if (tagId != null) {
 				params.tagId = tagId
@@ -300,28 +354,8 @@
 		}
 	}
 
-	const displayVideos = computed(() => {
-		if (videoList.value.length === 0) return []
-		const currentSort = sortTabs[activeSortIndex.value]?.value ?? 'default'
-		const list = videoList.value.slice()
-		switch (currentSort) {
-			case 'latest':
-				list.sort((a, b) => parseTime(b.createTime) - parseTime(a.createTime))
-				break
-			case 'play':
-				list.sort((a, b) => safeNumber(b.playCount) - safeNumber(a.playCount))
-				break
-			case 'like':
-				list.sort((a, b) => safeNumber(b.likeCount) - safeNumber(a.likeCount))
-				break
-			case 'comment':
-				list.sort((a, b) => safeNumber(b.commentCount) - safeNumber(a.commentCount))
-				break
-			default:
-				break
-		}
-		return list
-	})
+	// 直接使用接口返回顺序（接口已按 sort 参数排序）；两列展示由 video-grid 样式实现
+	const displayVideos = computed((): Video[] => videoList.value)
 
 	function coverUrl(cover: string | null | undefined): string {
 		if (cover != null && cover.length > 0) {
@@ -340,12 +374,6 @@
 		return 0
 	}
 
-	function parseTime(value: string | null | undefined): number {
-		if (value == null || value.length === 0) return 0
-		const timestamp = Date.parse(value)
-		return isNaN(timestamp) ? 0 : timestamp
-	}
-
 	function handleScrollLower(): void {
 		if (loading.value || loadMoreStatus.value === 'no-more') return
 		loadVideos(true)
@@ -354,6 +382,12 @@
 	function navToVideo(id: number): void {
 		if (id != null && id > 0) {
 			uni.navigateTo({ url: '/pages/video-player/video-player?id=' + id })
+		}
+	}
+
+	function navToCourse(id: number): void {
+		if (id != null && id > 0) {
+			uni.navigateTo({ url: '/pages/course-detail/course-detail?id=' + id })
 		}
 	}
 </script>
@@ -483,6 +517,39 @@
 	font-size: 14px;
 	color: #666666;
 	white-space: nowrap;
+}
+.course-section {
+	margin-bottom: 20px;
+}
+.section-title {
+	font-size: 16px;
+	font-weight: 600;
+	color: #323233;
+	margin-bottom: 12px;
+}
+.course-grid {
+	flex-direction: row;
+	flex-wrap: wrap;
+	justify-content: space-between;
+}
+.course-card {
+	background-color: #ffffff;
+	border-radius: 12px;
+	overflow: hidden;
+	margin-bottom: 12px;
+	width: 48%;
+	flex-direction: column;
+}
+.course-cover {
+	width: 100%;
+	height: 100px;
+	background-color: #ebedf0;
+}
+.course-title {
+	font-size: 14px;
+	font-weight: 500;
+	color: #323233;
+	padding: 8px 10px;
 }
 .video-section {
 	background-color: transparent;
