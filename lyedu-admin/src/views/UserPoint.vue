@@ -16,10 +16,7 @@
 
       <el-form :inline="true" :model="searchForm" class="search-form">
         <el-form-item label="关键词">
-          <el-input v-model="searchForm.keyword" placeholder="用户名/姓名/备注" clearable />
-        </el-form-item>
-        <el-form-item label="用户ID">
-          <el-input-number v-model="searchForm.userId" :min="1" placeholder="用户ID" clearable />
+          <el-input v-model="searchForm.keyword" placeholder="昵称/用户名/姓名/备注" clearable />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">搜索</el-button>
@@ -29,13 +26,11 @@
 
       <el-table :data="pointList" v-loading="loading" border :max-height="tableMaxHeight">
         <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="userId" label="用户ID" width="100" />
-        <el-table-column prop="realName" label="姓名" width="120">
+        <el-table-column prop="nickname" label="用户" width="140">
           <template #default="{ row }">
-            {{ row.realName || row.username || '未知' }}
+            {{ row.nickname || row.realName || row.username || '未知' }}
           </template>
         </el-table-column>
-        <el-table-column prop="username" label="用户名" width="120" />
         <el-table-column prop="points" label="积分" width="100" align="center">
           <template #default="{ row }">
             <span :style="{ color: row.points > 0 ? '#67c23a' : '#f56c6c' }" style="font-weight: 600;">
@@ -83,8 +78,7 @@ const loading = ref(false)
 const pointList = ref<UserPointLog[]>([])
 
 const searchForm = reactive({
-  keyword: '',
-  userId: undefined as number | undefined
+  keyword: ''
 })
 
 const pagination = reactive({
@@ -104,8 +98,7 @@ async function loadPointLogs() {
     const res = await getUserPointLogPage({
       page: pagination.page,
       size: pagination.size,
-      keyword: searchForm.keyword || undefined,
-      userId: searchForm.userId
+      keyword: searchForm.keyword || undefined
     })
     pointList.value = res.records || []
     pagination.total = res.total || 0
@@ -123,7 +116,6 @@ function handleSearch() {
 
 function handleReset() {
   searchForm.keyword = ''
-  searchForm.userId = undefined
   pagination.page = 1
   loadPointLogs()
 }

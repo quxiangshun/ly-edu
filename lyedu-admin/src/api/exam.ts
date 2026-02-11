@@ -35,8 +35,11 @@ export interface PageResult<T> {
   pages: number
 }
 
-export const getExamPage = (params: { page: number; size: number; keyword?: string }) => {
-  return request.get<PageResult<Exam>>('/exam/page', { params })
+export const getExamPage = (
+  params: { page: number; size: number; keyword?: string },
+  config?: { timeout?: number }
+) => {
+  return request.get<PageResult<Exam>>('/exam/page', { params, ...config })
 }
 
 export const getExamById = (id: number) => {

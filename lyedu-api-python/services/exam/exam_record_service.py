@@ -109,31 +109,21 @@ def page(
     page_num: int = 1,
     size: int = 20,
     keyword: Optional[str] = None,
-    exam_id: Optional[int] = None,
-    user_id: Optional[int] = None,
 ) -> dict:
-    """分页查询考试记录（管理员）"""
-    from common.result import page_result
-    
+    """分页查询考试记录（管理员），仅支持关键词检索；用户相关展示 nickname"""
+    from models.schemas import page_result
+
     page_num = max(1, page_num)
     size = max(1, min(100, size))
     offset = (page_num - 1) * size
-    
+
     where_clauses = []
     params: List[Any] = []
-    
+
     if keyword:
-        where_clauses.append("(u.real_name LIKE %s OR u.username LIKE %s OR e.title LIKE %s)")
+        where_clauses.append("(u.real_name LIKE %s OR u.username LIKE %s OR u.nickname LIKE %s OR e.title LIKE %s)")
         keyword_pattern = f"%{keyword}%"
-        params.extend([keyword_pattern, keyword_pattern, keyword_pattern])
-    
-    if exam_id:
-        where_clauses.append("er.exam_id = %s")
-        params.append(exam_id)
-    
-    if user_id:
-        where_clauses.append("er.user_id = %s")
-        params.append(user_id)
+        params.extend([keyword_pattern, keyword_pattern, keyword_pattern, keyword_pattern])
     
     where_sql = " AND ".join(where_clauses) if where_clauses else "1=1"
     
@@ -145,13 +135,13 @@ def page(
         f"WHERE {where_sql}"
     )
     total_row = db.query_one(count_sql, tuple(params))
-    total = total_row.get("total") or 0 if total_row else 0
+    total = int(total_row.get("total") or 0) if total_row else 0
     
-    # 查询数据
+    # 查询数据（用户相关展示 nickname）
     data_sql = (
         f"SELECT er.id, er.exam_id AS examId, er.user_id AS userId, er.paper_id AS paperId, "
         f"er.score, er.passed, er.answers, er.submit_time AS submitTime, er.create_time AS createTime, "
-        f"u.real_name AS realName, u.username, e.title AS examTitle "
+        f"u.nickname AS nickname, u.real_name AS realName, u.username, e.title AS examTitle "
         f"FROM ly_exam_record er "
         f"LEFT JOIN ly_user u ON er.user_id = u.id AND u.deleted = 0 "
         f"LEFT JOIN ly_exam e ON er.exam_id = e.id AND e.deleted = 0 "
@@ -173,8 +163,7 @@ def page(
             "answers": r.get("answers"),
             "submitTime": r.get("submitTime"),
             "createTime": r.get("createTime"),
-            "realName": r.get("realName"),
-            "username": r.get("username"),
+            "nickname": r.get("nickname") or r.get("realName") or r.get("username"),
             "examTitle": r.get("examTitle"),
         }
         records.append(record)

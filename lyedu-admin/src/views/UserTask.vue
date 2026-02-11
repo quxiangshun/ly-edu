@@ -32,13 +32,11 @@
 
       <el-table :data="taskList" v-loading="loading" border :max-height="tableMaxHeight">
         <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="userId" label="用户ID" width="100" />
-        <el-table-column prop="realName" label="姓名" width="120">
+        <el-table-column prop="nickname" label="用户" width="140">
           <template #default="{ row }">
-            {{ row.realName || row.username || '未知' }}
+            {{ row.nickname || row.realName || row.username || '未知' }}
           </template>
         </el-table-column>
-        <el-table-column prop="username" label="用户名" width="120" />
         <el-table-column prop="taskId" label="任务ID" width="100" />
         <el-table-column prop="taskTitle" label="任务名称" min-width="200" show-overflow-tooltip />
         <el-table-column prop="status" label="完成状态" width="100" align="center">

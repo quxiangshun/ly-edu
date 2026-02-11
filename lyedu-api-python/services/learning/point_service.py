@@ -94,9 +94,8 @@ def page_log(
     user_id: Optional[int] = None,
 ) -> dict:
     """分页查询积分记录（管理员）"""
-    from typing import Any
-    from common.result import page_result
-    
+    from models.schemas import page_result
+
     page_num = max(1, page_num)
     size = max(1, min(100, size))
     offset = (page_num - 1) * size
@@ -122,13 +121,13 @@ def page_log(
         f"WHERE {where_sql}"
     )
     total_row = db.query_one(count_sql, tuple(params))
-    total = total_row.get("total") or 0 if total_row else 0
-    
-    # 查询数据
+    total = int(total_row.get("total") or 0) if total_row else 0
+
+    # 查询数据（用户相关展示 nickname）
     data_sql = (
         f"SELECT pl.id, pl.user_id AS userId, pl.points, pl.rule_key AS ruleKey, "
         f"pl.ref_type AS refType, pl.ref_id AS refId, pl.remark, pl.create_time AS createTime, "
-        f"u.real_name AS realName, u.username "
+        f"u.nickname AS nickname, u.real_name AS realName, u.username "
         f"FROM ly_point_log pl "
         f"LEFT JOIN ly_user u ON pl.user_id = u.id AND u.deleted = 0 "
         f"WHERE {where_sql} "
@@ -142,8 +141,7 @@ def page_log(
         record = {
             "id": r.get("id"),
             "userId": r.get("userId"),
-            "realName": r.get("realName"),
-            "username": r.get("username"),
+            "nickname": r.get("nickname") or r.get("realName") or r.get("username"),
             "points": r.get("points"),
             "ruleKey": r.get("ruleKey"),
             "refType": r.get("refType"),

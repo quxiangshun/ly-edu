@@ -28,7 +28,9 @@
       <el-table :data="examList" v-loading="loading" border :max-height="tableMaxHeight">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="title" label="考试名称" min-width="180" show-overflow-tooltip />
-        <el-table-column prop="paperId" label="试卷ID" width="90" />
+        <el-table-column prop="paperTitle" label="试卷" width="180" show-overflow-tooltip>
+          <template #default="{ row }">{{ row.paperTitle || row.paperId || '-' }}</template>
+        </el-table-column>
         <el-table-column prop="startTime" label="开始时间" width="160">
           <template #default="{ row }">{{ row.startTime ? row.startTime.replace('T', ' ') : '-' }}</template>
         </el-table-column>
@@ -262,7 +264,7 @@ async function handleAdd() {
   editId.value = null
   dialogTitle.value = '新增考试'
   form.title = ''
-  form.paperId = 0
+  form.paperId = undefined
   form.startTime = ''
   form.endTime = ''
   form.durationMinutes = undefined
@@ -287,7 +289,7 @@ async function handleEdit(row: Exam) {
   try {
     const e = await getExamByIdAdmin(row.id)
     form.title = e.title ?? ''
-    form.paperId = e.paperId ?? 0
+    form.paperId = e.paperId ?? undefined
     form.startTime = e.startTime ?? ''
     form.endTime = e.endTime ?? ''
     form.durationMinutes = e.durationMinutes

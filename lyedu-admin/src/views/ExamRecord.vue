@@ -16,13 +16,7 @@
 
       <el-form :inline="true" :model="searchForm" class="search-form">
         <el-form-item label="关键词">
-          <el-input v-model="searchForm.keyword" placeholder="用户名/姓名/考试名称" clearable />
-        </el-form-item>
-        <el-form-item label="考试ID">
-          <el-input-number v-model="searchForm.examId" :min="1" placeholder="考试ID" clearable />
-        </el-form-item>
-        <el-form-item label="用户ID">
-          <el-input-number v-model="searchForm.userId" :min="1" placeholder="用户ID" clearable />
+          <el-input v-model="searchForm.keyword" placeholder="用户名/姓名/昵称/考试名称" clearable />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">搜索</el-button>
@@ -32,15 +26,12 @@
 
       <el-table :data="recordList" v-loading="loading" border :max-height="tableMaxHeight">
         <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="examId" label="考试ID" width="100" />
         <el-table-column prop="examTitle" label="考试名称" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="userId" label="用户ID" width="100" />
-        <el-table-column prop="realName" label="姓名" width="120">
+        <el-table-column prop="nickname" label="用户" width="140">
           <template #default="{ row }">
-            {{ row.realName || row.username || '未知' }}
+            {{ row.nickname || row.realName || row.username || '未知' }}
           </template>
         </el-table-column>
-        <el-table-column prop="username" label="用户名" width="120" />
         <el-table-column prop="score" label="得分" width="100" align="center">
           <template #default="{ row }">
             <span :style="{ color: getScoreColor(row.score, row.passed) }" style="font-weight: 600;">
@@ -91,9 +82,7 @@ const loading = ref(false)
 const recordList = ref<ExamRecord[]>([])
 
 const searchForm = reactive({
-  keyword: '',
-  examId: undefined as number | undefined,
-  userId: undefined as number | undefined
+  keyword: ''
 })
 
 const pagination = reactive({
@@ -119,9 +108,7 @@ async function loadRecords() {
     const res = await getExamRecordPage({
       page: pagination.page,
       size: pagination.size,
-      keyword: searchForm.keyword || undefined,
-      examId: searchForm.examId,
-      userId: searchForm.userId
+      keyword: searchForm.keyword || undefined
     })
     recordList.value = res.records || []
     pagination.total = res.total || 0
@@ -139,8 +126,6 @@ function handleSearch() {
 
 function handleReset() {
   searchForm.keyword = ''
-  searchForm.examId = undefined
-  searchForm.userId = undefined
   pagination.page = 1
   loadRecords()
 }

@@ -16,13 +16,7 @@
 
       <el-form :inline="true" :model="searchForm" class="search-form">
         <el-form-item label="关键词">
-          <el-input v-model="searchForm.keyword" placeholder="用户名/姓名/证书名称/证书编号" clearable />
-        </el-form-item>
-        <el-form-item label="用户ID">
-          <el-input-number v-model="searchForm.userId" :min="1" placeholder="用户ID" clearable />
-        </el-form-item>
-        <el-form-item label="证书ID">
-          <el-input-number v-model="searchForm.certificateId" :min="1" placeholder="证书ID" clearable />
+          <el-input v-model="searchForm.keyword" placeholder="昵称/证书名称/证书编号" clearable />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">搜索</el-button>
@@ -31,15 +25,11 @@
       </el-form>
 
       <el-table :data="certificateList" v-loading="loading" border :max-height="tableMaxHeight">
-        <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="userId" label="用户ID" width="100" />
-        <el-table-column prop="realName" label="姓名" width="120">
+        <el-table-column prop="nickname" label="用户" width="140">
           <template #default="{ row }">
-            {{ row.realName || row.username || '未知' }}
+            {{ row.nickname || row.realName || row.username || '未知' }}
           </template>
         </el-table-column>
-        <el-table-column prop="username" label="用户名" width="120" />
-        <el-table-column prop="certificateId" label="证书ID" width="100" />
         <el-table-column prop="title" label="证书名称" min-width="200" show-overflow-tooltip />
         <el-table-column prop="certificateNo" label="证书编号" width="200" show-overflow-tooltip />
         <el-table-column prop="issuedAt" label="颁发时间" width="180">
@@ -78,9 +68,7 @@ const loading = ref(false)
 const certificateList = ref<UserCertificate[]>([])
 
 const searchForm = reactive({
-  keyword: '',
-  userId: undefined as number | undefined,
-  certificateId: undefined as number | undefined
+  keyword: ''
 })
 
 const pagination = reactive({
@@ -100,9 +88,7 @@ async function loadCertificates() {
     const res = await getUserCertificatePage({
       page: pagination.page,
       size: pagination.size,
-      keyword: searchForm.keyword || undefined,
-      userId: searchForm.userId,
-      certificateId: searchForm.certificateId
+      keyword: searchForm.keyword || undefined
     })
     certificateList.value = res.records || []
     pagination.total = res.total || 0
@@ -120,8 +106,6 @@ function handleSearch() {
 
 function handleReset() {
   searchForm.keyword = ''
-  searchForm.userId = undefined
-  searchForm.certificateId = undefined
   pagination.page = 1
   loadCertificates()
 }

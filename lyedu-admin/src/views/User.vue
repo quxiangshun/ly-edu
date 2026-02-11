@@ -25,7 +25,7 @@
           <el-input v-model="searchForm.keyword" placeholder="用户名/昵称/邮箱/手机号" clearable />
         </el-form-item>
         <el-form-item label="角色">
-          <el-select v-model="searchForm.role" placeholder="请选择" clearable>
+          <el-select v-model="searchForm.role" placeholder="请选择" clearable style="min-width: 120px">
             <el-option label="全部" value="" />
             <el-option label="管理员" value="admin" />
             <el-option label="教师" value="teacher" />
@@ -33,7 +33,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="状态">
-          <el-select v-model="searchForm.status" placeholder="请选择" clearable>
+          <el-select v-model="searchForm.status" placeholder="请选择" clearable style="min-width: 120px">
             <el-option label="全部" value="" />
             <el-option label="启用" :value="1" />
             <el-option label="禁用" :value="0" />

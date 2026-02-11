@@ -61,8 +61,6 @@ def page(
     page: int = 1,
     size: int = 20,
     keyword: Optional[str] = None,
-    examId: Optional[int] = None,
-    userId: Optional[int] = None,
 ):
-    """分页查询考试记录（管理员）"""
-    return success(exam_record_service.page(page_num=page, size=size, keyword=keyword, exam_id=examId, user_id=userId))
+    """分页查询考试记录（管理员），仅支持关键词检索"""
+    return success(exam_record_service.page(page_num=page, size=size, keyword=keyword))

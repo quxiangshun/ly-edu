@@ -1,14 +1,18 @@
 # -*- coding: utf-8 -*-
 """试卷服务，与 Java PaperService 对应"""
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 import pymysql
 
 import db
 from models.schemas import page_result
 from services.exam import question_service
+from util import redis_cache
 
 PAPER_COLS = "id, title, total_score, pass_score, duration_minutes, status, create_time, update_time, deleted"
+
+# 试卷名称缓存 TTL（秒），便于列表/下拉等读多写少场景
+PAPER_TITLE_CACHE_TTL = 300
 
 
 def _row_to_paper(row: dict) -> dict:
@@ -58,6 +62,43 @@ def get_by_id(paper_id: int) -> Optional[dict]:
     except pymysql.err.MySQLError as e:
         if getattr(e, "args", (None,))[0] == 1146:
             return None
+        raise
+
+
+def get_titles_by_ids(paper_ids: List[int]) -> Dict[int, Optional[str]]:
+    """批量查询试卷 id -> title，用于列表展示；先读 Redis 缓存，未命中再查库并回填缓存"""
+    if not paper_ids:
+        return {}
+    ids = list(dict.fromkeys(paper_ids))
+    result: Dict[int, Optional[str]] = {}
+    miss_ids: List[int] = []
+    for pid in ids:
+        cached = redis_cache.get("paper:title:%s" % pid)
+        if cached is not None:
+            result[pid] = cached if cached else None
+        else:
+            miss_ids.append(pid)
+    if not miss_ids:
+        return result
+    try:
+        placeholders = ", ".join(["%s"] * len(miss_ids))
+        sql = "SELECT id, title FROM ly_paper WHERE id IN (" + placeholders + ") AND deleted = 0"
+        rows = db.query_all(sql, tuple(miss_ids))
+        for r in (rows or []):
+            pid = r["id"]
+            title = r.get("title")
+            result[pid] = title
+            redis_cache.set("paper:title:%s" % pid, title or "", PAPER_TITLE_CACHE_TTL)
+        for pid in miss_ids:
+            if pid not in result:
+                result[pid] = None
+                redis_cache.set("paper:title:%s" % pid, "", PAPER_TITLE_CACHE_TTL)
+        return result
+    except pymysql.err.MySQLError as e:
+        if getattr(e, "args", (None,))[0] == 1146:
+            for pid in miss_ids:
+                result[pid] = None
+            return result
         raise
 
 
@@ -122,6 +163,8 @@ def update(
     try:
         sql = "UPDATE ly_paper SET title = %s, total_score = %s, pass_score = %s, duration_minutes = %s, status = %s WHERE id = %s AND deleted = 0"
         n = db.execute(sql, (title, total_score, pass_score, duration_minutes, status, paper_id))
+        if n > 0:
+            redis_cache.delete("paper:title:%s" % paper_id)
         db.execute("DELETE FROM ly_paper_question WHERE paper_id = %s", (paper_id,))
         if questions:
             for item in questions:
@@ -142,6 +185,8 @@ def delete(paper_id: int) -> bool:
     try:
         db.execute("DELETE FROM ly_paper_question WHERE paper_id = %s", (paper_id,))
         n = db.execute("UPDATE ly_paper SET deleted = 1 WHERE id = %s", (paper_id,))
+        if n > 0:
+            redis_cache.delete("paper:title:%s" % paper_id)
         return n > 0
     except pymysql.err.MySQLError as e:
         if getattr(e, "args", (None,))[0] == 1146:

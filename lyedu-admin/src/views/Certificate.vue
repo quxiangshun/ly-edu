@@ -161,7 +161,10 @@ const loadTemplates = async () => {
 }
 
 const loadExams = async () => {
-  const res = await getExamPage({ page: 1, size: 500 })
+  const res = await getExamPage(
+    { page: 1, size: 200 },
+    { timeout: 60000 }
+  )
   const page = (res as unknown as { data: { records: Exam[] } }).data
   examOptions.value = page?.records ?? (res as unknown as { records: Exam[] })?.records ?? []
 }
@@ -239,7 +242,10 @@ const handleDelete = async (row: CertificateRule) => {
 }
 
 onMounted(async () => {
-  await Promise.all([loadList(), loadTemplates(), loadExams()])
+  await Promise.all([loadList(), loadTemplates()])
+  loadExams().catch(() => {
+    examOptions.value = []
+  })
 })
 </script>
 

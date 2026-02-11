@@ -93,9 +93,8 @@ def page(
     certificate_id: Optional[int] = None,
 ) -> dict:
     """分页查询用户证书（管理员）"""
-    from typing import Any
-    from common.result import page_result
-    
+    from models.schemas import page_result
+
     page_num = max(1, page_num)
     size = max(1, min(100, size))
     offset = (page_num - 1) * size
@@ -125,14 +124,13 @@ def page(
         f"WHERE {where_sql}"
     )
     total_row = db.query_one(count_sql, tuple(params))
-    total = total_row.get("total") or 0 if total_row else 0
-    
-    # 查询数据
+    total = int(total_row.get("total") or 0) if total_row else 0
+
+    # 查询数据（用户相关展示 nickname；列表不展示 certificateId/userId）
     data_sql = (
-        f"SELECT uc.id, uc.user_id AS userId, uc.certificate_id AS certificateId, "
-        f"uc.template_id AS templateId, uc.certificate_no AS certificateNo, uc.title, "
+        f"SELECT uc.id, uc.template_id AS templateId, uc.certificate_no AS certificateNo, uc.title, "
         f"uc.issued_at AS issuedAt, uc.create_time AS createTime, "
-        f"u.real_name AS realName, u.username "
+        f"u.nickname AS nickname, u.real_name AS realName, u.username "
         f"FROM ly_user_certificate uc "
         f"LEFT JOIN ly_user u ON uc.user_id = u.id AND u.deleted = 0 "
         f"WHERE {where_sql} "
@@ -145,10 +143,7 @@ def page(
     for r in (rows or []):
         record = {
             "id": r.get("id"),
-            "userId": r.get("userId"),
-            "realName": r.get("realName"),
-            "username": r.get("username"),
-            "certificateId": r.get("certificateId"),
+            "nickname": r.get("nickname") or r.get("realName") or r.get("username"),
             "templateId": r.get("templateId"),
             "certificateNo": r.get("certificateNo"),
             "title": r.get("title"),

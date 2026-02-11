@@ -140,8 +140,8 @@ def page(
     task_id: Optional[int] = None,
 ) -> dict:
     """分页查询用户任务（管理员）"""
-    from common.result import page_result
-    
+    from models.schemas import page_result
+
     page_num = max(1, page_num)
     size = max(1, min(100, size))
     offset = (page_num - 1) * size
@@ -172,14 +172,14 @@ def page(
         f"WHERE {where_sql}"
     )
     total_row = db.query_one(count_sql, tuple(params))
-    total = total_row.get("total") or 0 if total_row else 0
-    
-    # 查询数据
+    total = int(total_row.get("total") or 0) if total_row else 0
+
+    # 查询数据（用户相关展示 nickname，无则回退 real_name/username）
     data_sql = (
         f"SELECT ut.id, ut.user_id AS userId, ut.task_id AS taskId, "
         f"ut.progress, ut.status, ut.completed_at AS completedAt, "
         f"ut.create_time AS createTime, ut.update_time AS updateTime, "
-        f"u.real_name AS realName, u.username, t.title AS taskTitle "
+        f"u.nickname AS nickname, u.real_name AS realName, u.username, t.title AS taskTitle "
         f"FROM ly_user_task ut "
         f"LEFT JOIN ly_user u ON ut.user_id = u.id AND u.deleted = 0 "
         f"LEFT JOIN ly_task t ON ut.task_id = t.id AND t.deleted = 0 "
@@ -194,8 +194,7 @@ def page(
         record = {
             "id": r.get("id"),
             "userId": r.get("userId"),
-            "realName": r.get("realName"),
-            "username": r.get("username"),
+            "nickname": r.get("nickname") or r.get("realName") or r.get("username"),
             "taskId": r.get("taskId"),
             "taskTitle": r.get("taskTitle"),
             "progress": r.get("progress"),

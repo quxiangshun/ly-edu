@@ -8,6 +8,7 @@ import db
 from models.schemas import page_result
 from services.org import department_service
 from services.exam import exam_department_service
+from services.exam import paper_service
 from services.user import user_service
 from services.course import course_exam_service
 
@@ -95,9 +96,14 @@ def page(
         query_sql = "SELECT " + SELECT_COLS + " FROM ly_exam WHERE " + where_sql + " ORDER BY id DESC LIMIT %s OFFSET %s"
         query_params = list(params) + [size, offset]
         rows = db.query_all(query_sql, tuple(query_params))
+        # 批量查试卷名称，避免 N+1
+        paper_ids = [r.get("paper_id") for r in (rows or []) if r.get("paper_id")]
+        paper_titles = paper_service.get_titles_by_ids(paper_ids) if paper_ids else {}
         records = []
         for r in (rows or []):
             e = _row_to_exam(r)
+            pid = e.get("paperId")
+            e["paperTitle"] = paper_titles.get(pid) if pid else None
             e["departmentIds"] = exam_department_service.list_department_ids_by_exam_id(e.get("id"))
             if course_exam_service.table_exists():
                 e["courseIds"] = course_exam_service.get_course_ids_by_exam(e.get("id"))
