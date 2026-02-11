@@ -82,7 +82,15 @@ import AppHeader from '@/components/AppHeader.vue'
 import { getVideoById } from '@/api/video'
 import { getCourseById } from '@/api/course'
 import { updateVideoProgress, playPing } from '@/api/learning'
+import { getConfigByKey } from '@/api/config'
 import type { Video } from '@/api/course'
+
+/** 将配置值解析为是否禁用（1/true/yes 等视为 true） */
+function parseDisableConfig(val: string | null | undefined): boolean {
+  if (val == null || val === '') return false
+  const v = String(val).toLowerCase().trim()
+  return v === '1' || v === 'true' || v === 'yes' || v === 'on'
+}
 
 const router = useRouter()
 const route = useRoute()
@@ -274,7 +282,19 @@ watch(videoUrl, (newUrl, oldUrl) => {
   }
 })
 
+const loadPlayerConfig = async () => {
+  try {
+    const seekVal = await getConfigByKey('player.disable_seek')
+    const speedVal = await getConfigByKey('player.disable_speed')
+    playerDisableSeek.value = parseDisableConfig(seekVal as string)
+    playerDisableSpeed.value = parseDisableConfig(speedVal as string)
+  } catch (_e) {
+    // 保持默认 false
+  }
+}
+
 onMounted(() => {
+  loadPlayerConfig()
   loadVideo()
 })
 

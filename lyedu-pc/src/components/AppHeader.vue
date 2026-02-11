@@ -19,17 +19,33 @@
         <el-menu-item index="tasks" @click="$router.push('/tasks')">我的任务</el-menu-item>
         <el-menu-item index="points" @click="$router.push('/points')">积分</el-menu-item>
         <el-menu-item index="my" @click="$router.push('/my-learning')">我的学习</el-menu-item>
+        <el-menu-item index="help" @click="$router.push('/help')">使用说明</el-menu-item>
       </el-menu>
       <div class="header-right">
         <template v-if="!isLoggedIn">
           <el-button type="primary" @click="$router.push('/login')">登录</el-button>
         </template>
         <template v-else>
-          <div class="user-info">
-            <el-icon><User /></el-icon>
-            <span class="user-name">{{ userName }}</span>
-          </div>
-          <el-button type="text" class="logout-btn" @click="handleLogout">退出登录</el-button>
+          <el-dropdown trigger="click" @command="handleUserCommand">
+            <div class="user-info user-dropdown-trigger">
+              <el-avatar v-if="userDisplayAvatar" :src="userDisplayAvatar" :size="28" class="user-avatar" />
+              <el-icon v-else><User /></el-icon>
+              <span class="user-name">{{ userName }}</span>
+              <el-icon class="dropdown-arrow"><ArrowDown /></el-icon>
+            </div>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="profile">
+                  <el-icon><User /></el-icon>
+                  个人信息
+                </el-dropdown-item>
+                <el-dropdown-item command="logout" divided>
+                  <el-icon><SwitchButton /></el-icon>
+                  退出登录
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
         </template>
       </div>
     </div>
@@ -37,24 +53,53 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { User } from '@element-plus/icons-vue'
+import { User, ArrowDown, SwitchButton } from '@element-plus/icons-vue'
+import { getCurrentUser, type CurrentUserInfo } from '@/api/user'
+import { getConfigByKey } from '@/api/config'
 
 const router = useRouter()
 const route = useRoute()
 
 const token = ref<string | null>(null)
-const userInfo = ref<any>(null)
+const userInfo = ref<CurrentUserInfo | null>(null)
+const siteLogo = ref<string>('')
 
 const isLoggedIn = computed(() => !!token.value)
 const userName = computed(() => {
   if (userInfo.value) {
-    return userInfo.value.realName || userInfo.value.username || '用户'
+    return userInfo.value.nickname || userInfo.value.realName || userInfo.value.username || '用户'
   }
   return '用户'
 })
+const userAvatar = computed(() => {
+  if (!userInfo.value) return ''
+  const u = userInfo.value as CurrentUserInfo & { avatar?: string }
+  const url = u.avatar || ''
+  if (!url) return ''
+  if (url.startsWith('http')) return url
+  if (url.startsWith('/')) return window.location.origin + url
+  return url
+})
+/** 用户区展示头像：有用户头像用用户头像，否则用后台配置的 site.logo */
+const userDisplayAvatar = computed(() => {
+  if (userAvatar.value) return userAvatar.value
+  if (!siteLogo.value) return ''
+  const raw = siteLogo.value
+  if (raw.startsWith('http')) return raw
+  if (raw.startsWith('/')) return window.location.origin + raw
+  return raw
+})
+
+const handleUserCommand = (command: string) => {
+  if (command === 'profile') {
+    router.push('/profile')
+  } else if (command === 'logout') {
+    handleLogout()
+  }
+}
 
 const activeMenu = computed(() => {
   const path = route.path
@@ -66,6 +111,7 @@ const activeMenu = computed(() => {
   if (path.startsWith('/tasks') || path.startsWith('/task/')) return 'tasks'
   if (path.startsWith('/points')) return 'points'
   if (path.startsWith('/my-learning')) return 'my'
+  if (path.startsWith('/help')) return 'help'
   return 'home'
 })
 
@@ -76,6 +122,8 @@ const handleMenuSelect = (index: string) => {
     router.push('/courses')
   } else if (index === 'my') {
     router.push('/my-learning')
+  } else if (index === 'help') {
+    router.push('/help')
   }
 }
 
@@ -88,31 +136,56 @@ const handleLogout = () => {
   router.push('/')
 }
 
-const loadUserInfo = () => {
+const loadUserInfo = async () => {
   token.value = localStorage.getItem('token')
-  const userStr = localStorage.getItem('user')
-  if (userStr) {
-    try {
-      userInfo.value = JSON.parse(userStr)
-    } catch {
+  if (!token.value) {
+    userInfo.value = null
+    return
+  }
+  try {
+    const res = await getCurrentUser()
+    if (res) {
+      userInfo.value = res
+    } else {
       userInfo.value = null
     }
-  } else {
-    userInfo.value = null
+  } catch (_e) {
+    const userStr = localStorage.getItem('user')
+    if (userStr) {
+      try {
+        userInfo.value = JSON.parse(userStr) as CurrentUserInfo
+      } catch {
+        userInfo.value = null
+      }
+    } else {
+      userInfo.value = null
+    }
+  }
+}
+
+const loadSiteLogo = async () => {
+  try {
+    const logo = await getConfigByKey('site.logo')
+    siteLogo.value = logo ? String(logo) : ''
+  } catch (_e) {
+    siteLogo.value = ''
   }
 }
 
 onMounted(() => {
   loadUserInfo()
-  // 监听storage变化
+  loadSiteLogo()
   window.addEventListener('storage', loadUserInfo)
-  // 定期检查token变化（处理同页面内修改的情况）
   setInterval(() => {
     const currentToken = localStorage.getItem('token')
     if (currentToken !== token.value) {
       loadUserInfo()
     }
-  }, 500)
+  }, 2000)
+})
+
+watch(() => route.path, () => {
+  if (token.value) loadUserInfo()
 })
 </script>
 
@@ -171,24 +244,32 @@ onMounted(() => {
       align-items: center;
       gap: 12px;
 
-      .user-info {
+      .user-info.user-dropdown-trigger {
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 8px;
         color: #606266;
         font-size: 14px;
+        cursor: pointer;
+        padding: 4px 8px;
+        border-radius: 4px;
+
+        &:hover {
+          color: var(--el-color-primary);
+          background: var(--el-fill-color-light);
+        }
+
+        .user-avatar {
+          flex-shrink: 0;
+        }
 
         .user-name {
           font-weight: 500;
         }
-      }
 
-      .logout-btn {
-        color: #606266;
-        padding: 0 8px;
-
-        &:hover {
-          color: var(--el-color-danger);
+        .dropdown-arrow {
+          margin-left: 4px;
+          font-size: 12px;
         }
       }
     }

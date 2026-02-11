@@ -4,6 +4,23 @@
     <el-main class="main-content">
       <div class="courses-content">
         <h2>课程中心</h2>
+        <div class="search-bar">
+          <el-input
+            v-model="searchForm.keyword"
+            placeholder="关键词搜索"
+            clearable
+            style="width: 220px"
+            @keyup.enter="handleSearch"
+          />
+          <el-input
+            v-model.number="searchForm.categoryId"
+            placeholder="分类ID（可选）"
+            clearable
+            style="width: 140px"
+          />
+          <el-button type="primary" @click="handleSearch">搜索</el-button>
+          <el-button @click="handleReset">重置</el-button>
+        </div>
         <el-row :gutter="20" v-loading="loading">
           <el-col :span="6" v-for="course in courseList" :key="course.id">
             <el-card class="course-card" shadow="hover" @click="router.push(`/course/${course.id}`)">
@@ -50,12 +67,19 @@ const pagination = reactive({
   total: 0
 })
 
+const searchForm = reactive<{ keyword: string; categoryId?: number }>({
+  keyword: '',
+  categoryId: undefined
+})
+
 const loadCourses = async () => {
   loading.value = true
   try {
     const res = await getCoursePage({
       page: pagination.page,
-      size: pagination.size
+      size: pagination.size,
+      keyword: searchForm.keyword?.trim() || undefined,
+      categoryId: searchForm.categoryId != null && searchForm.categoryId !== '' && !Number.isNaN(Number(searchForm.categoryId)) ? Number(searchForm.categoryId) : undefined
     })
     courseList.value = res.records
     pagination.total = res.total
@@ -64,6 +88,18 @@ const loadCourses = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const handleSearch = () => {
+  pagination.page = 1
+  loadCourses()
+}
+
+const handleReset = () => {
+  searchForm.keyword = ''
+  searchForm.categoryId = undefined
+  pagination.page = 1
+  loadCourses()
 }
 
 const handleStartLearn = async (course: Course) => {
@@ -106,8 +142,16 @@ onMounted(() => {
     margin: 0 auto;
 
     h2 {
-      margin-bottom: 30px;
+      margin-bottom: 20px;
       color: #303133;
+    }
+
+    .search-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
     }
 
     .course-card {

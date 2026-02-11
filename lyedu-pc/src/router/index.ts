@@ -27,6 +27,15 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/profile',
+    name: 'Profile',
+    component: () => import('@/views/Profile.vue'),
+    meta: {
+      title: '个人中心',
+      requiresAuth: true
+    }
+  },
+  {
     path: '/courses',
     name: 'Courses',
     component: () => import('@/views/Courses.vue'),
@@ -150,6 +159,14 @@ const routes: RouteRecordRaw[] = [
     meta: {
       title: '证书打印',
       requiresAuth: true
+    }
+  },
+  {
+    path: '/help',
+    name: 'Help',
+    component: () => import('@/views/Help.vue'),
+    meta: {
+      title: '使用说明'
     }
   }
 ]
