@@ -23,6 +23,8 @@ lyedu-unix/
 │   └── auth.uts      # 登录方式（local / feishu / both）
 ├── pages/            # 页面
 ├── static/           # 静态资源
+│   └── icons/
+│       └── fontawesome/   # Font Awesome 图标（见 https://github.com/FortAwesome/Font-Awesome）
 ├── utils/            # 工具（request、auth）
 ├── App.uvue
 ├── main.uts

@@ -111,6 +111,36 @@ class ResetPasswordRequest(BaseModel):
     password: str = Field(..., min_length=1)
 
 
+# ----- Feishu Sync（飞书同步，与 docs/飞书同步.md 一致） -----
+class FeishuSyncRequest(BaseModel):
+    """飞书同步请求：是否同步部门/用户，是否覆盖已存在"""
+    sync_departments: bool = Field(True, description="是否同步部门")
+    sync_users: bool = Field(True, description="是否同步用户")
+    overwrite_existing: bool = Field(False, description="是否覆盖已存在的数据")
+
+
+class FeishuSyncStats(BaseModel):
+    """飞书同步统计"""
+    departments_created: int = 0
+    departments_updated: int = 0
+    departments_skipped: int = 0
+    departments_failed: int = 0
+    users_created: int = 0
+    users_updated: int = 0
+    users_skipped: int = 0
+    users_failed: int = 0
+
+
+class FeishuSyncResponse(BaseModel):
+    """飞书同步响应：统计 + 错误列表"""
+    success: bool = True
+    message: str = "同步完成"
+    stats: Optional[FeishuSyncStats] = None
+    departments: Optional[dict] = None
+    users: Optional[dict] = None
+    errors: List[str] = Field(default_factory=list)
+
+
 # ----- PageResult (for response) -----
 def page_result(records: List[Any], total: int, current: int, size: int) -> dict:
     pages = (total + size - 1) // size if size else 0

@@ -224,9 +224,15 @@ def save(
     entry_date: Optional[Any] = None,
     role: str = "student",
     status: int = 1,
+    set_password: bool = True,
 ) -> None:
+    """创建用户。set_password=False 时使用随机占位密码（仅飞书同步等场景，用户通过飞书登录）。"""
     from passlib.hash import bcrypt
-    pwd = (password or "123456").strip()
+    import secrets
+    if set_password:
+        pwd = (password or "123456").strip()
+    else:
+        pwd = secrets.token_urlsafe(32)
     encoded = bcrypt.hash(pwd)
     has_feishu = _check_feishu_open_id()
     has_union = _check_union_id()

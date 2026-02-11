@@ -37,9 +37,11 @@ def list_department_children(
     department_id: str,
     page_token: Optional[str] = None,
     page_size: int = 50,
+    fetch_child: bool = False,
 ) -> dict:
     """
-    获取子部门列表。department_id=0 表示根部门。
+    获取子部门列表（文档 4.2）。department_id=0 表示根部门。
+    建议 fetch_child=false，只取直接子部门，递归由调用方完成。
     返回 {"items": [{"department_id":"od-xxx","name":"xxx","parent_department_id":"0","order":"0"}, ...], "page_token": "xxx", "has_more": bool}
     """
     token = _get_tenant_access_token()
@@ -47,8 +49,14 @@ def list_department_children(
         return {"items": [], "page_token": "", "has_more": False}
     try:
         import requests
-        url = f"{FEISHU_BASE}/contact/v3/departments/{department_id}/children"
-        params = {"page_size": page_size}
+        path_id = "0" if (department_id == "0" or not department_id) else quote(str(department_id), safe="")
+        url = f"{FEISHU_BASE}/contact/v3/departments/{path_id}/children"
+        params = {
+            "user_id_type": "open_id",
+            "department_id_type": "department_id",
+            "fetch_child": str(fetch_child).lower(),
+            "page_size": page_size,
+        }
         if page_token:
             params["page_token"] = page_token
         resp = requests.get(
@@ -60,6 +68,119 @@ def list_department_children(
         resp.raise_for_status()
         data = resp.json()
         if data.get("code") != 0:
+            try:
+                import logging
+                logging.getLogger(__name__).warning(
+                    "feishu list_department_children code=%s msg=%s",
+                    data.get("code"),
+                    data.get("msg", ""),
+                )
+            except Exception:
+                pass
+            return {"items": [], "page_token": "", "has_more": False}
+        d = data.get("data") or {}
+        return {
+            "items": d.get("items") or [],
+            "page_token": d.get("page_token") or "",
+            "has_more": bool(d.get("has_more")),
+        }
+    except Exception:
+        return {"items": [], "page_token": "", "has_more": False}
+
+
+def list_departments_by_parent(
+    parent_department_id: str,
+    page_token: Optional[str] = None,
+    page_size: int = 100,
+) -> dict:
+    """
+    按父部门 ID 获取子部门列表（部门列表接口，支持任意层级）。
+    parent_department_id=0 表示根部门下的直属部门。
+    返回格式与 list_department_children 一致，便于 BFS 拉取所有层级。
+    """
+    token = _get_tenant_access_token()
+    if not token:
+        return {"items": [], "page_token": "", "has_more": False}
+    try:
+        import requests
+        url = f"{FEISHU_BASE}/contact/v3/departments"
+        params = {
+            "parent_department_id": parent_department_id,
+            "page_size": page_size,
+        }
+        if page_token:
+            params["page_token"] = page_token
+        resp = requests.get(
+            url,
+            headers={"Authorization": f"Bearer {token}"},
+            params=params,
+            timeout=15,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        if data.get("code") != 0:
+            try:
+                import logging
+                logging.getLogger(__name__).warning(
+                    "feishu list_departments_by_parent code=%s msg=%s parent_department_id=%s",
+                    data.get("code"),
+                    data.get("msg", ""),
+                    parent_department_id,
+                )
+            except Exception:
+                pass
+            return {"items": [], "page_token": "", "has_more": False}
+        d = data.get("data") or {}
+        items = d.get("items") or d.get("departments") or []
+        return {
+            "items": items,
+            "page_token": d.get("page_token") or "",
+            "has_more": bool(d.get("has_more")),
+        }
+    except Exception:
+        return {"items": [], "page_token": "", "has_more": False}
+
+
+def list_all_users(
+    page_token: Optional[str] = None,
+    page_size: int = 50,
+) -> dict:
+    """
+    方式 A：全量用户列表（不传 department_id），分页拉取。
+    文档：GET contact/v3/users，仅 page_size、page_token。
+    返回 {"items": [...], "page_token": "xxx", "has_more": bool}
+    """
+    token = _get_tenant_access_token()
+    if not token:
+        return {"items": [], "page_token": "", "has_more": False}
+    try:
+        import requests
+        url = f"{FEISHU_BASE}/contact/v3/users"
+        params = {
+            "user_id_type": "open_id",
+            "department_id_type": "department_id",
+            "page_size": page_size,
+        }
+        if page_token:
+            params["page_token"] = page_token
+        resp = requests.get(
+            url,
+            headers={"Authorization": f"Bearer {token}"},
+            params=params,
+            timeout=15,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        if data.get("code") != 0:
+            try:
+                import logging
+                logging.getLogger(__name__).warning(
+                    "feishu list_all_users code=%s msg=%s",
+                    data.get("code"),
+                    data.get("msg", ""),
+                )
+            except Exception:
+                pass
             return {"items": [], "page_token": "", "has_more": False}
         d = data.get("data") or {}
         return {
@@ -74,11 +195,12 @@ def list_department_children(
 def list_users_by_department(
     department_id: str,
     page_token: Optional[str] = None,
-    page_size: int = 50,
+    page_size: int = 100,
     fetch_child: bool = True,
 ) -> dict:
     """
     获取部门下用户列表（可含子部门）。department_id=0 表示全量。
+    方式 B 兜底：按部门拉取时使用。
     返回 {"items": [{"user_id":"ou-xxx","open_id":"xxx","name":"xxx","mobile":"","email":"", "department_ids":["od-xxx"]}, ...], "page_token": "xxx", "has_more": bool}
     """
     token = _get_tenant_access_token()
@@ -88,6 +210,8 @@ def list_users_by_department(
         import requests
         url = f"{FEISHU_BASE}/contact/v3/users"
         params = {
+            "user_id_type": "open_id",
+            "department_id_type": "department_id",
             "department_id": department_id,
             "page_size": page_size,
             "fetch_child": str(fetch_child).lower(),
@@ -103,6 +227,15 @@ def list_users_by_department(
         resp.raise_for_status()
         data = resp.json()
         if data.get("code") != 0:
+            try:
+                import logging
+                logging.getLogger(__name__).warning(
+                    "feishu list_users_by_department code=%s msg=%s",
+                    data.get("code"),
+                    data.get("msg", ""),
+                )
+            except Exception:
+                pass
             return {"items": [], "page_token": "", "has_more": False}
         d = data.get("data") or {}
         return {
