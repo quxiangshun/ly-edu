@@ -1,76 +1,116 @@
 <template>
-	<scroll-view class="page" scroll-y="true" style="flex:1" @scrolltolower="handleScrollLower" lower-threshold="80">
-		<view class="container">
-			<view class="search-bar">
-				<input
-					class="search-input"
-					type="text"
-					:value="keyword"
-					placeholder="请输入视频名称、关键字"
-					confirm-type="search"
-					@input="handleSearchInput"
-					@confirm="handleSearchConfirm"
-				/>
-				<text v-if="keyword.length > 0" class="search-clear" @click="clearKeyword">清除</text>
-			</view>
+	<view class="page">
+		<view class="page-header">
+			<view class="container">
+				<view class="search-bar">
+					<input
+						class="search-input"
+						type="text"
+						:value="keyword"
+						placeholder="请输入视频名称、关键字"
+						confirm-type="search"
+						@input="handleSearchInput"
+						@confirm="handleSearchConfirm"
+					/>
+					<text v-if="keyword.length > 0" class="search-clear" @click="clearKeyword">清除</text>
+				</view>
 
-			<scroll-view class="tag-scroll" scroll-x="true" show-scrollbar="false" scroll-with-animation>
-				<view class="tag-row">
-					<view
-						v-for="(item, index) in categoryTabs"
-						:key="item.id != null ? item.id : 'all'"
-						:class="['tag-item', index === activeCategoryIndex ? 'tag-item--active' : '']"
-						@click="handleCategoryChange(index)"
-					>
-						<text class="tag-text">{{ item.label }}</text>
-					</view>
-				</view>
-			</scroll-view>
-
-			<view class="sort-row">
-				<view
-					v-for="(item, index) in sortTabs"
-					:key="item.label"
-					:class="['sort-item', index === activeSortIndex ? 'sort-item--active' : '']"
-					@click="handleSortChange(index)"
-				>
-					<text class="sort-text">{{ item.label }}</text>
-				</view>
-			</view>
-
-			<view class="video-section">
-				<view v-if="loading && !isAppending" class="loading-wrap">
-					<text class="loading-text">加载中...</text>
-				</view>
-				<view v-else-if="displayVideos.length === 0" class="empty-wrap">
-					<text class="empty-text">暂无视频</text>
-				</view>
-				<view v-else class="video-grid">
-					<view
-						v-for="item in displayVideos"
-						:key="item.id"
-						class="video-card"
-						@click="navToVideo(item.id)"
-					>
-						<image class="video-cover" :src="coverUrl(item.cover)" mode="aspectFill"></image>
-						<view class="video-content">
-							<text class="video-title">{{ item.title }}</text>
-							<text class="video-course">{{ item.courseName ?? '课程' }}</text>
-							<view class="video-meta">
-								<text class="video-meta-text">播放 {{ safeNumber(item.playCount) }}</text>
-								<text class="video-meta-text">点赞 {{ safeNumber(item.likeCount) }}</text>
-							</view>
+				<!-- #ifdef H5 -->
+				<view class="tag-scroll tag-scroll-h5">
+					<view class="tag-row">
+						<view
+							v-for="(item, index) in categoryTabs"
+							:key="item.id != null ? item.id : 'all'"
+							:class="['tag-item', index === activeCategoryIndex ? 'tag-item--active' : '']"
+							@click="handleCategoryChange(index)"
+						>
+							<text class="tag-text">{{ item.label }}</text>
 						</view>
 					</view>
 				</view>
-				<view v-if="displayVideos.length > 0" class="load-more">
-					<text v-if="loadMoreStatus === 'loading'">加载中...</text>
-					<text v-else-if="loadMoreStatus === 'no-more'">没有更多了</text>
-					<text v-else>上拉加载更多</text>
+				<!-- #endif -->
+				<!-- #ifndef H5 -->
+				<scroll-view class="tag-scroll" scroll-x="true" show-scrollbar="false" scroll-with-animation>
+					<view class="tag-row" :style="tagRowStyle">
+						<view
+							v-for="(item, index) in categoryTabs"
+							:key="item.id != null ? item.id : 'all'"
+							:class="['tag-item', index === activeCategoryIndex ? 'tag-item--active' : '']"
+							@click="handleCategoryChange(index)"
+						>
+							<text class="tag-text">{{ item.label }}</text>
+						</view>
+					</view>
+				</scroll-view>
+				<!-- #endif -->
+
+				<!-- #ifdef H5 -->
+				<view class="sort-scroll sort-scroll-h5">
+					<view class="sort-row">
+						<view
+							v-for="(item, index) in sortTabs"
+							:key="item.label"
+							:class="['sort-item', index === activeSortIndex ? 'sort-item--active' : '']"
+							@click="handleSortChange(index)"
+						>
+							<text class="sort-text">{{ item.label }}</text>
+						</view>
+					</view>
 				</view>
+				<!-- #endif -->
+				<!-- #ifndef H5 -->
+				<scroll-view class="sort-scroll" scroll-x="true" show-scrollbar="false" scroll-with-animation>
+					<view class="sort-row" :style="sortRowStyle">
+						<view
+							v-for="(item, index) in sortTabs"
+							:key="item.label"
+							:class="['sort-item', index === activeSortIndex ? 'sort-item--active' : '']"
+							@click="handleSortChange(index)"
+						>
+							<text class="sort-text">{{ item.label }}</text>
+						</view>
+					</view>
+				</scroll-view>
+				<!-- #endif -->
 			</view>
 		</view>
-	</scroll-view>
+
+		<scroll-view class="page-body" scroll-y="true" style="flex:1" @scrolltolower="handleScrollLower" lower-threshold="80">
+			<view class="video-wrap">
+				<view class="video-section">
+					<view v-if="loading && !isAppending" class="loading-wrap">
+						<text class="loading-text">加载中...</text>
+					</view>
+					<view v-else-if="displayVideos.length === 0" class="empty-wrap">
+						<text class="empty-text">暂无视频</text>
+					</view>
+					<view v-else class="video-grid">
+						<view
+							v-for="item in displayVideos"
+							:key="item.id"
+							class="video-card"
+							@click="navToVideo(item.id)"
+						>
+							<image class="video-cover" :src="coverUrl(item.cover)" mode="aspectFill"></image>
+							<view class="video-content">
+								<text class="video-title">{{ item.title }}</text>
+								<text class="video-course">{{ item.courseName ?? '课程' }}</text>
+								<view class="video-meta">
+									<text class="video-meta-text">播放 {{ safeNumber(item.playCount) }}</text>
+									<text class="video-meta-text">点赞 {{ safeNumber(item.likeCount) }}</text>
+								</view>
+							</view>
+						</view>
+					</view>
+					<view v-if="displayVideos.length > 0" class="load-more">
+						<text v-if="loadMoreStatus === 'loading'">加载中...</text>
+						<text v-else-if="loadMoreStatus === 'no-more'">没有更多了</text>
+						<text v-else>上拉加载更多</text>
+					</view>
+				</view>
+			</view>
+		</scroll-view>
+	</view>
 </template>
 
 <script setup lang="uts">
@@ -154,6 +194,20 @@
 			activeCategoryIndex.value = 0
 		}
 	}
+
+	// 标签行宽度：保证横向滚动内容宽度超过容器，否则 scroll-x 不生效
+	const tagRowStyle = computed((): Record<string, string> => {
+		const count = categoryTabs.value.length
+		const minWidth = count * 76 + 24
+		return { width: minWidth + 'px' }
+	})
+
+	// 排序行宽度：综合排序/最新发布等 5 项不换行、可横向滚动
+	const sortRowStyle = computed((): Record<string, string> => {
+		const count = sortTabs.length
+		const minWidth = count * 80 + 24
+		return { width: minWidth + 'px' }
+	})
 
 	const selectedTagId = computed((): number | null => {
 		const tabs = categoryTabs.value
@@ -307,7 +361,17 @@
 <style>
 .page {
 	flex: 1;
+	flex-direction: column;
 	background-color: #f5f6f8;
+}
+.page-header {
+	flex-shrink: 0;
+}
+.page-body {
+	flex: 1;
+}
+.video-wrap {
+	padding: 0 16px 16px 16px;
 }
 .container {
 	flex-direction: column;
@@ -335,11 +399,30 @@
 	background-color: transparent;
 	margin-bottom: 12px;
 	width: 100%;
+	height: 44px;
 }
 .tag-row {
 	display: flex;
 	flex-direction: row;
 	flex-wrap: nowrap;
+	flex-shrink: 0;
+	height: 44px;
+	align-items: center;
+}
+/* H5：用 view + overflow-x 实现横向滚动；flex 行布局使子项按内容宽度收缩；隐藏滚动条 */
+.tag-scroll-h5 {
+	display: flex;
+	flex-direction: row;
+	overflow-x: auto;
+	overflow-y: hidden;
+	scrollbar-width: none;
+	-ms-overflow-style: none;
+}
+.tag-scroll-h5::-webkit-scrollbar {
+	display: none;
+}
+.tag-scroll-h5 .tag-row {
+	flex-shrink: 0;
 }
 .tag-item {
 	padding: 8px 16px;
@@ -359,17 +442,38 @@
 	font-size: 14px;
 	color: #55575c;
 }
-.sort-row {
-	flex-direction: row;
-	align-items: center;
+.sort-scroll {
 	background-color: #ffffff;
 	border-radius: 12px;
-	padding: 12px 8px;
 	margin-bottom: 16px;
+	height: 48px;
+}
+.sort-row {
+	flex-direction: row;
+	flex-wrap: nowrap;
+	flex-shrink: 0;
+	height: 48px;
+	align-items: center;
+	padding: 0 8px;
 	justify-content: space-around;
+}
+.sort-scroll-h5 {
+	display: flex;
+	flex-direction: row;
+	overflow-x: auto;
+	overflow-y: hidden;
+	scrollbar-width: none;
+	-ms-overflow-style: none;
+}
+.sort-scroll-h5::-webkit-scrollbar {
+	display: none;
+}
+.sort-scroll-h5 .sort-row {
+	flex-shrink: 0;
 }
 .sort-item {
 	padding: 6px 10px;
+	flex-shrink: 0;
 }
 .sort-item--active .sort-text {
 	color: #1989fa;
@@ -378,6 +482,7 @@
 .sort-text {
 	font-size: 14px;
 	color: #666666;
+	white-space: nowrap;
 }
 .video-section {
 	background-color: transparent;
