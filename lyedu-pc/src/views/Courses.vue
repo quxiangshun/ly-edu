@@ -12,12 +12,19 @@
             style="width: 220px"
             @keyup.enter="handleSearch"
           />
-          <el-input
-            v-model.number="searchForm.categoryId"
-            placeholder="分类ID（可选）"
+          <el-select
+            v-model="searchForm.categoryId"
+            placeholder="分类筛选"
             clearable
-            style="width: 140px"
-          />
+            style="width: 160px"
+          >
+            <el-option
+              v-for="cat in categoryList"
+              :key="cat.id"
+              :label="cat.name"
+              :value="cat.id"
+            />
+          </el-select>
           <el-button type="primary" @click="handleSearch">搜索</el-button>
           <el-button @click="handleReset">重置</el-button>
         </div>
@@ -55,12 +62,13 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import AppHeader from '@/components/AppHeader.vue'
-import { getCoursePage, type Course } from '@/api/course'
+import { getCoursePage, getCourseCategories, type Course, type CourseCategory } from '@/api/course'
 import { joinCourse } from '@/api/learning'
 
 const router = useRouter()
 const loading = ref(false)
 const courseList = ref<Course[]>([])
+const categoryList = ref<CourseCategory[]>([])
 const pagination = reactive({
   page: 1,
   size: 12,
@@ -119,7 +127,17 @@ const handleStartLearn = async (course: Course) => {
   }
 }
 
+const loadCategories = async () => {
+  try {
+    const list = await getCourseCategories()
+    categoryList.value = list ?? []
+  } catch (_e) {
+    categoryList.value = []
+  }
+}
+
 onMounted(() => {
+  loadCategories()
   loadCourses()
 })
 </script>

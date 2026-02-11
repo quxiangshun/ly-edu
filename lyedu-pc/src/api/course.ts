@@ -72,6 +72,18 @@ export const getRecommendedCourses = (limit: number = 6) => {
   return request.get<Course[]>('/course/recommended', { params: { limit } })
 }
 
+/** 课程分类项（供课程中心分类下拉） */
+export interface CourseCategory {
+  id: number
+  name: string
+  parentId?: number
+  sort?: number
+}
+
+export const getCourseCategories = () => {
+  return request.get<CourseCategory[]>('/course/category')
+}
+
 /** 课程评论 DTO（含评论人姓名） */
 export interface CourseCommentDto {
   id: number

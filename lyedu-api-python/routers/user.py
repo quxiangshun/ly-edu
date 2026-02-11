@@ -30,6 +30,7 @@ def get_current_user(authorization: Optional[str] = Header(None, alias="Authoriz
         "username": user.get("username"),
         "realName": user.get("real_name"),
         "nickname": user.get("nickname"),
+        "avatar": user.get("avatar"),
         "role": user.get("role") or "student",
     })
 

@@ -89,6 +89,66 @@
       </ul>
       </el-card>
 
+      <el-card id="user-learning" class="help-card" shadow="hover">
+        <template #header>
+          <div class="help-card-header">
+            <span class="help-card-icon">📈</span>
+            <span>学习记录</span>
+          </div>
+        </template>
+        <p>查看所有学员的课程学习进度和记录。</p>
+        <ul>
+          <li><strong>搜索筛选</strong>：支持按关键词（用户名/姓名/课程名称）、用户ID、课程ID筛选。</li>
+          <li><strong>进度展示</strong>：展示每名学员对每门课程的学习进度（百分比），便于追踪完成情况。</li>
+          <li><strong>关联关系</strong>：记录由学员在学员端观看视频、完成学习时自动生成，管理员仅作查看与统计。</li>
+        </ul>
+      </el-card>
+
+      <el-card id="user-point" class="help-card" shadow="hover">
+        <template #header>
+          <div class="help-card-header">
+            <span class="help-card-icon">💎</span>
+            <span>积分记录</span>
+          </div>
+        </template>
+        <p>查看所有学员的积分变动明细。</p>
+        <ul>
+          <li><strong>搜索筛选</strong>：支持按关键词（用户名/姓名/备注）、用户ID筛选。</li>
+          <li><strong>积分明细</strong>：每条记录包含积分增减、规则Key、关联类型、关联ID、备注、获得时间等。</li>
+          <li><strong>数据来源</strong>：积分由系统根据「积分规则」在学员完成课程、通过考试、完成任务等行为时自动发放。</li>
+        </ul>
+      </el-card>
+
+      <el-card id="user-certificate" class="help-card" shadow="hover">
+        <template #header>
+          <div class="help-card-header">
+            <span class="help-card-icon">🎖️</span>
+            <span>用户证书</span>
+          </div>
+        </template>
+        <p>查看所有学员已获得的证书列表。</p>
+        <ul>
+          <li><strong>搜索筛选</strong>：支持按关键词（用户名/姓名/证书名称/证书编号）、用户ID、证书ID筛选。</li>
+          <li><strong>证书信息</strong>：展示证书编号、颁发时间等，便于核实与归档。</li>
+          <li><strong>发放逻辑</strong>：证书由系统根据「证书规则」在满足条件（如考试通过、任务完成）时自动颁发。</li>
+        </ul>
+      </el-card>
+
+      <el-card id="user-task" class="help-card" shadow="hover">
+        <template #header>
+          <div class="help-card-header">
+            <span class="help-card-icon">✅</span>
+            <span>用户任务</span>
+          </div>
+        </template>
+        <p>查看所有学员的培训任务完成情况。</p>
+        <ul>
+          <li><strong>搜索筛选</strong>：支持按关键词（用户名/姓名/任务名称）、用户ID、任务ID筛选。</li>
+          <li><strong>完成状态</strong>：展示每名学员对每个任务的完成状态（进行中/已完成）。</li>
+          <li><strong>任务来源</strong>：任务由「培训任务」模块配置，系统按规则将任务分配给学员，完成情况由学员端操作自动更新。</li>
+        </ul>
+      </el-card>
+
       <el-card id="course" class="help-card" shadow="hover">
         <template #header>
           <div class="help-card-header">
@@ -223,6 +283,21 @@
       </ul>
       </el-card>
 
+      <el-card id="exam-record" class="help-card" shadow="hover">
+        <template #header>
+          <div class="help-card-header">
+            <span class="help-card-icon">📑</span>
+            <span>考试记录</span>
+          </div>
+        </template>
+        <p>查看所有学员的考试作答记录和成绩。</p>
+        <ul>
+          <li><strong>搜索筛选</strong>：支持按关键词（用户名/姓名/考试名称）、考试ID、用户ID筛选。</li>
+          <li><strong>成绩信息</strong>：展示得分、是否通过、提交时间、作答时长等，便于统计与导出。</li>
+          <li><strong>记录生成</strong>：学员在学员端提交考试后自动生成记录，管理员可据此评估学习效果和培训成效。</li>
+        </ul>
+      </el-card>
+
       <el-card id="task" class="help-card" shadow="hover">
         <template #header>
           <div class="help-card-header">
@@ -271,22 +346,14 @@
           </div>
         </template>
         <p><strong>功能说明</strong>：飞书同步功能可将企业通讯录中的<strong>机构（部门）</strong>和<strong>用户</strong>同步至本系统。同步逻辑：不存在则创建，存在则更新。支持手动触发与定时更新。</p>
+        <p><strong>第三方配置</strong>：飞书 App ID、App Secret 等第三方应用配置在<strong>系统设置</strong>中完成，详见「系统设置」→「飞书应用」Tab。</p>
         <p><strong>使用前准备</strong>：</p>
         <ul>
           <li><strong>飞书开放平台配置</strong>：在自建应用中，<strong>权限管理</strong> → 申请并启用「通讯录 - 部门信息（只读）」「通讯录 - 用户信息（只读）」。</li>
-          <li><strong>后端环境变量配置</strong>：
-            <ul>
-              <li><strong>文件路径</strong>：<code>lyedu-api-python/.env</code>（如果不存在，可复制 <code>lyedu-api-python/.env.example</code> 为 <code>.env</code>）</li>
-              <li><strong>配置项</strong>：在 <code>.env</code> 文件中添加以下两行（去掉注释符号 <code>#</code> 并填入实际值）：
-                <pre style="background: #f5f7fa; padding: 8px; border-radius: 4px; font-size: 13px; margin: 8px 0;">FEISHU_APP_ID=your_app_id
-FEISHU_APP_SECRET=your_app_secret</pre>
-              </li>
-              <li><strong>说明</strong>：配置后重启后端服务（Python API）即可生效。与飞书登录配置使用相同的 App ID 和 App Secret。</li>
-            </ul>
-          </li>
+          <li><strong>系统设置</strong>：在管理后台「系统设置」中配置飞书 App ID、App Secret（与飞书登录共用）。</li>
           <li><strong>数据库迁移</strong>：需执行数据库迁移（Alembic v3 / Flyway V3），为部门表增加 <code>feishu_department_id</code> 字段。</li>
         </ul>
-        <p><strong>手动同步</strong>：</p>
+        <p><strong>数据同步</strong>：数据同步在<strong>员工管理</strong>页面触发。</p>
         <ul>
           <li>管理后台 → <strong>员工管理</strong> → 点击「从第三方同步」→ 选择「飞书」→ 点击后触发同步。</li>
           <li>同步完成后会提示部门/用户的新增与更新数量。</li>
@@ -304,7 +371,7 @@ FEISHU_APP_SECRET=your_app_secret</pre>
           </div>
         </template>
         <p>配置站点标题、Logo、主题色等基础信息，以及其他全局参数。</p>
-        <p><strong>飞书应用</strong>：在「飞书应用」Tab 中可查看飞书同步配置说明与权限要求。</p>
+        <p><strong>第三方配置</strong>：飞书等第三方应用的 App ID、App Secret 等在「飞书应用」Tab 中配置，供飞书登录和飞书通讯录同步使用。数据同步的触发入口在<strong>员工管理</strong>页面的「从第三方同步」按钮。</p>
       </el-card>
     </div>
   </div>

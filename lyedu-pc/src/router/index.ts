@@ -231,6 +231,11 @@ router.afterEach((to, from) => {
   } else if (from.name === 'VideoPlayer') {
     document.body.classList.remove(VIDEO_PAGE_CLASS)
   }
+  // 根据路由 meta 设置页面标题
+  const title = to.meta?.title
+  if (title && typeof title === 'string') {
+    document.title = title
+  }
 })
 
 export default router

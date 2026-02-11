@@ -21,6 +21,7 @@ export interface CurrentUserInfo {
   username: string
   realName: string
   nickname?: string
+  avatar?: string
   role: string
 }
 

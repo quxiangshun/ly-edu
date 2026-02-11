@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from common.result import error, error_result, success
 from models.schemas import CourseRequest
 from services.course import course_service
+from services.course import course_category_service
 from services.course import chapter_service
 from services.content import video_service
 from services.user import user_video_progress_service
@@ -60,6 +61,12 @@ def recommended(
 ):
     user_id = _user_id(authorization)
     return success(course_service.list_recommended(limit=limit, user_id=user_id))
+
+
+@router.get("/category")
+def category_list():
+    """课程分类列表，供学员端课程中心分类下拉使用（无需登录）"""
+    return success(course_category_service.list_all())
 
 
 @router.get("/{course_id}/comment")
