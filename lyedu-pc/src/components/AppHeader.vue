@@ -18,7 +18,7 @@
           <el-menu-item index="knowledge">知识中心</el-menu-item>
           <el-menu-item index="exam">考试中心</el-menu-item>
           <el-menu-item index="tasks">我的任务</el-menu-item>
-          <el-menu-item index="ppt">PPT 制作</el-menu-item>
+          <!-- <el-menu-item index="ppt">PPT 制作</el-menu-item> -->
         </el-sub-menu>
         <el-sub-menu index="my-menu">
           <template #title>我的</template>
