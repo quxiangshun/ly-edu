@@ -6,7 +6,7 @@ from fastapi import APIRouter, Header
 from pydantic import BaseModel
 
 from common.result import error, error_result, success
-from services import knowledge_service
+from services.content import knowledge_service
 from util.jwt_util import parse_authorization
 
 router = APIRouter(prefix="/knowledge", tags=["knowledge"])

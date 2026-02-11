@@ -5,8 +5,8 @@ from datetime import datetime
 from typing import Any, List, Optional
 
 import db
-from services import certificate_service
-from services import certificate_template_service
+from services.certificate import certificate_service
+from services.certificate import certificate_template_service
 
 SELECT_COLS = "id, user_id, certificate_id, template_id, certificate_no, title, issued_at, create_time"
 

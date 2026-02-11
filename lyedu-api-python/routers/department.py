@@ -7,10 +7,10 @@ from pydantic import BaseModel
 
 from common.result import error, success
 from models.schemas import DepartmentRequest
-from services import course_department_service
-from services import course_service
-from services import department_service
-from services import tag_service
+from services.course import course_department_service
+from services.course import course_service
+from services.org import department_service
+from services.learning import tag_service
 
 router = APIRouter(prefix="/department", tags=["department"])
 

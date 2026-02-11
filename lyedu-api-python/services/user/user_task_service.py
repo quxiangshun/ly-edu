@@ -4,9 +4,9 @@ import json
 from typing import Any, List, Optional
 
 import db
-from services import point_service
-from services import task_service
-from services import user_certificate_service
+from services.learning import point_service
+from services.learning import task_service
+from services.user import user_certificate_service
 
 SELECT_COLS = "id, user_id, task_id, progress, status, completed_at, create_time, update_time"
 

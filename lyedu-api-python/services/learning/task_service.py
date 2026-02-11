@@ -8,9 +8,9 @@ import pymysql
 
 import db
 from models.schemas import page_result
-from services import department_service
-from services import task_department_service
-from services import user_service
+from services.org import department_service
+from services.learning import task_department_service
+from services.user import user_service
 
 SELECT_COLS = "id, title, description, cycle_type, cycle_config, items, certificate_id, sort, status, start_time, end_time, create_time, update_time, deleted"
 

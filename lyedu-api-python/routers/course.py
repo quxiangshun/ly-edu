@@ -7,15 +7,15 @@ from pydantic import BaseModel
 
 from common.result import error, error_result, success
 from models.schemas import CourseRequest
-from services import course_service
-from services import chapter_service
-from services import video_service
-from services import user_video_progress_service
-from services import user_course_service
-from services import course_attachment_service
-from services import course_comment_service
-from services import course_exam_service
-from services import tag_service
+from services.course import course_service
+from services.course import chapter_service
+from services.content import video_service
+from services.user import user_video_progress_service
+from services.user import user_course_service
+from services.course import course_attachment_service
+from services.course import course_comment_service
+from services.course import course_exam_service
+from services.learning import tag_service
 from util.jwt_util import parse_authorization
 
 

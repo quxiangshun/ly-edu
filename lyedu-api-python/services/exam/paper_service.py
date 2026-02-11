@@ -6,7 +6,7 @@ import pymysql
 
 import db
 from models.schemas import page_result
-from services import question_service
+from services.exam import question_service
 
 PAPER_COLS = "id, title, total_score, pass_score, duration_minutes, status, create_time, update_time, deleted"
 

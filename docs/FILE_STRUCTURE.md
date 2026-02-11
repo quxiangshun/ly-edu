@@ -86,29 +86,29 @@
 
 | 文件/目录 | 作用 |
 |-----------|------|
-| **main.py** | FastAPI 应用入口；启动时子进程执行 Alembic 迁移，再挂载路由 |
-| **config.py** | 配置（MySQL、JWT、飞书、上传路径等，与 Java 配置对齐） |
+| **main.py** | FastAPI 应用入口；启动时执行 Alembic 迁移，再挂载路由 |
+| **config.py** | 配置（MySQL、Redis、飞书、JWT 等；按 ENV 加载 .env.dev/.env.prod） |
 | **db.py** | MySQL 连接（pymysql） |
 | **requirements.txt** | Python 依赖（FastAPI、uvicorn、pymysql、alembic 等） |
 | **alembic.ini** | Alembic 配置（script_location 指向仓库根 db/alembic） |
-| **.env.example** | 环境变量示例（MYSQL_* 等，供复制为 .env） |
+| **.env.example** | 环境变量模板（MYSQL_*、FEISHU_*、FA_SOURCE_* 等） |
+| **.env.dev** / **.env.prod** | 开发/生产环境预设（可提交，ENV=dev 或 ENV=prod 时加载） |
 | **Dockerfile** | 构建 Python API 镜像（需在仓库根构建，含 db/alembic） |
 | **docker-entrypoint.sh** | 容器入口：等 MySQL 就绪 → alembic upgrade head → uvicorn |
 | **install.ps1** / **install.bat** | Windows 下安装依赖与虚拟环境 |
 | **start.ps1** / **start.sh** | 先执行 Alembic 迁移再启动 uvicorn |
-| **routers/** | 路由模块（与 Java Controller 对应） |
-| **auth.py** | 登录、飞书回调、JWT |
-| **course.py** / **chapter.py** / **video.py** | 课程、章节、视频接口 |
-| **user.py** / **department.py** | 用户、部门接口 |
-| **learning.py** | 学习进度、视频进度 |
-| **knowledge.py** / **question.py** / **paper.py** / **exam.py** / **exam_record.py** | 知识库、试题、试卷、考试、考试记录 |
-| **certificate.py** / **certificate_template.py** / **user_certificate.py** | 证书、模板、用户证书 |
-| **task.py** / **user_task.py** | 培训任务、用户任务 |
-| **config.py** | 系统配置接口 |
-| **point.py** / **point_rule.py** | 积分、积分规则 |
-| **image.py** | 图片库上传/列表/删除 |
-| **stats.py** | 统计与导出 |
-| **services/** | 业务逻辑层（每个 router 对应若干 service） |
+| **routers/** | 路由模块（auth、course、chapter、video、user、department、feishu 等） |
+| **services/** | 业务逻辑层，按域分子目录 |
+| **services/auth/** | 登录日志 |
+| **services/certificate/** | 证书与证书模板 |
+| **services/content/** | 视频、图片、知识库 |
+| **services/course/** | 课程、章节、附件、评论、课程部门关联等 |
+| **services/exam/** | 考试、试卷、试题、考试记录 |
+| **services/learning/** | 积分、积分规则、任务、标签 |
+| **services/org/** | 部门 |
+| **services/sync/** | 第三方通讯录同步（飞书、钉钉、企微，后两者预留） |
+| **services/system/** | 系统配置、上传 |
+| **services/user/** | 用户、学习记录、用户证书、用户任务等 |
 | **models/schemas.py** | Pydantic 请求/响应模型 |
 | **common/result.py** | 统一响应结构 |
 | **util/jwt_util.py** | JWT 生成与校验 |

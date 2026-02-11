@@ -5,7 +5,7 @@ from typing import Optional
 from fastapi import APIRouter, Header
 
 from common.result import error, success
-from services import course_comment_service
+from services.course import course_comment_service
 from util.jwt_util import parse_authorization
 
 

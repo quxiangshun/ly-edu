@@ -5,7 +5,7 @@ from typing import Optional
 from fastapi import APIRouter, File, UploadFile
 
 from common.result import success
-from services import image_service
+from services.content import image_service
 
 router = APIRouter(prefix="/image", tags=["image"])
 

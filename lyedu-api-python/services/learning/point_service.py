@@ -3,7 +3,7 @@
 from typing import List, Optional
 
 import db
-from services import point_rule_service
+from services.learning import point_rule_service
 
 
 def add_points(user_id: int, rule_key: str, ref_type: Optional[str], ref_id: Optional[int]) -> int:

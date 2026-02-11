@@ -6,10 +6,10 @@ import pymysql
 
 import db
 from models.schemas import page_result
-from services import department_service
-from services import exam_department_service
-from services import user_service
-from services import course_exam_service
+from services.org import department_service
+from services.exam import exam_department_service
+from services.user import user_service
+from services.course import course_exam_service
 
 SELECT_COLS = "id, title, paper_id, start_time, end_time, duration_minutes, pass_score, visibility, status, create_time, update_time, deleted"
 

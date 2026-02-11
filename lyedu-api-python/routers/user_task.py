@@ -6,7 +6,7 @@ from fastapi import APIRouter, Header
 from pydantic import BaseModel
 
 from common.result import error_result, success
-from services import user_task_service
+from services.user import user_task_service
 from util.jwt_util import parse_authorization
 
 router = APIRouter(prefix="/user-task", tags=["user-task"])

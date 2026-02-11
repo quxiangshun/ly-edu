@@ -5,7 +5,7 @@ from typing import Optional
 from fastapi import APIRouter
 
 from common.result import success
-from services import config_service
+from services.system import config_service
 
 router = APIRouter(prefix="/config", tags=["config"])
 

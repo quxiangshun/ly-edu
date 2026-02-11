@@ -32,10 +32,16 @@ python -m venv venv
 pip install -r requirements.txt
 ```
 
-4. 启动服务（**启动时会自动执行 Alembic 迁移**）：
+4. 配置环境：
+
+- 复制 `.env.example` 为 `.env`，或使用 `.env.dev` / `.env.prod`（见下方「环境变量」）
+- **ENV**：启动前需指定环境。方式一：`ENV=dev uvicorn main:app ...`；方式二：未指定时终端会提示选择 1=dev / 2=prod（5 分钟内无输入将退出）
+
+5. 启动服务（**启动时会自动执行 Alembic 迁移**）：
 
 ```bash
-uvicorn main:app --host 0.0.0.0 --port 9700
+# 推荐：明确指定环境
+ENV=dev uvicorn main:app --host 0.0.0.0 --port 9700
 ```
 
 或使用启动脚本（先执行 `alembic upgrade head`，再启动 uvicorn）：
@@ -75,19 +81,24 @@ pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
 - PowerShell：`.\install.ps1`
 - 命令提示符：`install.bat`
 
-配置环境变量（或使用项目根目录 `.env`）：
+### 环境变量
 
+- `ENV`：环境标识，`dev` 或 `prod`，用于加载 `.env.dev` / `.env.prod`
 - `MYSQL_HOST`、`MYSQL_PORT`、`MYSQL_USERNAME`、`MYSQL_PASSWORD`、`MYSQL_DATABASE`
+- `REDIS_HOST`、`REDIS_PORT`、`REDIS_PASSWORD`（若使用 Redis）
+- `FEISHU_APP_ID`、`FEISHU_APP_SECRET`、`FEISHU_REDIRECT_URI`（飞书登录与通讯录同步）
 - `JWT_SECRET`、`JWT_EXPIRE`
 - 可选：`HOST`（默认 0.0.0.0）、`PORT`（默认 9700）
+
+环境文件：`.env.example` 为模板；`.env.dev`、`.env.prod` 为开发/生产预设（可提交），未设置 `ENV` 时可复制其一为 `.env` 或通过 `ENV=dev` 指定加载。
 
 启动（应用启动时会自动执行 Alembic 迁移；迁移失败仅打日志，不阻塞服务）：
 
 ```bash
-uvicorn main:app --host 0.0.0.0 --port 9700
+ENV=dev uvicorn main:app --host 0.0.0.0 --port 9700
 ```
 
-或使用脚本：`.\start.ps1`（PowerShell）/ `./start.sh`（Linux/macOS）。
+或使用脚本：`.\start.ps1`（PowerShell）/ `./start.sh`（Linux/macOS）；脚本会按环境变量 `ENV` 或交互选择加载配置。
 
 接口文档：<http://localhost:9700/docs>
 
@@ -121,13 +132,25 @@ uvicorn main:app --host 0.0.0.0 --port 9700
 ```
 lyedu-api-python/
   main.py           # 入口，挂载路由与 CORS
-  config.py         # 配置（环境变量）
+  config.py         # 配置（环境变量、ENV 选择 .env.dev/.env.prod）
   db.py             # MySQL 连接与 query/execute
   common/result.py  # 统一响应 Result/ResultCode
   models/schemas.py # 请求体 Pydantic 模型
-  services/         # 业务逻辑（course/chapter/video/user/learning）
-  routers/          # FastAPI 路由（auth/course/chapter/video/learning/user）
-  util/jwt_util.py  # JWT 生成与解析
+  services/         # 业务逻辑，按域分目录
+  │   ├── auth/         # 登录日志
+  │   ├── certificate/  # 证书与模板
+  │   ├── content/      # 视频、图片、知识库
+  │   ├── course/       # 课程、章节、附件、评论等
+  │   ├── exam/         # 考试、试卷、试题、考试记录
+  │   ├── learning/     # 积分、任务、标签
+  │   ├── org/          # 部门
+  │   ├── sync/         # 第三方通讯录同步（飞书/钉钉/企微）
+  │   ├── system/       # 配置、上传
+  │   └── user/         # 用户、学习记录等
+  routers/          # FastAPI 路由（auth/course/chapter/video/learning/user 等）
+  util/             # JWT、飞书 API 等
+  .env.example      # 环境变量模板
+  .env.dev / .env.prod  # 开发/生产环境预设
   requirements.txt
   README.md
 ```

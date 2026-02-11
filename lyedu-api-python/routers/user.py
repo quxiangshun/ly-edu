@@ -9,8 +9,8 @@ from openpyxl import load_workbook
 
 from common.result import ResultCode, error, error_result, success
 from models.schemas import UserRequest, ResetPasswordRequest
-from services import user_service
-from services import tag_service
+from services.user import user_service
+from services.learning import tag_service
 from util.jwt_util import parse_authorization
 
 router = APIRouter(prefix="/user", tags=["user"])

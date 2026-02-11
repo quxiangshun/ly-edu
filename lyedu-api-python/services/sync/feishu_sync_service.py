@@ -10,8 +10,8 @@ import random
 from typing import Dict, List, Optional, Any
 
 from util import feishu_api
-from services import department_service
-from services import user_service
+from services.org import department_service
+from services.user import user_service
 
 
 # ---------- 部门：递归拉取（与文档 2.2 一致） ----------

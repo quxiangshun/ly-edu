@@ -5,7 +5,7 @@ from typing import Optional
 from fastapi import APIRouter, Header
 
 from common.result import error_result, success
-from services import point_service
+from services.learning import point_service
 from util.jwt_util import parse_authorization
 
 router = APIRouter(prefix="/point", tags=["point"])

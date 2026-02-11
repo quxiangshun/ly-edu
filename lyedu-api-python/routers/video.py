@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from common.result import error, success, error_result
 from common.result import ResultCode
 from models.schemas import VideoRequest
-from services import video_service
+from services.content import video_service
 from util.jwt_util import parse_authorization
 
 router = APIRouter(prefix="/video", tags=["video"])

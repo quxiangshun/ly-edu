@@ -4,10 +4,10 @@ import json
 from typing import Any, List, Optional
 
 import db
-from services import exam_service
-from services import paper_service
-from services import point_service
-from services import user_certificate_service
+from services.exam import exam_service
+from services.exam import paper_service
+from services.learning import point_service
+from services.user import user_certificate_service
 from datetime import datetime
 
 SELECT_COLS = "id, exam_id, user_id, paper_id, score, passed, answers, submit_time, create_time"

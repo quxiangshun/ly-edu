@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 
 from common.result import error, success
 from models.schemas import FeishuSyncRequest, FeishuSyncStats
-from services import feishu_sync_service
+from services.sync import feishu_sync_service
 import config
 
 router = APIRouter(prefix="/feishu", tags=["feishu"])

@@ -4,7 +4,7 @@ from fastapi import APIRouter
 
 from common.result import error_result, success
 from models.schemas import ChapterRequest
-from services import chapter_service
+from services.course import chapter_service
 from common.result import ResultCode
 
 router = APIRouter(prefix="/chapter", tags=["chapter"])

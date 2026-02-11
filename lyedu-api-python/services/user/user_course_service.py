@@ -3,7 +3,7 @@
 from typing import List, Optional
 
 import db
-from services import point_service
+from services.learning import point_service
 
 
 def _row_to_user_course(row: dict) -> dict:

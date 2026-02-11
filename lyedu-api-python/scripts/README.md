@@ -48,10 +48,9 @@ python scripts/seed_questions.py
 
 将原系统（FastAdmin / xjty_course）的 fa_* 表数据同步到 LyEdu 的 ly_* 表。
 
-**数据源：** `localhost:3307`，库 `xjty_course`，用户 `root/root`  
-**目标：** `localhost:3306`，库 `lyedu`，用户 `root/lyedu123456`
+**数据源/目标：** 从 `.env` 或 config 读取（见 `.env.example` 中 `FA_SOURCE_*`、`FA_TARGET_*`）。默认：数据源 `127.0.0.1:3307/xjty`，目标复用 `MYSQL_*`（如 `localhost:3306/lyedu`）。
 
-**前置：** 目标库需先执行 **db/alembic** 的 v5 迁移（为 ly_user 增加 nickname/last_login_time/study_time_long，为 ly_video 增加 description）。同步脚本只做数据同步，不修改表结构。
+**前置：** 目标库需先执行 **db/alembic** 的 v6 迁移（含 ly_user v5 字段、ly_video.description、ly_department.avatar/description/old_id/old_source）。同步脚本只做数据同步，不修改表结构。
 
 **映射概要：**
 

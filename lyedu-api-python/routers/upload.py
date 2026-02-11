@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 from common.result import error, success
 from config import CHUNK_SIZE as CONFIG_CHUNK_SIZE
-from services import upload_service
+from services.system import upload_service
 
 router = APIRouter(prefix="/upload", tags=["upload"])
 

@@ -88,19 +88,46 @@
             </el-form-item>
           </el-form>
         </el-tab-pane>
-        <el-tab-pane label="飞书应用" name="feishu">
-          <div class="feishu-tip">
+        <el-tab-pane label="第三方配置" name="third_party">
+          <el-form label-width="140px" class="settings-form">
+            <el-form-item label="通讯录平台">
+              <el-radio-group v-model="form.third_party_provider">
+                <el-radio value="feishu">飞书</el-radio>
+                <el-radio value="dingtalk">钉钉</el-radio>
+                <el-radio value="wecom">企业微信</el-radio>
+              </el-radio-group>
+            </el-form-item>
+          </el-form>
+          <div v-if="form.third_party_provider === 'feishu'" class="third-party-tip">
             <p><strong>飞书同步功能</strong>：可将飞书企业通讯录中的机构（部门）和用户同步至本系统，不存在则创建、存在则更新。支持手动触发与定时更新。</p>
             <p>请先在飞书开放平台创建自建应用，并完成以下配置：</p>
             <ul>
               <li>在<strong>后端环境变量</strong>中设置：在 <code>lyedu-api-python/.env</code> 文件中添加：
-                <pre style="background: #f5f7fa; padding: 6px 8px; border-radius: 4px; font-size: 12px; margin: 4px 0; display: inline-block;">FEISHU_APP_ID=your_app_id
+                <pre>FEISHU_APP_ID=your_app_id
 FEISHU_APP_SECRET=your_app_secret</pre>
                 （如果 <code>.env</code> 不存在，可复制 <code>.env.example</code> 为 <code>.env</code> 后修改。配置后需重启后端服务。）
               </li>
               <li>在飞书开放平台该应用的<strong>权限管理</strong>中，申请并启用：<strong>通讯录 - 部门信息（只读）</strong>、<strong>通讯录 - 用户信息（只读）</strong>。</li>
             </ul>
-            <p>配置完成后，可在「员工管理」页点击「从第三方同步」→「飞书」进行手动同步；定时同步可由后端配置定时任务调用 <code>POST /api/feishu/sync</code>。</p>
+            <p>配置完成后，可在「员工管理」页点击「从飞书同步」进行手动同步；定时同步可由后端配置定时任务调用 <code>POST /api/feishu/sync</code>。</p>
+          </div>
+          <div v-else-if="form.third_party_provider === 'dingtalk'" class="third-party-tip">
+            <p><strong>钉钉同步功能</strong>：可将钉钉企业通讯录中的部门与成员同步至本系统，不存在则创建、存在则更新。</p>
+            <p>请先在钉钉开放平台创建应用，并完成以下配置：</p>
+            <ul>
+              <li>在<strong>后端环境变量</strong>中设置 <code>DINGTALK_APP_KEY</code>、<code>DINGTALK_APP_SECRET</code>。</li>
+              <li>在应用权限中申请：<strong>通讯录部门信息读权限</strong>、<strong>通讯录用户信息读权限</strong>。</li>
+            </ul>
+            <p>配置完成后，可在「员工管理」页点击「从钉钉同步」进行手动同步。</p>
+          </div>
+          <div v-else-if="form.third_party_provider === 'wecom'" class="third-party-tip">
+            <p><strong>企业微信同步功能</strong>：可将企业微信通讯录中的部门与成员同步至本系统，不存在则创建、存在则更新。</p>
+            <p>请先在企业微信管理后台创建自建应用，并完成以下配置：</p>
+            <ul>
+              <li>在<strong>后端环境变量</strong>中设置 <code>WECOM_CORPID</code>、<code>WECOM_SECRET</code>。</li>
+              <li>在应用权限中申请：<strong>成员信息读取</strong>、<strong>部门信息读取</strong>。</li>
+            </ul>
+            <p>配置完成后，可在「员工管理」页点击「从企业微信同步」进行手动同步。</p>
           </div>
         </el-tab-pane>
       </el-tabs>
@@ -129,7 +156,8 @@ const form = reactive({
   player_allow_download: '0',
   player_disable_seek: '0',
   player_disable_speed: '0',
-  student_default_page_size: 20
+  student_default_page_size: 20,
+  third_party_provider: 'feishu' as 'feishu' | 'dingtalk' | 'wecom'
 })
 
 const { openPageHelp } = useHelp()
@@ -142,7 +170,8 @@ const keyToForm: Record<string, string> = {
   'site.keywords': 'site_keywords',
   'site.description': 'site_description',
   'player.allow_download': 'player_allow_download',
-  'student.default_page_size': 'student_default_page_size'
+  'student.default_page_size': 'student_default_page_size',
+  'third_party.provider': 'third_party_provider'
 }
 
 function toAbsUrl(url?: string) {
@@ -270,7 +299,10 @@ async function loadConfig() {
         const key = c.configKey
         const formKey = keyToForm[key]
         if (formKey && form.hasOwnProperty(formKey)) {
-          if (key === 'site.theme_mode') {
+          if (key === 'third_party.provider') {
+            const v = String(c.configValue ?? 'feishu').toLowerCase()
+            ;(form as Record<string, unknown>)[formKey] = (['dingtalk', 'wecom'].includes(v) ? v : 'feishu') as string
+          } else if (key === 'site.theme_mode') {
             const v = String(c.configValue ?? 'auto').toLowerCase()
             ;(form as Record<string, unknown>)[formKey] = (v === 'default' || v === 'custom' ? v : 'auto') as string
           } else if (key === 'site.theme_color') {
@@ -302,7 +334,8 @@ async function handleSave() {
       'player.allow_download': String(form.player_allow_download),
       'player.disable_seek': String(form.player_disable_seek),
       'player.disable_speed': String(form.player_disable_speed),
-      'student.default_page_size': String(form.student_default_page_size)
+      'student.default_page_size': String(form.student_default_page_size),
+      'third_party.provider': form.third_party_provider
     })
     ElMessage.success('保存成功')
   } catch (_e) {
@@ -391,6 +424,16 @@ onMounted(async () => {
   font-size: 13px;
   color: #606266;
 }
+.third-party-tip pre,
+.feishu-tip pre {
+  background: #f5f7fa;
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  margin: 4px 0;
+  display: inline-block;
+}
+.third-party-tip,
 .feishu-tip {
   max-width: 560px;
   font-size: 14px;

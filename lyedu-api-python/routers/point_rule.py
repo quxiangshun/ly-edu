@@ -3,7 +3,7 @@
 from fastapi import APIRouter
 
 from common.result import error_result, success
-from services import point_rule_service
+from services.learning import point_rule_service
 
 router = APIRouter(prefix="/point-rule", tags=["point-rule"])
 

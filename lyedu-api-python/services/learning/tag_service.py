@@ -5,9 +5,9 @@ from typing import Dict, List, Optional
 import pymysql
 
 import db
-from services import user_service
-from services import department_service
-from services import course_service
+from services.user import user_service
+from services.org import department_service
+from services.course import course_service
 
 
 def _table_exists() -> bool:

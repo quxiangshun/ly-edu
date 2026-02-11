@@ -6,7 +6,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 
 from common.result import error, error_result, success
-from services import question_service
+from services.exam import question_service
 
 router = APIRouter(prefix="/question", tags=["question"])
 

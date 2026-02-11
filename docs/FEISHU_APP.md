@@ -74,8 +74,8 @@ lyedu:
 
 ### 6.2 手动同步
 
-- **管理后台**：员工管理 → 「从第三方同步」→ 选择「飞书」→ 点击后触发同步，完成后提示部门/用户新增与更新数量。
-- **接口**：`POST /api/feishu/sync`，返回 `{ departments: { created, updated, errors }, users: { created, updated, errors } }`。
+- **管理后台**：系统设置 → 「第三方配置」中选择通讯录平台（飞书/钉钉/企微）；员工管理 → 「从飞书同步」（或根据配置显示「从钉钉同步」「从企业微信同步」）→ 弹出窗选择「同步部门」「同步用户」「覆盖已存在」→ 确定后触发同步。
+- **接口**：`POST /api/feishu/sync`，Body：`{ sync_departments, sync_users, overwrite_existing }`，返回 `{ departments, users, stats, errors }`。
 
 ### 6.3 定时更新
 

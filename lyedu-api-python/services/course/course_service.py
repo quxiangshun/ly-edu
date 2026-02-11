@@ -6,9 +6,9 @@ import pymysql
 
 import db
 from models.schemas import page_result
-from services import course_department_service
-from services import department_service
-from services import user_service
+from services.course import course_department_service
+from services.org import department_service
+from services.user import user_service
 
 SELECT_COLS_FULL = (
     "id, title, cover, description, category_id, status, sort, is_required, visibility, "

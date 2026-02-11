@@ -6,9 +6,9 @@ import pymysql
 
 import db
 from models.schemas import page_result
-from services import department_service
-from services import knowledge_department_service
-from services import user_service
+from services.org import department_service
+from services.content import knowledge_department_service
+from services.user import user_service
 
 SELECT_COLS = "id, title, category, file_name, file_url, file_size, file_type, sort, visibility, create_time, update_time, deleted"
 

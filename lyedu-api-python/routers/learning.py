@@ -4,10 +4,10 @@ from typing import Optional
 from fastapi import APIRouter, Header
 from common.result import ResultCode, error_result, success
 from models.schemas import JoinCourseRequest, VideoProgressRequest, PlayPingRequest
-from services import user_course_service
-from services import user_video_progress_service
-from services import course_service
-from services import video_service
+from services.user import user_course_service
+from services.user import user_video_progress_service
+from services.course import course_service
+from services.content import video_service
 from util.jwt_util import parse_authorization
 
 router = APIRouter(prefix="/learning", tags=["learning"])

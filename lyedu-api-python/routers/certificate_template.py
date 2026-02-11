@@ -6,7 +6,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 
 from common.result import error_result, success
-from services import certificate_template_service
+from services.certificate import certificate_template_service
 
 router = APIRouter(prefix="/certificate-template", tags=["certificate-template"])
 

@@ -14,7 +14,7 @@
           <div>
             <el-button @click="handleDownloadTemplate">下载员工导入模板</el-button>
             <el-button @click="importDialogVisible = true">导入员工</el-button>
-            <el-button @click="syncDialogVisible = true">从第三方同步</el-button>
+            <el-button @click="openSyncDialog">{{ syncButtonText }}</el-button>
             <el-button type="primary" @click="handleAdd">新增员工</el-button>
           </div>
         </div>
@@ -186,31 +186,23 @@
     </el-dialog>
 
     <!-- 从第三方同步对话框 -->
-    <el-dialog v-model="syncDialogVisible" title="从第三方同步" width="480px">
-      <p class="sync-tip">可将飞书、企业微信、钉钉等通讯录同步至本系统员工。请先在「系统设置」中配置对应平台的应用与权限。</p>
-      <div class="sync-options">
-        <el-card shadow="hover" class="sync-card" @click="handleSyncPlatform('feishu')">
-          <div class="sync-card-body">
-            <span class="sync-label">飞书</span>
-            <el-tag size="small" type="success">同步</el-tag>
-            <el-button v-if="feishuSyncing" type="primary" size="small" loading>同步中…</el-button>
-          </div>
-        </el-card>
-        <el-card shadow="hover" class="sync-card" @click="handleSyncPlatform('wecom')">
-          <div class="sync-card-body">
-            <span class="sync-label">企业微信</span>
-            <el-tag size="small" type="info">即将支持</el-tag>
-          </div>
-        </el-card>
-        <el-card shadow="hover" class="sync-card" @click="handleSyncPlatform('dingtalk')">
-          <div class="sync-card-body">
-            <span class="sync-label">钉钉</span>
-            <el-tag size="small" type="info">即将支持</el-tag>
-          </div>
-        </el-card>
-      </div>
+    <el-dialog v-model="syncDialogVisible" :title="`从${syncProviderName}同步`" width="480px" :close-on-click-modal="false">
+      <p class="sync-tip">根据「系统设置」中选择的通讯录平台（{{ syncProviderName }}）同步部门与用户。请先在「系统设置 → 第三方配置」中完成应用配置。</p>
+      <el-form label-width="100px" class="sync-form">
+        <el-form-item label="同步部门">
+          <el-switch v-model="syncOptions.sync_departments" />
+        </el-form-item>
+        <el-form-item label="同步用户">
+          <el-switch v-model="syncOptions.sync_users" />
+        </el-form-item>
+        <el-form-item label="覆盖已存在">
+          <el-switch v-model="syncOptions.overwrite_existing" />
+          <span class="sync-form-tip">开启后，已存在的部门/用户将被更新</span>
+        </el-form-item>
+      </el-form>
       <template #footer>
-        <el-button @click="syncDialogVisible = false">关闭</el-button>
+        <el-button @click="syncDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="syncLoading" @click="handleSyncConfirm">确定</el-button>
       </template>
     </el-dialog>
 
@@ -245,6 +237,7 @@ import {
   type User
 } from '@/api/user'
 import { feishuSync } from '@/api/feishu'
+import { getConfigByKey } from '@/api/config'
 import { getDepartmentTree, type Department } from '@/api/department'
 import { getTagList, type Tag } from '@/api/tag'
 import { useHelp } from '@/hooks/useHelp'
@@ -261,7 +254,13 @@ const importDialogVisible = ref(false)
 const syncDialogVisible = ref(false)
 const importUploadRef = ref()
 const importResult = ref<{ successCount: number; failCount: number; messages?: string[] } | null>(null)
-const feishuSyncing = ref(false)
+const syncLoading = ref(false)
+const thirdPartyProvider = ref<'feishu' | 'dingtalk' | 'wecom'>('feishu')
+const syncOptions = reactive({
+  sync_departments: true,
+  sync_users: true,
+  overwrite_existing: true
+})
 const dialogTitle = ref('新增员工')
 const isEdit = ref(false)
 const currentUserId = ref<number>()
@@ -279,6 +278,10 @@ const pagination = reactive({
 })
 
 const { openPageHelp } = useHelp()
+
+const PROVIDER_NAMES: Record<string, string> = { feishu: '飞书', dingtalk: '钉钉', wecom: '企业微信' }
+const syncButtonText = computed(() => `从${PROVIDER_NAMES[thirdPartyProvider.value] || '第三方'}同步`)
+const syncProviderName = computed(() => PROVIDER_NAMES[thirdPartyProvider.value] || '第三方')
 
 const departmentTree = ref<Department[]>([])
 const departmentTreeOptions = computed(() => departmentTree.value || [])
@@ -491,29 +494,50 @@ const closeImportDialog = () => {
   loadData()
 }
 
-const handleSyncPlatform = async (platform: string) => {
-  const names: Record<string, string> = { feishu: '飞书', wecom: '企业微信', dingtalk: '钉钉' }
-  if (platform === 'feishu') {
-    feishuSyncing.value = true
-    try {
-      const res = await feishuSync()
-      const data = (res as any)?.data ?? res
-      const dept = data?.departments ?? {}
-      const usr = data?.users ?? {}
-      const dc = (dept.created ?? 0) + (dept.updated ?? 0)
-      const uc = (usr.created ?? 0) + (usr.updated ?? 0)
-      ElMessage.success(`飞书同步完成：部门 ${dc} 个（新增 ${dept.created ?? 0}，更新 ${dept.updated ?? 0}），用户 ${uc} 个（新增 ${usr.created ?? 0}，更新 ${usr.updated ?? 0}）`)
-      syncDialogVisible.value = false
-      loadData()
-      loadDepartments()
-    } catch (e: any) {
-      ElMessage.error(e?.response?.data?.message || '飞书同步失败，请先在「系统设置」中配置飞书应用')
-    } finally {
-      feishuSyncing.value = false
+async function loadThirdPartyProvider() {
+  try {
+    const v = await getConfigByKey('third_party.provider')
+    if (v && ['feishu', 'dingtalk', 'wecom'].includes(String(v).toLowerCase())) {
+      thirdPartyProvider.value = String(v).toLowerCase() as 'feishu' | 'dingtalk' | 'wecom'
     }
+  } catch (_e) {
+    // keep default feishu
+  }
+}
+
+function openSyncDialog() {
+  syncOptions.sync_departments = true
+  syncOptions.sync_users = true
+  syncOptions.overwrite_existing = true
+  syncDialogVisible.value = true
+}
+
+async function handleSyncConfirm() {
+  if (thirdPartyProvider.value !== 'feishu') {
+    ElMessage.info(`${syncProviderName.value} 同步功能即将上线，请先在「系统设置」中配置应用`)
     return
   }
-  ElMessage.info(`${names[platform] || platform} 同步功能即将上线，请先在「系统设置」中配置应用`)
+  syncLoading.value = true
+  try {
+    const res = await feishuSync({
+      sync_departments: syncOptions.sync_departments,
+      sync_users: syncOptions.sync_users,
+      overwrite_existing: syncOptions.overwrite_existing
+    })
+    const data = (res as any)?.data ?? res
+    const dept = data?.departments ?? {}
+    const usr = data?.users ?? {}
+    const dc = (dept.created ?? 0) + (dept.updated ?? 0)
+    const uc = (usr.created ?? 0) + (usr.updated ?? 0)
+    ElMessage.success(`飞书同步完成：部门 ${dc} 个（新增 ${dept.created ?? 0}，更新 ${dept.updated ?? 0}），用户 ${uc} 个（新增 ${usr.created ?? 0}，更新 ${usr.updated ?? 0}）`)
+    syncDialogVisible.value = false
+    loadData()
+    loadDepartments()
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message || '飞书同步失败，请先在「系统设置」中配置飞书应用')
+  } finally {
+    syncLoading.value = false
+  }
 }
 
 const handleResetPassword = (row: User) => {
@@ -556,6 +580,7 @@ onMounted(() => {
   loadData()
   loadDepartments()
   loadTags()
+  loadThirdPartyProvider()
 })
 </script>
 
@@ -618,22 +643,12 @@ onMounted(() => {
   color: var(--el-text-color-regular);
   font-size: 13px;
 }
-.sync-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
+.sync-form {
+  margin-top: 16px;
 }
-.sync-card {
-  flex: 1;
-  min-width: 120px;
-  cursor: pointer;
-  .sync-card-body {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  .sync-label {
-    font-weight: 500;
-  }
+.sync-form-tip {
+  margin-left: 8px;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
 }
 </style>

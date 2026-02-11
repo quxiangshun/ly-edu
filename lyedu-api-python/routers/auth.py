@@ -6,7 +6,8 @@ from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
 from common.result import ResultCode, error, error_result, success
-from services import user_service, login_log_service
+from services.user import user_service
+from services.auth import login_log_service
 from util.jwt_util import generate_token
 from util import feishu_api
 
