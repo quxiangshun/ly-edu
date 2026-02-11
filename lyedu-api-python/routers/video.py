@@ -17,8 +17,25 @@ def _uid(authorization: Optional[str]) -> Optional[int]:
 
 
 @router.get("/page")
-def page(page: int = 1, size: int = 10, courseId: Optional[int] = None, keyword: Optional[str] = None):
-    return success(video_service.page(page_num=page, size=size, course_id=courseId, keyword=keyword))
+def page(
+    page: int = 1,
+    size: int = 10,
+    courseId: Optional[int] = None,
+    keyword: Optional[str] = None,
+    tagId: Optional[int] = None,
+    authorization: Optional[str] = Header(None, alias="Authorization"),
+):
+    uid = _uid(authorization)
+    return success(
+        video_service.page(
+            page_num=page,
+            size=size,
+            course_id=courseId,
+            keyword=keyword,
+            tag_id=tagId,
+            user_id=uid,
+        )
+    )
 
 
 @router.get("/course/{courseId}")

@@ -161,6 +161,7 @@ def page(
     size: int = 10,
     keyword: Optional[str] = None,
     category_id: Optional[int] = None,
+    tag_id: Optional[int] = None,
     user_id: Optional[int] = None,
 ) -> dict:
     offset = (page_num - 1) * size
@@ -174,6 +175,17 @@ def page(
     if category_id is not None:
         where.append("category_id = %s")
         params.append(category_id)
+    if tag_id is not None:
+        try:
+            from services.learning import tag_service
+
+            if tag_service._table_exists():
+                where.append(
+                    "EXISTS (SELECT 1 FROM ly_course_tag ct WHERE ct.course_id = ly_course.id AND ct.tag_id = %s)"
+                )
+                params.append(tag_id)
+        except Exception:
+            pass
     where_sql = " AND ".join(where)
     total_row = db.query_one(
         "SELECT COUNT(*) AS cnt FROM ly_course WHERE " + where_sql, tuple(params)

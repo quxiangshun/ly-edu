@@ -1,0 +1,56 @@
+/**
+ * 用户 API，与 lyedu-pc 业务一致
+ */
+import { get, post, put } from '../utils/request'
+
+export type CurrentUserInfo = {
+	id: number
+	username: string
+	realName: string
+	nickname?: string
+	avatar?: string
+	role: string
+}
+
+export type UserDetail = {
+	id: number
+	username: string
+	realName?: string
+	nickname?: string
+	email?: string
+	mobile?: string
+	avatar?: string
+	role?: string
+	real_name?: string
+	create_time?: string
+	createTime?: string
+}
+
+export type UserUpdateParams = {
+	realName?: string
+	nickname?: string
+	email?: string
+	mobile?: string
+	avatar?: string
+}
+
+/** 获取当前登录用户信息（供个人中心、我的等使用） */
+export function getCurrentUser(): Promise<CurrentUserInfo> {
+	return get<CurrentUserInfo>('/user/info')
+}
+
+/** 获取用户详情（含邮箱、手机、头像，用于个人中心） */
+export function getUserById(id: number): Promise<UserDetail> {
+	return get<UserDetail>('/user/' + id)
+}
+
+/** 更新用户信息（后端字段 real_name 等） */
+export function updateUser(id: number, params: UserUpdateParams): Promise<void> {
+	const body: Record<string, string> = {}
+	if (params.realName != null) body['real_name'] = params.realName
+	if (params.nickname != null) body['nickname'] = params.nickname
+	if (params.email != null) body['email'] = params.email
+	if (params.mobile != null) body['mobile'] = params.mobile
+	if (params.avatar != null) body['avatar'] = params.avatar
+	return put<void>('/user/' + id, body)
+}

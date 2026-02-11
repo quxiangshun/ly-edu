@@ -2,11 +2,13 @@
 """标签管理路由：标签 CRUD 及关联人员/部门/课程"""
 from typing import List, Optional
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Header
 from pydantic import BaseModel
 
 from common.result import error, success
 from services.learning import tag_service
+from services.user import user_service
+from util.jwt_util import parse_authorization
 
 router = APIRouter(prefix="/tag", tags=["tag"])
 
@@ -26,6 +28,27 @@ class TagEntitiesRequest(BaseModel):
 def list_tags():
     """获取全部标签（用于下拉选择等）"""
     return success(tag_service.list_all())
+
+
+@router.get("/effective")
+def list_effective_tags(authorization: Optional[str] = Header(None, alias="Authorization")):
+    """获取当前用户的有效标签；管理员返回全部标签"""
+    user_id = parse_authorization(authorization)
+    if not user_id:
+        return success([])
+    user = user_service.get_by_id(user_id)
+    if not user:
+        return success([])
+    role = (user.get("role") or "").lower()
+    if role == "admin":
+        return success(tag_service.list_all())
+    tag_ids = tag_service.get_effective_tag_ids_for_user(user_id)
+    if not tag_ids:
+        return success([])
+    all_tags = tag_service.list_all()
+    tag_id_set = set(tag_ids)
+    tags = [tag for tag in all_tags if tag.get("id") in tag_id_set]
+    return success(tags)
 
 
 @router.get("/{tag_id}")

@@ -1,75 +1,272 @@
 <template>
-	<scroll-view class="page" scroll-y="true" style="flex:1">
-		<view class="banner">
-			<text class="banner-title">欢迎来到 LyEdu</text>
-			<text class="banner-desc">随时随地，轻松学习</text>
-		</view>
-		<view class="features">
-			<view class="feature-item" @click="navTo('/pages/courses/courses')">
-				<text class="feature-text">课程中心</text>
+	<scroll-view class="page" scroll-y="true" style="flex:1" @scrolltolower="handleScrollLower" lower-threshold="80">
+		<view class="container">
+			<view class="search-bar">
+				<input
+					class="search-input"
+					type="text"
+					:value="keyword"
+					placeholder="请输入视频名称、关键字"
+					confirm-type="search"
+					@input="handleSearchInput"
+					@confirm="handleSearchConfirm"
+				/>
+				<text v-if="keyword.length > 0" class="search-clear" @click="clearKeyword">清除</text>
 			</view>
-			<view class="feature-item" @click="navTo('/pages/my-learning/my-learning')">
-				<text class="feature-text">我的课程</text>
-			</view>
-			<view class="feature-item" @click="navTo('/pages/knowledge/knowledge')">
-				<text class="feature-text">知识中心</text>
-			</view>
-		</view>
 
-		<view v-if="hasToken && recentCourses.length > 0" class="section">
-			<view class="section-header">
-				<text class="section-title">最近学习</text>
-				<text class="section-more" @click="navTo('/pages/my-learning/my-learning')">更多 ></text>
-			</view>
-			<view v-for="c in recentCourses.slice(0, 4)" :key="'r-' + c.course.id" class="course-card" @click="navToCourse(c.course.id)">
-				<image class="course-cover" :src="coverUrl(c.course.cover)" mode="aspectFill"></image>
-				<view class="course-info">
-					<text class="course-title">{{ c.course.title }}</text>
-					<text class="course-desc">{{ c.course.description != null ? c.course.description : '暂无描述' }}</text>
-					<text class="course-tag">继续学习</text>
-				</view>
-			</view>
-		</view>
-
-		<view class="section">
-			<view class="section-header">
-				<text class="section-title">推荐课程</text>
-				<text class="section-more" @click="navTo('/pages/courses/courses')">更多 ></text>
-			</view>
-			<view v-if="recommendLoading" class="loading-wrap">
-				<text class="loading-text">加载中...</text>
-			</view>
-			<template v-else>
-				<view v-for="c in recommendedCourses" :key="c.id" class="course-card" @click="handleCourseClick(c)">
-					<image class="course-cover" :src="coverUrl(c.cover)" mode="aspectFill"></image>
-					<view class="course-info">
-						<text class="course-title">{{ c.title }}</text>
-						<text class="course-desc">{{ c.description != null ? c.description : '暂无描述' }}</text>
-						<button class="course-btn" size="mini" @click.stop="handleCourseClick(c)">开始学习</button>
+			<scroll-view class="tag-scroll" scroll-x="true" show-scrollbar="false" scroll-with-animation>
+				<view class="tag-row">
+					<view
+						v-for="(item, index) in categoryTabs"
+						:key="item.id != null ? item.id : 'all'"
+						:class="['tag-item', index === activeCategoryIndex ? 'tag-item--active' : '']"
+						@click="handleCategoryChange(index)"
+					>
+						<text class="tag-text">{{ item.label }}</text>
 					</view>
 				</view>
-				<view v-if="recommendedCourses.length === 0" class="empty-wrap">
-					<text class="empty-text">暂无推荐课程</text>
+			</scroll-view>
+
+			<view class="sort-row">
+				<view
+					v-for="(item, index) in sortTabs"
+					:key="item.label"
+					:class="['sort-item', index === activeSortIndex ? 'sort-item--active' : '']"
+					@click="handleSortChange(index)"
+				>
+					<text class="sort-text">{{ item.label }}</text>
 				</view>
-			</template>
+			</view>
+
+			<view class="video-section">
+				<view v-if="loading && !isAppending" class="loading-wrap">
+					<text class="loading-text">加载中...</text>
+				</view>
+				<view v-else-if="displayVideos.length === 0" class="empty-wrap">
+					<text class="empty-text">暂无视频</text>
+				</view>
+				<view v-else class="video-grid">
+					<view
+						v-for="item in displayVideos"
+						:key="item.id"
+						class="video-card"
+						@click="navToVideo(item.id)"
+					>
+						<image class="video-cover" :src="coverUrl(item.cover)" mode="aspectFill"></image>
+						<view class="video-content">
+							<text class="video-title">{{ item.title }}</text>
+							<text class="video-course">{{ item.courseName ?? '课程' }}</text>
+							<view class="video-meta">
+								<text class="video-meta-text">播放 {{ safeNumber(item.playCount) }}</text>
+								<text class="video-meta-text">点赞 {{ safeNumber(item.likeCount) }}</text>
+							</view>
+						</view>
+					</view>
+				</view>
+				<view v-if="displayVideos.length > 0" class="load-more">
+					<text v-if="loadMoreStatus === 'loading'">加载中...</text>
+					<text v-else-if="loadMoreStatus === 'no-more'">没有更多了</text>
+					<text v-else>上拉加载更多</text>
+				</view>
+			</view>
 		</view>
 	</scroll-view>
 </template>
 
 <script setup lang="uts">
-	import { getRecommendedCourses, type Course } from '../../api/course'
-	import { getWatchedCourses, joinCourse } from '../../api/learning'
-	import { isLoggedIn } from '../../utils/auth'
+	import { computed, ref } from 'vue'
+	import { getVideoPage, type Video } from '../../api/video'
+	import { getEffectiveTags, type Tag } from '../../api/tag'
 
-	const hasToken = ref(isLoggedIn())
-	const recommendedCourses = ref<Course[]>([])
-	const recentCourses = ref<any[]>([])
-	const recommendLoading = ref(false)
+	type CategoryTab = {
+		id: number | null;
+		label: string;
+	}
+
+	type SortTab = {
+		label: string;
+		value: string;
+	}
+
+	const categoryTabs = ref<CategoryTab[]>([{ id: null, label: '全部' }])
+	const sortTabs: SortTab[] = [
+		{ label: '综合排序', value: 'default' },
+		{ label: '最新发布', value: 'latest' },
+		{ label: '最多播放', value: 'play' },
+		{ label: '最多点赞', value: 'like' },
+		{ label: '最多评论', value: 'comment' }
+	]
+
+	const activeCategoryIndex = ref(0)
+	const activeSortIndex = ref(0)
+	const keyword = ref('')
+	const loading = ref(false)
+	const isAppending = ref(false)
+	const loadMoreStatus = ref<'idle' | 'loading' | 'no-more'>('idle')
+	const currentPage = ref(1)
+	const pageSize = 12
+	const videoList = ref<Video[]>([])
 
 	onShow(() => {
-		hasToken.value = isLoggedIn()
-		loadRecommended()
-		if (hasToken.value) loadRecentCourses()
+		refreshData()
+	})
+
+	async function refreshData(): Promise<void> {
+		await loadTags()
+		await loadVideos(false)
+	}
+
+	async function loadTags(): Promise<void> {
+		const currentTab = categoryTabs.value.length > activeCategoryIndex.value ? categoryTabs.value[activeCategoryIndex.value] : null
+		const currentId = currentTab != null ? currentTab.id : null
+		try {
+			const list = await getEffectiveTags()
+			const tabs: CategoryTab[] = [{ id: null, label: '全部' }]
+			if (Array.isArray(list)) {
+				for (let i = 0; i < list.length; i++) {
+					const item = list[i] as Tag
+					if (item == null) continue
+					const tid = item.id
+					if (tid == null) continue
+					const name = (item.name ?? '').trim()
+					tabs.push({
+						id: tid,
+						label: name.length > 0 ? name : '未命名标签'
+					})
+				}
+			}
+			categoryTabs.value = tabs
+			let nextIndex = 0
+			if (currentId != null) {
+				for (let i = 0; i < tabs.length; i++) {
+					if (tabs[i].id === currentId) {
+						nextIndex = i
+						break
+					}
+				}
+			}
+			if (nextIndex >= tabs.length) {
+				nextIndex = 0
+			}
+			activeCategoryIndex.value = nextIndex
+		} catch (_e) {
+			categoryTabs.value = [{ id: null, label: '全部' }]
+			activeCategoryIndex.value = 0
+		}
+	}
+
+	const selectedTagId = computed((): number | null => {
+		const tabs = categoryTabs.value
+		if (tabs.length === 0) return null
+		const idx = activeCategoryIndex.value
+		if (idx < 0 || idx >= tabs.length) return null
+		return tabs[idx].id
+	})
+
+	function handleCategoryChange(index: number): void {
+		if (index === activeCategoryIndex.value) return
+		activeCategoryIndex.value = index
+		currentPage.value = 1
+		loadVideos(false)
+	}
+
+	function handleSortChange(index: number): void {
+		if (index === activeSortIndex.value) return
+		activeSortIndex.value = index
+	}
+
+	function handleSearchInput(event: any): void {
+		const value = typeof event.detail?.value === 'string' ? event.detail.value : ''
+		keyword.value = value
+	}
+
+	function handleSearchConfirm(): void {
+		currentPage.value = 1
+		loadVideos(false)
+	}
+
+	function clearKeyword(): void {
+		keyword.value = ''
+		currentPage.value = 1
+		loadVideos(false)
+	}
+
+	async function loadVideos(append: boolean): Promise<void> {
+		if (loading.value) return
+		loading.value = true
+		isAppending.value = append
+		if (append) {
+			loadMoreStatus.value = 'loading'
+		} else {
+			loadMoreStatus.value = 'idle'
+		}
+		try {
+			const nextPage = append ? currentPage.value + 1 : 1
+			const params: { page: number; size: number; keyword?: string; tagId?: number } = {
+				page: nextPage,
+				size: pageSize
+			}
+			const manualKeyword = keyword.value.trim()
+			if (manualKeyword.length > 0) {
+				params.keyword = manualKeyword
+			}
+			const tagId = selectedTagId.value
+			if (tagId != null) {
+				params.tagId = tagId
+			}
+			const res = await getVideoPage(params)
+			const list = res != null && Array.isArray(res.records) ? res.records : []
+			if (append) {
+				if (list.length > 0) {
+					videoList.value = videoList.value.concat(list)
+				}
+			} else {
+				videoList.value = list
+			}
+			const total = res != null && res.total != null ? res.total : videoList.value.length
+			const current = res != null && res.current != null ? res.current : nextPage
+			const size = res != null && res.size != null ? res.size : pageSize
+			const totalPages = res != null && res.pages != null ? res.pages : (size > 0 ? Math.ceil(total / size) : 0)
+			currentPage.value = current
+			if ((!append && videoList.value.length === 0) || totalPages <= current || list.length === 0) {
+				loadMoreStatus.value = 'no-more'
+			} else {
+				loadMoreStatus.value = 'idle'
+			}
+		} catch (_e) {
+			if (!append) {
+				videoList.value = []
+				loadMoreStatus.value = 'no-more'
+			} else {
+				loadMoreStatus.value = 'idle'
+			}
+		} finally {
+			loading.value = false
+			isAppending.value = false
+		}
+	}
+
+	const displayVideos = computed(() => {
+		if (videoList.value.length === 0) return []
+		const currentSort = sortTabs[activeSortIndex.value]?.value ?? 'default'
+		const list = videoList.value.slice()
+		switch (currentSort) {
+			case 'latest':
+				list.sort((a, b) => parseTime(b.createTime) - parseTime(a.createTime))
+				break
+			case 'play':
+				list.sort((a, b) => safeNumber(b.playCount) - safeNumber(a.playCount))
+				break
+			case 'like':
+				list.sort((a, b) => safeNumber(b.likeCount) - safeNumber(a.likeCount))
+				break
+			case 'comment':
+				list.sort((a, b) => safeNumber(b.commentCount) - safeNumber(a.commentCount))
+				break
+			default:
+				break
+		}
+		return list
 	})
 
 	function coverUrl(cover: string | null | undefined): string {
@@ -80,48 +277,29 @@
 		return '/static/logo.png'
 	}
 
-	async function loadRecommended(): Promise<void> {
-		recommendLoading.value = true
-		try {
-			const list = await getRecommendedCourses(6)
-			recommendedCourses.value = list != null ? list : []
-		} catch (_e) {
-			recommendedCourses.value = []
-		} finally {
-			recommendLoading.value = false
+	function safeNumber(value: number | string | null | undefined): number {
+		if (typeof value === 'number') return value
+		if (typeof value === 'string' && value.length > 0) {
+			const parsed = Number(value)
+			return isNaN(parsed) ? 0 : parsed
 		}
+		return 0
 	}
 
-	async function loadRecentCourses(): Promise<void> {
-		if (!hasToken.value) return
-		try {
-			const list = await getWatchedCourses()
-			recentCourses.value = list != null ? list : []
-		} catch (_e) {
-			recentCourses.value = []
-		}
+	function parseTime(value: string | null | undefined): number {
+		if (value == null || value.length === 0) return 0
+		const timestamp = Date.parse(value)
+		return isNaN(timestamp) ? 0 : timestamp
 	}
 
-	function navTo(url: string): void {
-		uni.navigateTo({ url: url })
+	function handleScrollLower(): void {
+		if (loading.value || loadMoreStatus.value === 'no-more') return
+		loadVideos(true)
 	}
 
-	function navToCourse(id: number): void {
-		uni.navigateTo({ url: '/pages/course-detail/course-detail?id=' + id })
-	}
-
-	async function handleCourseClick(course: Course): Promise<void> {
-		if (!hasToken.value) {
-			uni.showToast({ title: '请先登录', icon: 'none' })
-			uni.navigateTo({ url: '/pages/login/login?redirect=' + encodeURIComponent('/pages/course-detail/course-detail?id=' + course.id) })
-			return
-		}
-		try {
-			await joinCourse(course.id)
-			uni.showToast({ title: '已加入课程', icon: 'success' })
-			uni.navigateTo({ url: '/pages/course-detail/course-detail?id=' + course.id })
-		} catch (_e) {
-			uni.showToast({ title: '加入课程失败', icon: 'none' })
+	function navToVideo(id: number): void {
+		if (id != null && id > 0) {
+			uni.navigateTo({ url: '/pages/video-player/video-player?id=' + id })
 		}
 	}
 </script>
@@ -129,99 +307,131 @@
 <style>
 .page {
 	flex: 1;
+	background-color: #f5f6f8;
 }
-.banner {
+.container {
 	flex-direction: column;
-	align-items: center;
-	background-color: #667eea;
-	padding: 40px 20px;
-	margin-bottom: 20px;
+	padding: 16px;
 }
-.banner-title {
-	font-size: 28px;
+.search-bar {
+	flex-direction: row;
+	align-items: center;
+	background-color: #ffffff;
+	border-radius: 20px;
+	padding: 10px 16px;
+	margin-bottom: 16px;
+}
+.search-input {
+	flex: 1;
+	font-size: 14px;
+	color: #323233;
+}
+.search-clear {
+	font-size: 12px;
+	color: #969799;
+	margin-left: 12px;
+}
+.tag-scroll {
+	background-color: transparent;
+	margin-bottom: 12px;
+	width: 100%;
+}
+.tag-row {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: nowrap;
+}
+.tag-item {
+	padding: 8px 16px;
+	margin-right: 12px;
+	border-radius: 16px;
+	background-color: #f1f2f5;
+	white-space: nowrap;
+	flex-shrink: 0;
+}
+.tag-item--active {
+	background-color: #1989fa;
+}
+.tag-item--active .tag-text {
 	color: #ffffff;
+}
+.tag-text {
+	font-size: 14px;
+	color: #55575c;
+}
+.sort-row {
+	flex-direction: row;
+	align-items: center;
+	background-color: #ffffff;
+	border-radius: 12px;
+	padding: 12px 8px;
+	margin-bottom: 16px;
+	justify-content: space-around;
+}
+.sort-item {
+	padding: 6px 10px;
+}
+.sort-item--active .sort-text {
+	color: #1989fa;
 	font-weight: 600;
 }
-.banner-desc {
+.sort-text {
 	font-size: 14px;
-	color: rgba(255,255,255,0.9);
-	margin-top: 10px;
+	color: #666666;
 }
-.features {
+.video-section {
+	background-color: transparent;
+}
+.video-grid {
 	flex-direction: row;
-	background-color: #ffffff;
-	padding: 20px;
-	margin-bottom: 20px;
-}
-.feature-item {
-	flex: 1;
-	flex-direction: column;
-	align-items: center;
-	padding: 12px 0;
-}
-.feature-text {
-	font-size: 14px;
-	color: #323233;
-}
-.section {
-	background-color: #ffffff;
-	padding: 20px;
-	margin-bottom: 20px;
-}
-.section-header {
-	flex-direction: row;
+	flex-wrap: wrap;
 	justify-content: space-between;
-	align-items: center;
-	margin-bottom: 15px;
 }
-.section-title {
-	font-size: 18px;
-	color: #323233;
-}
-.section-more {
-	font-size: 14px;
-	color: #969799;
-}
-.course-card {
-	flex-direction: column;
-	margin-bottom: 16px;
-	border-radius: 8px;
+.video-card {
+	background-color: #ffffff;
+	border-radius: 12px;
 	overflow: hidden;
-	background-color: #f7f8fa;
+	margin-bottom: 16px;
+	width: 48%;
+	flex-direction: column;
 }
-.course-cover {
+.video-cover {
 	width: 100%;
 	height: 120px;
 	background-color: #ebedf0;
 }
-.course-info {
+.video-content {
+	flex: 1;
 	flex-direction: column;
 	padding: 12px;
 }
-.course-title {
+.video-title {
 	font-size: 16px;
 	font-weight: 600;
 	color: #323233;
+	margin-bottom: 6px;
 }
-.course-desc {
+.video-course {
 	font-size: 13px;
 	color: #646566;
-	margin-top: 6px;
+	margin-bottom: 8px;
 }
-.course-tag {
+.video-meta {
+	flex-direction: row;
+	align-items: center;
+}
+.video-meta-text {
 	font-size: 12px;
-	color: #1989fa;
-	margin-top: 8px;
+	color: #969799;
+	margin-right: 12px;
 }
-.course-btn {
-	background-color: #1989fa;
-	color: #ffffff;
-	border-radius: 16px;
-	margin-top: 8px;
-	align-self: flex-end;
+.load-more {
+	padding: 16px 0;
+	align-items: center;
+	justify-content: center;
 }
 .loading-wrap {
-	padding: 24px 0;
+	padding: 40px 0;
 	align-items: center;
 }
 .loading-text {
@@ -229,7 +439,7 @@
 	color: #969799;
 }
 .empty-wrap {
-	padding: 24px 0;
+	padding: 60px 0;
 	align-items: center;
 }
 .empty-text {

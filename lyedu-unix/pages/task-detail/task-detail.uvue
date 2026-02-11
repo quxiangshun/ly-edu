@@ -1,0 +1,309 @@
+<template>
+	<scroll-view class="page" scroll-y="true" style="flex:1">
+		<view class="content">
+			<view v-if="loading" class="loading-wrap">
+				<text class="loading-text">加载中...</text>
+			</view>
+			<view v-else-if="task != null" class="task-content">
+				<text class="task-title">{{ task.title }}</text>
+				<text v-if="task.description != null && task.description.length > 0" class="task-desc">{{ task.description }}</text>
+				<view class="progress-row">
+					<text class="status-tag" :class="userTask != null && userTask.status === 1 ? 'done' : 'doing'">{{ userTask != null && userTask.status === 1 ? '已完成' : '进行中' }}</text>
+					<button class="sync-btn" :loading="syncing" @click="syncProgress">同步进度</button>
+				</view>
+				<text class="section-title">闯关项（按顺序完成）</text>
+				<view v-for="(item, index) in itemsList" :key="index" class="item-row" @click="goItem(item)">
+					<text class="item-index">{{ index + 1 }}.</text>
+					<text class="item-done" :class="itemDone(item) ? 'done' : 'todo'">{{ itemDone(item) ? '已完成' : '未完成' }}</text>
+					<text class="item-label">{{ itemLabel(item) }}</text>
+				</view>
+				<view v-if="itemsList.length === 0" class="empty-tip">
+					<text class="empty-text">暂无闯关项</text>
+				</view>
+				<view class="back-row">
+					<button class="back-btn" @click="navBack">返回任务列表</button>
+				</view>
+			</view>
+			<view v-else class="empty-wrap">
+				<text class="empty-text">任务不存在或无权查看</text>
+			</view>
+		</view>
+	</scroll-view>
+</template>
+
+<script setup lang="uts">
+	import { requireAuth } from '../../utils/auth'
+	import { getTaskDetail, getOrCreateProgress, updateProgress, type UserTask } from '../../api/userTask'
+	import type { Task } from '../../api/task'
+	import { getMyCourses } from '../../api/learning'
+	import { getMyRecords } from '../../api/exam'
+	import { getCourseById } from '../../api/course'
+	import { getExamById } from '../../api/exam'
+
+	const taskId = ref(0)
+	const loading = ref(true)
+	const syncing = ref(false)
+	const task = ref<Task | null>(null)
+	const userTask = ref<UserTask | null>(null)
+	const myCourses = ref<any[]>([])
+	const myRecords = ref<any[]>([])
+	const courseNameMap = ref<Map<number, string>>(new Map())
+	const examNameMap = ref<Map<number, string>>(new Map())
+
+	type ItemRow = { type: string; id: number }
+
+	const itemsList = computed((): ItemRow[] => {
+		const t = task.value
+		if (t == null || t.items == null || t.items.length === 0) return []
+		try {
+			const arr = JSON.parse(t.items) as any[]
+			return Array.isArray(arr) ? arr : []
+		} catch (_e) {
+			return []
+		}
+	})
+
+	function itemDone(item: ItemRow): boolean {
+		if (item.type === 'course') {
+			const c = myCourses.value.find((x: any) => x.courseId === item.id)
+			return (c != null ? c.progress : 0) >= 100
+		}
+		if (item.type === 'exam') {
+			const r = myRecords.value.find((x: any) => x.examId === item.id)
+			return r != null && r.passed === 1
+		}
+		return false
+	}
+
+	function itemLabel(item: ItemRow): string {
+		if (item.type === 'course') {
+			const name = courseNameMap.value.get(item.id)
+			return name != null ? '课程：' + name : '课程 ID ' + item.id
+		}
+		if (item.type === 'exam') {
+			const name = examNameMap.value.get(item.id)
+			return name != null ? '考试：' + name : '考试 ID ' + item.id
+		}
+		return item.type + ' ID ' + item.id
+	}
+
+	function buildProgressJson(): string {
+		const items = itemsList.value.map((item: ItemRow) => {
+			return { type: item.type, id: item.id, done: itemDone(item) ? 1 : 0 }
+		})
+		return JSON.stringify({ items: items })
+	}
+
+	function syncProgress(): void {
+		if (taskId.value <= 0) return
+		syncing.value = true
+		const progress = buildProgressJson()
+		updateProgress(taskId.value, progress)
+			.then(() => {
+				uni.showToast({ title: '进度已同步' })
+				loadUserTask()
+			})
+			.catch(() => {
+				uni.showToast({ title: '同步失败', icon: 'none' })
+			})
+			.finally(() => {
+				syncing.value = false
+			})
+	}
+
+	function loadUserTask(): void {
+		if (taskId.value <= 0) return
+		getOrCreateProgress(taskId.value).then((ut: UserTask) => {
+			userTask.value = ut
+		}).catch(() => {})
+	}
+
+	function goItem(item: ItemRow): void {
+		if (item.type === 'course') {
+			uni.navigateTo({ url: '/pages/course-detail/course-detail?id=' + item.id })
+			return
+		}
+		if (item.type === 'exam') {
+			uni.navigateTo({ url: '/pages/exam-take/exam-take?id=' + item.id })
+			return
+		}
+	}
+
+	function navBack(): void {
+		uni.navigateBack()
+	}
+
+	function loadDetail(): void {
+		if (taskId.value <= 0) {
+			loading.value = false
+			return
+		}
+		loading.value = true
+		Promise.all([
+			getTaskDetail(taskId.value),
+			getOrCreateProgress(taskId.value),
+			getMyCourses(),
+			getMyRecords()
+		]).then(([t, ut, courses, records]) => {
+			task.value = t as Task
+			userTask.value = ut as UserTask
+			myCourses.value = Array.isArray(courses) ? courses : []
+			myRecords.value = Array.isArray(records) ? records : []
+			let items: ItemRow[] = []
+			if (t != null && (t as Task).items != null && (t as Task).items.length > 0) {
+				try {
+					const arr = JSON.parse((t as Task).items) as any[]
+					items = Array.isArray(arr) ? arr : []
+				} catch (_e) {}
+			}
+			const courseIds = items.filter((i: ItemRow) => i.type === 'course').map((i: ItemRow) => i.id)
+			const examIds = items.filter((i: ItemRow) => i.type === 'exam').map((i: ItemRow) => i.id)
+			const cMap = new Map<number, string>()
+			const eMap = new Map<number, string>()
+			const promises: Promise<void>[] = []
+			for (let i = 0; i < courseIds.length; i++) {
+				const id = courseIds[i]
+				promises.push(
+					getCourseById(id).then((c: any) => {
+						const title = c != null && c.course != null ? c.course.title : (c != null && c.title != null ? c.title : null)
+						if (title != null) cMap.set(id, title as string)
+					}).catch(() => {})
+				)
+			}
+			for (let i = 0; i < examIds.length; i++) {
+				const id = examIds[i]
+				promises.push(
+					getExamById(id).then((e: any) => {
+						const title = e != null && e.title != null ? e.title : null
+						if (title != null) eMap.set(id, title as string)
+					}).catch(() => {})
+				)
+			}
+			Promise.all(promises).then(() => {
+				courseNameMap.value = cMap
+				examNameMap.value = eMap
+			})
+		}).catch(() => {
+			uni.showToast({ title: '加载失败', icon: 'none' })
+			task.value = null
+		}).finally(() => {
+			loading.value = false
+		})
+	}
+
+	onLoad((options: any) => {
+		if (!requireAuth('pages/task-detail/task-detail' + (options != null && options['id'] != null ? '?id=' + options['id'] : ''))) return
+		if (options != null && options['id'] != null) {
+			const n = parseInt(options['id'] as string)
+			if (!isNaN(n)) taskId.value = n
+		}
+		if (taskId.value > 0) loadDetail()
+	})
+</script>
+
+<style>
+.page {
+	flex: 1;
+}
+.content {
+	flex-direction: column;
+	padding: 16px;
+}
+.loading-wrap {
+	padding: 40px 0;
+	align-items: center;
+}
+.loading-text {
+	font-size: 14px;
+	color: #969799;
+}
+.task-content {
+	flex-direction: column;
+}
+.task-title {
+	font-size: 20px;
+	font-weight: 600;
+	color: #323233;
+	margin-bottom: 8px;
+}
+.task-desc {
+	font-size: 14px;
+	color: #646566;
+	margin-bottom: 16px;
+}
+.progress-row {
+	flex-direction: row;
+	align-items: center;
+	margin-bottom: 20px;
+}
+.status-tag {
+	font-size: 12px;
+	padding: 4px 10px;
+	border-radius: 4px;
+	margin-right: 12px;
+}
+.status-tag.done {
+	background-color: #e8f5e9;
+	color: #4caf50;
+}
+.status-tag.doing {
+	background-color: #e3f2fd;
+	color: #2196f3;
+}
+.sync-btn {
+	font-size: 14px;
+	padding: 6px 14px;
+}
+.section-title {
+	font-size: 16px;
+	font-weight: 600;
+	color: #323233;
+	margin-bottom: 12px;
+}
+.item-row {
+	flex-direction: row;
+	align-items: center;
+	padding: 12px 0;
+	border-bottom-width: 1px;
+	border-bottom-color: #ebedf0;
+}
+.item-index {
+	width: 24px;
+	font-size: 14px;
+	color: #646566;
+}
+.item-done {
+	font-size: 12px;
+	margin-right: 10px;
+	min-width: 44px;
+}
+.item-done.done {
+	color: #4caf50;
+}
+.item-done.todo {
+	color: #969799;
+}
+.item-label {
+	flex: 1;
+	font-size: 15px;
+	color: #323233;
+}
+.empty-tip {
+	padding: 20px 0;
+	align-items: center;
+}
+.empty-text {
+	font-size: 14px;
+	color: #969799;
+}
+.back-row {
+	margin-top: 24px;
+}
+.back-btn {
+	font-size: 14px;
+}
+.empty-wrap {
+	padding: 40px 0;
+	align-items: center;
+}
+</style>

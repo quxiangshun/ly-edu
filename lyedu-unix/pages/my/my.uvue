@@ -33,35 +33,26 @@
 			</view>
 
 			<view class="menu-section">
-				<view class="menu-item" @click="navTo('/pages/my-learning/my-learning')">
-					<text class="menu-text">我的学习</text>
-				</view>
-				<view class="menu-item" @click="navTo('/pages/my-liked-videos/my-liked-videos')">
-					<text class="menu-text">我点赞的视频</text>
-				</view>
-				<view class="menu-item" @click="navTo('/pages/courses/courses')">
-					<text class="menu-text">课程中心</text>
-				</view>
-				<view class="menu-item" @click="navTo('/pages/exam-list/exam-list')">
-					<text class="menu-text">考试中心</text>
-				</view>
-				<view class="menu-item" @click="navTo('/pages/my-points/my-points')">
-					<text class="menu-text">我的积分</text>
-				</view>
-				<view class="menu-item" @click="navTo('/pages/my-certificates/my-certificates')">
-					<text class="menu-text">我的证书</text>
-				</view>
-				<view class="menu-item" @click="navTo('/pages/my-tasks/my-tasks')">
-					<text class="menu-text">我的任务</text>
+				<view
+					v-for="item in mainMenus"
+					:key="item.path"
+					class="menu-item"
+					@click="navTo(item.path)"
+				>
+					<image class="menu-icon" :src="item.icon" mode="aspectFit"></image>
+					<text class="menu-text">{{ item.text }}</text>
 				</view>
 			</view>
 
 			<view class="menu-section">
-				<view class="menu-item" @click="navTo('/pages/settings/settings')">
-					<text class="menu-text">设置</text>
-				</view>
-				<view class="menu-item" @click="navTo('/pages/about/about')">
-					<text class="menu-text">关于</text>
+				<view
+					v-for="item in secondaryMenus"
+					:key="item.path"
+					class="menu-item"
+					@click="navTo(item.path)"
+				>
+					<image class="menu-icon" :src="item.icon" mode="aspectFit"></image>
+					<text class="menu-text">{{ item.text }}</text>
 				</view>
 			</view>
 		</view>
@@ -75,6 +66,12 @@
 	import { getMyCertificates } from '../../api/userCertificate'
 	import { getMyTasks } from '../../api/userTask'
 
+	type MenuItem = {
+		text: string;
+		icon: string;
+		path: string;
+	}
+
 	const hasToken = ref(isLoggedIn())
 	const user = ref<Record<string, any>>({})
 	const personalStats = ref({
@@ -84,6 +81,21 @@
 		certificateCount: 0,
 		taskCompletedCount: 0
 	})
+
+	const mainMenus: MenuItem[] = [
+		{ text: '我的学习', icon: '/static/icons/fontawesome/book-open.svg', path: '/pages/my-learning/my-learning' },
+		{ text: '我点赞的视频', icon: '/static/icons/fontawesome/thumbs-up.svg', path: '/pages/my-liked-videos/my-liked-videos' },
+		{ text: '课程中心', icon: '/static/icons/fontawesome/book.svg', path: '/pages/courses/courses' },
+		{ text: '考试中心', icon: '/static/icons/fontawesome/file-lines.svg', path: '/pages/exam-list/exam-list' },
+		{ text: '我的积分', icon: '/static/icons/fontawesome/coins.svg', path: '/pages/my-points/my-points' },
+		{ text: '我的证书', icon: '/static/icons/fontawesome/certificate.svg', path: '/pages/my-certificates/my-certificates' },
+		{ text: '我的任务', icon: '/static/icons/fontawesome/list-check.svg', path: '/pages/my-tasks/my-tasks' }
+	]
+
+	const secondaryMenus: MenuItem[] = [
+		{ text: '设置', icon: '/static/icons/fontawesome/gear.svg', path: '/pages/settings/settings' },
+		{ text: '关于', icon: '/static/icons/fontawesome/circle-info.svg', path: '/pages/about/about' }
+	]
 
 	const displayName = computed(() => {
 		if (!hasToken.value) return '学员'
@@ -237,6 +249,11 @@
 	padding: 14px 16px;
 	border-bottom-width: 1px;
 	border-bottom-color: #ebedf0;
+}
+.menu-icon {
+	width: 24px;
+	height: 24px;
+	margin-right: 12px;
 }
 .menu-item:last-child {
 	border-bottom-width: 0;

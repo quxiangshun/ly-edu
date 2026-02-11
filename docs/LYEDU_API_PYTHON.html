@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+	<meta charset="UTF-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>lyedu-api-python 接口文档</title>
+	<style>
+		body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.6; color: #1f2328; margin: 32px; }
+		h1, h2, h3, h4 { color: #0f1115; }
+		code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; background-color: #f6f8fa; padding: 0 4px; border-radius: 4px; }
+		pre { background-color: #f6f8fa; padding: 12px; border-radius: 6px; overflow-x: auto; }
+		table { border-collapse: collapse; width: 100%; margin: 16px 0; }
+		th, td { border: 1px solid #d0d7de; padding: 8px; text-align: left; }
+		th { background-color: #f6f8fa; }
+		tbody tr:nth-child(even) { background-color: #fbfcfd; }
+		p { margin: 8px 0; }
+		hr { border: 0; border-top: 1px solid #d0d7de; margin: 32px 0; }
+	</style>
+</head>
+<body>
+	<h1>lyedu-api-python 接口文档</h1>
+	<p>本文档整理 FastAPI 服务 <code>lyedu-api-python</code> 中主要接口，说明请求方法、入参、出参结构以及功能说明，供客户端（含 uni-app x 与管理后台）对接使用。所有接口返回统一的响应结构：</p>
+	<pre><code>{
+  "code": 200,
+  "message": "success",
+  "data": {},
+  "timestamp": 1700000000
+}</code></pre>
+	<p><code>code</code> 为业务状态码，<code>200</code> 表示成功；失败时 <code>message</code> 为错误描述，<code>data</code> 可能为空。除登录接口外，其余需要在请求头携带 <code>Authorization: Bearer &lt;token&gt;</code>。</p>
+
+	<h2>认证模块 <code>/auth</code></h2>
+	<table>
+		<thead>
+			<tr>
+				<th>接口</th>
+				<th>方法</th>
+				<th>功能说明</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>/auth/login</code></td>
+				<td>POST</td>
+				<td>账号密码登录，返回 JWT 与基础用户信息</td>
+			</tr>
+			<tr>
+				<td><code>/auth/feishu/url</code></td>
+				<td>GET</td>
+				<td>获取飞书授权登录地址</td>
+			</tr>
+			<tr>
+				<td><code>/auth/feishu/callback</code></td>
+				<td>POST</td>
+				<td>飞书登录回调，换取 JWT</td>
+			</tr>
+		</tbody>
+	</table>
+
+	<h3><code>/auth/login</code></h3>
+	<p><strong>请求方式</strong>：POST</p>
+	<p><strong>请求体</strong></p>
+	<table>
+		<thead>
+			<tr>
+				<th>字段</th>
+				<th>类型</th>
+				<th>必填</th>
+				<th>说明</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>username</code></td>
+				<td>string</td>
+				<td>是</td>
+				<td>用户名</td>
+			</tr>
+			<tr>
+				<td><code>password</code></td>
+				<td>string</td>
+				<td>是</td>
+				<td>密码</td>
+			</tr>
+		</tbody>
+	</table>
+
+	<p><strong>响应 <code>data</code></strong></p>
+	<table>
+		<thead>
+			<tr>
+				<th>字段</th>
+				<th>类型</th>
+				<th>说明</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>token</code></td>
+				<td>string</td>
+				<td>JWT，用于后续接口鉴权</td>
+			</tr>
+			<tr>
+				<td><code>userInfo.id</code></td>
+				<td>number</td>
+				<td>用户 ID</td>
+			</tr>
+			<tr>
+				<td><code>userInfo.username</code></td>
+				<td>string</td>
+				<td>用户名</td>
+			</tr>
+			<tr>
+				<td><code>userInfo.realName</code></td>
+				<td>string</td>
+				<td>真实姓名（可能为空）</td>
+			</tr>
+			<tr>
+				<td><code>userInfo.role</code></td>
+				<td>string</td>
+				<td>角色：<code>admin</code> / <code>student</code></td>
+			</tr>
+		</tbody>
+	</table>
+
+	<h2>课程模块 <code>/course</code></h2>
+	<p>课程接口会自动根据用户可见性规则（公开课程、部门关联课程、标签匹配课程）过滤结果。</p>
+	<table>
+		<thead>
+			<tr>
+				<th>接口</th>
+				<th>方法</th>
+				<th>功能说明</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>/course/page</code></td>
+				<td>GET</td>
+				<td>分页查询课程（支持标签筛选）</td>
+			</tr>
+			<tr>
+				<td><code>/course/recommended</code></td>
+				<td>GET</td>
+				<td>获取推荐课程列表</td>
+			</tr>
+			<tr>
+				<td><code>/course/{id}</code></td>
+				<td>GET</td>
+				<td>获取课程详情（含章节、视频、附件）</td>
+			</tr>
+			<tr>
+				<td><code>/course/{course_id}/comment</code></td>
+				<td>GET / POST</td>
+				<td>查询 / 新增课程评论</td>
+			</tr>
+			<tr>
+				<td><code>/course/comment/{comment_id}</code></td>
+				<td>DELETE</td>
+				<td>删除评论（限本人）</td>
+			</tr>
+			<tr>
+				<td><code>/course/{id}/exam</code></td>
+				<td>GET / PUT</td>
+				<td>课程与考试关联（需管理权限）</td>
+			</tr>
+		</tbody>
+	</table>
+
+	<h3><code>/course/page</code></h3>
+	<p><strong>请求方式</strong>：GET</p>
+	<p><strong>请求参数</strong></p>
+	<table>
+		<thead>
+			<tr>
+				<th>参数</th>
+				<th>类型</th>
+				<th>必填</th>
+				<th>说明</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>page</code></td>
+				<td>number</td>
+				<td>否</td>
+				<td>页码（默认 1）</td>
+			</tr>
+			<tr>
+				<td><code>size</code></td>
+				<td>number</td>
+				<td>否</td>
+				<td>单页数量（默认 10）</td>
+			</tr>
+			<tr>
+				<td><code>keyword</code></td>
+				<td>string</td>
+				<td>否</td>
+				<td>课程标题或描述关键字</td>
+			</tr>
+			<tr>
+				<td><code>categoryId</code></td>
+				<td>number</td>
+				<td>否</td>
+				<td>分类 ID</td>
+			</tr>
+			<tr>
+				<td><code>tagId</code></td>
+				<td>number</td>
+				<td>否</td>
+				<td>标签 ID（与用户有效标签无关，可用于固定筛选）</td>
+			</tr>
+		</tbody>
+	</table>
+
+	<p><strong>响应 <code>data.records</code> 中字段</strong></p>
+	<table>
+		<thead>
+			<tr>
+				<th>字段</th>
+				<th>类型</th>
+				<th>说明</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>id</code></td>
+				<td>number</td>
+				<td>课程 ID</td>
+			</tr>
+			<tr>
+				<td><code>title</code></td>
+				<td>string</td>
+				<td>课程标题</td>
+			</tr>
+			<tr>
+				<td><code>cover</code></td>
+				<td>string</td>
+				<td>封面 URL</td>
+			</tr>
+			<tr>
+				<td><code>description</code></td>
+				<td>string</td>
+				<td>课程描述</td>
+			</tr>
+			<tr>
+				<td><code>playCount</code></td>
+				<td>number</td>
+				<td>播放量（如有统计）</td>
+			</tr>
+			<tr>
+				<td><code>likeCount</code></td>
+				<td>number</td>
+				<td>点赞数</td>
+			</tr>
+			<tr>
+				<td><code>commentCount</code></td>
+				<td>number</td>
+				<td>评论数</td>
+			</tr>
+			<tr>
+				<td><code>tagIds</code></td>
+				<td>number[]</td>
+				<td>关联标签 ID</td>
+			</tr>
+			<tr>
+				<td><code>createTime</code></td>
+				<td>string</td>
+				<td>创建时间</td>
+			</tr>
+		</tbody>
+	</table>
+
+	<p><strong>分页元信息</strong>：<code>total</code> 总记录数，<code>current</code> 当前页，<code>size</code> 每页数量，<code>pages</code> 总页数。</p>
+
+	<h3><code>/course/{id}</code></h3>
+	<p><strong>请求方式</strong>：GET</p>
+	<p><strong>路径参数</strong>：<code>id</code> 课程 ID</p>
+	<p><strong>响应 <code>data</code></strong></p>
+	<table>
+		<thead>
+			<tr>
+				<th>字段</th>
+				<th>类型</th>
+				<th>说明</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>course</code></td>
+				<td>object</td>
+				<td>课程基础信息（含 <code>tagIds</code>、<code>department_ids</code> 等）</td>
+			</tr>
+			<tr>
+				<td><code>videos</code></td>
+				<td>Video[]</td>
+				<td>视频列表</td>
+			</tr>
+			<tr>
+				<td><code>chapters</code></td>
+				<td>ChapterItem[]</td>
+				<td>章节与视频结构</td>
+			</tr>
+			<tr>
+				<td><code>attachments</code></td>
+				<td>CourseAttachment[]</td>
+				<td>附件列表</td>
+			</tr>
+			<tr>
+				<td><code>examId</code></td>
+				<td>number</td>
+				<td>关联考试 ID（可能为空）</td>
+			</tr>
+			<tr>
+				<td><code>learnRecord</code></td>
+				<td>object</td>
+				<td>用户视频进度映射（登录用户）</td>
+			</tr>
+		</tbody>
+	</table>
+
+	<h2>标签模块 <code>/tag</code></h2>
+	<table>
+		<thead>
+			<tr>
+				<th>接口</th>
+				<th>方法</th>
+				<th>功能说明</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>/tag/list</code></td>
+				<td>GET</td>
+				<td>获取全部标签（管理端使用）</td>
+			</tr>
+			<tr>
+				<td><code>/tag/effective</code></td>
+				<td>GET</td>
+				<td>获取当前用户有效标签：用户自身 + 部门 + 子部门标签；管理员返回全部标签</td>
+			</tr>
+			<tr>
+				<td><code>/tag/{id}</code></td>
+				<td>GET</td>
+				<td>标签详情</td>
+			</tr>
+			<tr>
+				<td><code>/tag/{id}/entities</code></td>
+				<td>PUT</td>
+				<td>绑定标签与用户 / 部门 / 课程</td>
+			</tr>
+		</tbody>
+	</table>
+
+	<h3><code>/tag/effective</code></h3>
+	<p><strong>请求方式</strong>：GET</p>
+	<p><strong>响应 <code>data</code></strong>：<code>Tag[]</code></p>
+	<table>
+		<thead>
+			<tr>
+				<th>字段</th>
+				<th>类型</th>
+				<th>说明</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>id</code></td>
+				<td>number</td>
+				<td>标签 ID</td>
+			</tr>
+			<tr>
+				<td><code>name</code></td>
+				<td>string</td>
+				<td>标签名称</td>
+			</tr>
+			<tr>
+				<td><code>sort</code></td>
+				<td>number</td>
+				<td>排序值</td>
+			</tr>
+			<tr>
+				<td><code>createTime</code></td>
+				<td>string</td>
+				<td>创建时间</td>
+			</tr>
+		</tbody>
+	</table>
+	<p><strong>业务逻辑</strong>：</p>
+	<ul>
+		<li><strong>管理员</strong>（<code>role == "admin"</code>）：返回全部标签。</li>
+		<li><strong>普通用户</strong>：返回有效标签，合并范围包括：用户自身关联的标签（<code>ly_user_tag</code>）、用户所属部门关联的标签（<code>ly_department_tag</code>）、用户所属部门及其所有子部门关联的标签。</li>
+	</ul>
+	<p>该接口在学员端首页用于展示可筛选的课程标签。若无关联标签则返回空数组。</p>
+
+	<h2>视频模块 <code>/video</code></h2>
+	<table>
+		<thead>
+			<tr>
+				<th>接口</th>
+				<th>方法</th>
+				<th>功能说明</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>/video/page</code></td>
+				<td>GET</td>
+				<td>视频分页列表，可按课程、关键字、标签筛选；结合课程可见性与用户有效标签</td>
+			</tr>
+			<tr>
+				<td><code>/video/{id}</code></td>
+				<td>GET</td>
+				<td>获取视频详情（含播放/点赞统计、课程信息）</td>
+			</tr>
+			<tr>
+				<td><code>/video/{id}/play</code></td>
+				<td>POST</td>
+				<td>记录播放次数</td>
+			</tr>
+			<tr>
+				<td><code>/video/{id}/like</code></td>
+				<td>POST</td>
+				<td>点赞视频</td>
+			</tr>
+			<tr>
+				<td><code>/video/{id}/like</code></td>
+				<td>DELETE</td>
+				<td>取消点赞</td>
+			</tr>
+			<tr>
+				<td><code>/video/liked</code></td>
+				<td>GET</td>
+				<td>获取我点赞的视频列表</td>
+			</tr>
+		</tbody>
+	</table>
+
+	<h3><code>/video/page</code></h3>
+	<p><strong>请求方式</strong>：GET</p>
+	<p><strong>请求参数</strong></p>
+	<table>
+		<thead>
+			<tr>
+				<th>参数</th>
+				<th>类型</th>
+				<th>必填</th>
+				<th>说明</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>page</code></td>
+				<td>number</td>
+				<td>否</td>
+				<td>页码（默认 1）</td>
+			</tr>
+			<tr>
+				<td><code>size</code></td>
+				<td>number</td>
+				<td>否</td>
+				<td>每页条数（默认 10）</td>
+			</tr>
+			<tr>
+				<td><code>courseId</code></td>
+				<td>number</td>
+				<td>否</td>
+				<td>按课程筛选</td>
+			</tr>
+			<tr>
+				<td><code>keyword</code></td>
+				<td>string</td>
+				<td>否</td>
+				<td>视频标题关键字</td>
+			</tr>
+			<tr>
+				<td><code>tagId</code></td>
+				<td>number</td>
+				<td>否</td>
+				<td>标签 ID。若省略且用户非管理员，则返回其“有效标签”集合内所有课程的视频；管理员会返回全部视频</td>
+			</tr>
+		</tbody>
+	</table>
+	<p><strong>请求头</strong>：除公开课程外，需要携带 <code>Authorization: Bearer &lt;token&gt;</code>，以便根据用户角色、部门及标签控制可见性。</p>
+	<p><strong>响应 <code>data.records</code> 中字段</strong></p>
+	<table>
+		<thead>
+			<tr>
+				<th>字段</th>
+				<th>类型</th>
+				<th>说明</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>id</code></td>
+				<td>number</td>
+				<td>视频 ID</td>
+			</tr>
+			<tr>
+				<td><code>title</code></td>
+				<td>string</td>
+				<td>视频标题</td>
+			</tr>
+			<tr>
+				<td><code>cover</code></td>
+				<td>string</td>
+				<td>封面 URL</td>
+			</tr>
+			<tr>
+				<td><code>url</code></td>
+				<td>string</td>
+				<td>播放地址</td>
+			</tr>
+			<tr>
+				<td><code>duration</code></td>
+				<td>number</td>
+				<td>时长（秒）</td>
+			</tr>
+			<tr>
+				<td><code>playCount</code></td>
+				<td>number</td>
+				<td>播放次数</td>
+			</tr>
+			<tr>
+				<td><code>likeCount</code></td>
+				<td>number</td>
+				<td>点赞次数</td>
+			</tr>
+			<tr>
+				<td><code>courseId</code></td>
+				<td>number</td>
+				<td>所属课程 ID</td>
+			</tr>
+			<tr>
+				<td><code>courseName</code></td>
+				<td>string</td>
+				<td>所属课程标题</td>
+			</tr>
+		</tbody>
+	</table>
+	<p><strong>分页元信息</strong>：<code>total</code>、<code>current</code>、<code>size</code>、<code>pages</code> 同课程分页。</p>
+
+	<h2>学习记录模块 <code>/learning</code></h2>
+	<table>
+		<thead>
+			<tr>
+				<th>接口</th>
+				<th>方法</th>
+				<th>功能说明</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>/learning/recent</code></td>
+				<td>GET</td>
+				<td>最近学习课程列表</td>
+			</tr>
+			<tr>
+				<td><code>/learning/join</code></td>
+				<td>POST</td>
+				<td>加入课程（报名）</td>
+			</tr>
+			<tr>
+				<td><code>/learning/watch</code></td>
+				<td>GET</td>
+				<td>获取观看历史</td>
+			</tr>
+		</tbody>
+	</table>
+	<p><code>/learning/join</code> 请求体示例：</p>
+	<table>
+		<thead>
+			<tr>
+				<th>字段</th>
+				<th>类型</th>
+				<th>必填</th>
+				<th>说明</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>course_id</code></td>
+				<td>number</td>
+				<td>是</td>
+				<td>课程 ID</td>
+			</tr>
+		</tbody>
+	</table>
+	<p>响应成功时 <code>data</code> 为空；失败返回错误提示。</p>
+
+	<h2>用户任务相关 <code>/user-task</code></h2>
+	<table>
+		<thead>
+			<tr>
+				<th>接口</th>
+				<th>方法</th>
+				<th>功能说明</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>/user-task/my</code></td>
+				<td>GET</td>
+				<td>获取当前用户任务列表</td>
+			</tr>
+			<tr>
+				<td><code>/user-task/{taskId}</code></td>
+				<td>GET</td>
+				<td>获取任务详情</td>
+			</tr>
+			<tr>
+				<td><code>/user-task/{taskId}/complete</code></td>
+				<td>POST</td>
+				<td>完成任务</td>
+			</tr>
+		</tbody>
+	</table>
+	<p>列表接口返回结构：</p>
+	<table>
+		<thead>
+			<tr>
+				<th>字段</th>
+				<th>类型</th>
+				<th>说明</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>task</code></td>
+				<td>object</td>
+				<td>任务信息（标题、描述）</td>
+			</tr>
+			<tr>
+				<td><code>userTask</code></td>
+				<td>object</td>
+				<td>用户关联任务状态（<code>status</code>：0 未完成，1 已完成）</td>
+			</tr>
+		</tbody>
+	</table>
+
+	<h2>响应错误示例</h2>
+	<p>常见错误响应：</p>
+	<pre><code>{
+  "code": 401,
+  "message": "请先登录",
+  "data": null,
+  "timestamp": 1700001234
+}</code></pre>
+	<p>当 <code>code</code> 非 <code>200</code> 时需根据 <code>message</code> 提示用户或采取相应处理。</p>
+
+	<hr>
+	<p><strong>提示</strong>：若新增接口或字段，请同步更新此文档，确保前后端一致。建议在提交 PR 前通过 <code>uvicorn main:app --reload</code> 本地验证接口行为。</p>
+</body>
+</html>

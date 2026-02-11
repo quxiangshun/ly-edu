@@ -1,0 +1,18 @@
+import { get } from '../utils/request'
+
+export type Tag = {
+	id: number
+	name?: string
+	sort?: number
+	createTime?: string
+}
+
+/** 获取当前用户有效标签（管理员返回全部标签） */
+export function getEffectiveTags(): Promise<Tag[]> {
+	return get<Tag[]>('/tag/effective')
+}
+
+/** 获取全部标签，主要用于管理端 */
+export function getAllTags(): Promise<Tag[]> {
+	return get<Tag[]>('/tag/list')
+}

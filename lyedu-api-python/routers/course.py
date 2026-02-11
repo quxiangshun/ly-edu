@@ -43,11 +43,17 @@ def page(
     size: int = 10,
     keyword: Optional[str] = None,
     categoryId: Optional[int] = None,
+    tagId: Optional[int] = None,
     authorization: Optional[str] = Header(None, alias="Authorization"),
 ):
     user_id = _user_id(authorization)
     result = course_service.page(
-        page_num=page, size=size, keyword=keyword, category_id=categoryId, user_id=user_id
+        page_num=page,
+        size=size,
+        keyword=keyword,
+        category_id=categoryId,
+        tag_id=tagId,
+        user_id=user_id,
     )
     for record in result.get("records") or []:
         record["tagIds"] = tag_service.list_tag_ids_by_course(record.get("id") or 0)

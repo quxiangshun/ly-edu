@@ -67,6 +67,12 @@
 			}
 		},
 		{
+			"path": "pages/task-detail/task-detail",
+			"style": {
+				"navigationBarTitleText": "任务详情"
+			}
+		},
+		{
 			"path": "pages/my-liked-videos/my-liked-videos",
 			"style": {
 				"navigationBarTitleText": "我点赞的视频"

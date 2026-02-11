@@ -9,6 +9,12 @@ export type Course = {
 	status: number
 	sort: number
 	isRequired?: number
+	playCount?: number
+	likeCount?: number
+	commentCount?: number
+	duration?: number
+	createTime?: string
+	tagIds?: number[]
 }
 
 export type Video = {
@@ -22,6 +28,11 @@ export type Video = {
 	playCount?: number
 	likeCount?: number
 	liked?: boolean
+	cover?: string
+	courseName?: string
+	chapterName?: string
+	createTime?: string
+	commentCount?: number
 }
 
 export type ChapterItem = {
@@ -70,7 +81,7 @@ export type CourseCommentDto = {
 	createTime?: string
 }
 
-export function getCoursePage(params: { page: number; size: number; keyword?: string; categoryId?: number }): Promise<PageResult<Course>> {
+export function getCoursePage(params: { page: number; size: number; keyword?: string; categoryId?: number; tagId?: number }): Promise<PageResult<Course>> {
 	return get<PageResult<Course>>('/course/page', params as Record<string, any>)
 }
 

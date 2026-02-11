@@ -1,0 +1,22 @@
+/**
+ * 任务 API，与 lyedu-pc 业务一致
+ */
+import { get } from '../utils/request'
+
+export type Task = {
+	id: number
+	title: string
+	description?: string
+	cycleType: string
+	cycleConfig?: string
+	items: string
+	certificateId?: number
+	sort: number
+	status: number
+	startTime?: string
+	endTime?: string
+}
+
+export function getTaskById(id: number): Promise<Task> {
+	return get<Task>('/task/' + id)
+}

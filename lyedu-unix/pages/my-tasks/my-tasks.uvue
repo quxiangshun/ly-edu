@@ -5,7 +5,7 @@
 				<text class="loading-text">加载中...</text>
 			</view>
 			<view v-else class="task-list">
-				<view v-for="item in taskList" :key="item.task.id" class="task-card">
+				<view v-for="item in taskList" :key="item.task.id" class="task-card" @click="goDetail(item.task.id)">
 					<text class="task-title">{{ item.task.title != null ? item.task.title : '任务' }}</text>
 					<text class="task-status">{{ item.userTask != null && item.userTask.status === 1 ? '已完成' : '进行中' }}</text>
 				</view>
@@ -36,6 +36,12 @@
 			taskList.value = []
 		} finally {
 			loading.value = false
+		}
+	}
+
+	function goDetail(taskId: number): void {
+		if (taskId != null && taskId > 0) {
+			uni.navigateTo({ url: '/pages/task-detail/task-detail?id=' + taskId })
 		}
 	}
 </script>

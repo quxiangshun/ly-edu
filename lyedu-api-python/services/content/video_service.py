@@ -6,6 +6,7 @@ import pymysql
 
 import db
 from models.schemas import page_result
+from services.course import course_department_service
 
 
 def _int(v: Any, default: int = 0) -> int:
@@ -54,18 +55,19 @@ def _row_to_video_with_names(row: dict, extra: Optional[dict] = None) -> dict:
     base["chapterName"] = (row.get("chapter_name") or "").strip() or None
     base["playCount"] = row.get("play_count", 0)
     base["likeCount"] = row.get("like_count", 0)
+    base["createTime"] = row.get("create_time")
     return base
 
 
 def _page_sql(where_sql: str, params: List[Any], size: int, offset: int, with_play_like: bool) -> tuple:
     """构建分页 SQL；with_play_like=False 时不含 play_count/like_count（兼容未执行 V13 的库）。"""
     base = (
-        "SELECT v.id, v.course_id, v.chapter_id, v.title, v.url, v.cover, v.duration, v.sort, "
+        "SELECT v.id, v.course_id, v.chapter_id, v.title, v.url, v.cover, v.duration, v.sort, v.create_time, "
         "c.title AS course_name, ch.title AS chapter_name "
     )
     if with_play_like:
         base = (
-            "SELECT v.id, v.course_id, v.chapter_id, v.title, v.url, v.cover, v.duration, v.sort, "
+            "SELECT v.id, v.course_id, v.chapter_id, v.title, v.url, v.cover, v.duration, v.sort, v.create_time, "
             "v.play_count, v.like_count, c.title AS course_name, ch.title AS chapter_name "
         )
     sql = (
@@ -78,24 +80,141 @@ def _page_sql(where_sql: str, params: List[Any], size: int, offset: int, with_pl
     return sql, tuple(params) + (size, offset)
 
 
+_has_visibility_columns: Optional[bool] = None
+_course_tag_exists: Optional[bool] = None
+
+
+def _course_table_has_visibility() -> bool:
+    global _has_visibility_columns
+    if _has_visibility_columns is not None:
+        return _has_visibility_columns
+    try:
+        db.query_one("SELECT visibility FROM ly_course LIMIT 0", ())
+        _has_visibility_columns = True
+    except pymysql.err.OperationalError as e:
+        if e.args and e.args[0] == 1054:
+            _has_visibility_columns = False
+        else:
+            raise
+    except Exception:
+        _has_visibility_columns = False
+    return _has_visibility_columns
+
+
+def _course_tag_table_exists() -> bool:
+    global _course_tag_exists
+    if _course_tag_exists is not None:
+        return _course_tag_exists
+    try:
+        db.query_one("SELECT 1 FROM ly_course_tag LIMIT 0", ())
+        _course_tag_exists = True
+    except Exception:
+        _course_tag_exists = False
+    return _course_tag_exists
+
+
+def _effective_tags_for_user(user_id: Optional[int]) -> List[int]:
+    if user_id is None:
+        return []
+    try:
+        from services.learning import tag_service  # 延迟导入避免循环
+
+        if hasattr(tag_service, "_table_exists") and tag_service._table_exists():
+            return tag_service.get_effective_tag_ids_for_user(user_id)
+    except Exception:
+        return []
+    return []
+
+
+def _visibility_condition_for_user(user_id: Optional[int]) -> tuple:
+    """
+    返回 (condition_sql, params, is_admin, effective_tag_ids)
+    condition_sql 可能为 None，表示无需额外限制。
+    """
+    effective_tags: List[int] = _effective_tags_for_user(user_id)
+    if not _course_table_has_visibility():
+        # 无 visibility 列，仅返回标签信息
+        return None, [], False, effective_tags
+    if user_id is None:
+        return "c.visibility = 1", [], False, effective_tags
+    from services.user import user_service  # 延迟导入避免循环
+    from services.org import department_service
+
+    user = user_service.get_by_id(user_id)
+    if not user:
+        return "c.visibility = 1", [], False, effective_tags
+    role = (user.get("role") or "").lower()
+    if role == "admin":
+        return None, [], True, effective_tags
+
+    parts: List[str] = ["c.visibility = 1"]
+    params: List[Any] = []
+    dept_id = user.get("department_id")
+    allowed = (
+        department_service.get_department_id_and_descendant_ids(dept_id)
+        if dept_id is not None
+        else []
+    )
+    if allowed:
+        placeholders = ", ".join(["%s"] * len(allowed))
+        if course_department_service.table_exists():
+            parts.append(
+                f"(c.visibility = 0 AND EXISTS (SELECT 1 FROM ly_course_department cd WHERE cd.course_id = c.id AND cd.department_id IN ({placeholders})))"
+            )
+        else:
+            parts.append(f"(c.visibility = 0 AND c.department_id IN ({placeholders}))")
+        params.extend(allowed)
+    if effective_tags and _course_tag_table_exists():
+        placeholders = ", ".join(["%s"] * len(effective_tags))
+        parts.append(
+            f"(EXISTS (SELECT 1 FROM ly_course_tag ct_vis WHERE ct_vis.course_id = c.id AND ct_vis.tag_id IN ({placeholders})))"
+        )
+        params.extend(effective_tags)
+
+    condition = "(" + " OR ".join(parts) + ")" if parts else None
+    return condition, params, False, effective_tags
+
+
 def page(
     page_num: int = 1,
     size: int = 10,
     course_id: Optional[int] = None,
     keyword: Optional[str] = None,
+    tag_id: Optional[int] = None,
+    user_id: Optional[int] = None,
 ) -> dict:
     offset = (page_num - 1) * size
-    where = ["v.deleted = 0"]
+    where = ["v.deleted = 0", "c.deleted = 0"]
     params: List[Any] = []
+
+    visibility_condition, visibility_params, is_admin, effective_tags = _visibility_condition_for_user(user_id)
+    if visibility_condition:
+        where.append(visibility_condition)
+        params.extend(visibility_params)
+
     if course_id is not None:
         where.append("v.course_id = %s")
         params.append(course_id)
     if keyword and keyword.strip():
         where.append("v.title LIKE %s")
         params.append("%" + keyword.strip() + "%")
+    if tag_id is not None and _course_tag_table_exists():
+        where.append(
+            "EXISTS (SELECT 1 FROM ly_course_tag ct WHERE ct.course_id = v.course_id AND ct.tag_id = %s)"
+        )
+        params.append(tag_id)
+    elif not is_admin and effective_tags and _course_tag_table_exists():
+        placeholders = ", ".join(["%s"] * len(effective_tags))
+        where.append(
+            f"EXISTS (SELECT 1 FROM ly_course_tag ct WHERE ct.course_id = v.course_id AND ct.tag_id IN ({placeholders}))"
+        )
+        params.extend(effective_tags)
+
     where_sql = " AND ".join(where)
     total_row = db.query_one(
-        "SELECT COUNT(*) AS cnt FROM ly_video v WHERE " + where_sql, tuple(params)
+        "SELECT COUNT(*) AS cnt FROM ly_video v INNER JOIN ly_course c ON v.course_id = c.id AND c.deleted = 0 WHERE "
+        + where_sql,
+        tuple(params),
     )
     total = total_row["cnt"] or 0
     sql, query_params = _page_sql(where_sql, list(params), size, offset, with_play_like=True)

@@ -16,14 +16,37 @@
 </template>
 
 <script setup lang="uts">
-	import { getUser } from '../../utils/auth'
+	import { getUser, setUser, isLoggedIn } from '../../utils/auth'
+	import { getCurrentUser } from '../../api/user'
 
 	const user = ref<Record<string, any>>({})
+	const loading = ref(false)
 
 	onShow(() => {
 		const u = getUser()
 		user.value = u != null ? u : {}
+		if (isLoggedIn()) {
+			loadUser()
+		}
 	})
+
+	function loadUser(): void {
+		loading.value = true
+		getCurrentUser().then((info) => {
+			const u: Record<string, any> = {
+				id: info.id,
+				username: info.username,
+				realName: info.realName,
+				nickname: info.nickname,
+				avatar: info.avatar,
+				role: info.role
+			}
+			user.value = u
+			setUser(u)
+		}).catch(() => {}).finally(() => {
+			loading.value = false
+		})
+	}
 
 	const displayName = computed(() => {
 		const u = user.value
