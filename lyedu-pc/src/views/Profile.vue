@@ -35,8 +35,19 @@
               <el-form-item label="手机号" prop="mobile">
                 <el-input v-model="form.mobile" placeholder="手机号" clearable />
               </el-form-item>
-              <el-form-item label="头像地址" prop="avatar">
-                <el-input v-model="form.avatar" placeholder="头像 URL（可选）" clearable />
+              <el-form-item label="头像" prop="avatar">
+                <div class="avatar-upload-row">
+                  <el-upload
+                    class="avatar-uploader"
+                    :show-file-list="false"
+                    accept="image/jpeg,image/png,image/gif,image/webp"
+                    :http-request="handleAvatarUpload"
+                  >
+                    <img v-if="formAvatarPreview" :src="formAvatarPreview" class="avatar-preview" alt="" />
+                    <el-icon v-else class="avatar-uploader-icon"><Plus /></el-icon>
+                  </el-upload>
+                  <el-input v-model="form.avatar" placeholder="或输入头像 URL" clearable class="avatar-url-input" />
+                </div>
               </el-form-item>
               <el-form-item>
                 <el-button type="primary" :loading="saving" @click="handleSave">保存</el-button>
@@ -75,8 +86,10 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
+import { Plus } from '@element-plus/icons-vue'
 import AppHeader from '@/components/AppHeader.vue'
 import { getCurrentUser, getUserById, updateUser, type UserDetail } from '@/api/user'
+import { uploadImage } from '@/api/image'
 
 const router = useRouter()
 const loading = ref(false)
@@ -107,6 +120,34 @@ const avatarUrl = computed(() => {
   if (url.startsWith('/')) return window.location.origin + url
   return url
 })
+
+/** 编辑时表单中头像的预览 URL（用于上传后的即时展示） */
+const formAvatarPreview = computed(() => {
+  const url = form.value.avatar
+  if (!url) return ''
+  if (url.startsWith('http')) return url
+  if (url.startsWith('/')) return window.location.origin + url
+  return url
+})
+
+const handleAvatarUpload = async (options: { file: File }) => {
+  const file = options.file
+  if (!file.type.startsWith('image/')) {
+    ElMessage.warning('请选择图片文件')
+    return
+  }
+  try {
+    const res = await uploadImage(file)
+    if (res?.url) {
+      form.value.avatar = res.url
+      ElMessage.success('头像上传成功，请点击保存')
+    } else {
+      ElMessage.error('上传失败')
+    }
+  } catch (_e) {
+    ElMessage.error('上传失败')
+  }
+}
 
 const roleText = computed(() => {
   const r = detail.value?.role
@@ -250,6 +291,46 @@ onMounted(() => {
 
     .profile-form {
       max-width: 400px;
+
+      .avatar-upload-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .avatar-uploader {
+        :deep(.el-upload) {
+          border: 1px dashed var(--el-border-color);
+          border-radius: 6px;
+          cursor: pointer;
+          overflow: hidden;
+          width: 80px;
+          height: 80px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          &:hover {
+            border-color: var(--el-color-primary);
+          }
+        }
+      }
+
+      .avatar-preview {
+        width: 80px;
+        height: 80px;
+        object-fit: cover;
+        display: block;
+      }
+
+      .avatar-uploader-icon {
+        font-size: 24px;
+        color: #8c939d;
+      }
+
+      .avatar-url-input {
+        flex: 1;
+        min-width: 0;
+      }
     }
 
     .profile-view {

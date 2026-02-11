@@ -2,8 +2,8 @@
   <div class="home-container">
     <AppHeader />
     <el-main class="main-content">
-      <div class="banner">
-        <h2>欢迎来到 LyEdu 企业培训平台</h2>
+        <div class="banner">
+        <h2>欢迎来到 {{ siteTitle }} 企业培训平台</h2>
         <p>专业的在线学习解决方案，助力企业人才培养</p>
         <el-button type="primary" size="large" @click="$router.push('/courses')">
           开始学习
@@ -104,10 +104,12 @@ import AppHeader from '@/components/AppHeader.vue'
 import type { Course } from '@/api/course'
 import { getRecommendedCourses } from '@/api/course'
 import { getWatchedCourses, joinCourse } from '@/api/learning'
+import { getConfigByKey } from '@/api/config'
 
 const router = useRouter()
 
 const token = ref<string | null>(null)
+const siteTitle = ref('LyEdu')
 const recommendedCourses = ref<Course[]>([])
 const recentCourses = ref<Course[]>([])
 const recommendLoading = ref(false)
@@ -152,9 +154,17 @@ const handleStartLearn = async (course: Course) => {
   }
 }
 
+const loadSiteTitle = async () => {
+  try {
+    const title = await getConfigByKey('site.title')
+    if (title) siteTitle.value = String(title)
+  } catch (_e) {}
+}
+
 // 从localStorage读取token并监听变化
 onMounted(() => {
   token.value = localStorage.getItem('token')
+  loadSiteTitle()
   loadRecommended()
   loadRecentCourses()
   // 监听storage事件，当其他页面修改token时也能更新
