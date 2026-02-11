@@ -164,6 +164,25 @@ export async function getThemeColorFromLogoUrl(logoUrl: string): Promise<string>
   }
 }
 
+const DEFAULT_PRIMARY = '#409eff'
+
+/** 读取当前已应用到页面的主题主色（hex），与预览显示一致，保存「自适应」时优先使用 */
+export function getCurrentThemePrimary(): string {
+  if (typeof document === 'undefined' || !document.documentElement) return DEFAULT_PRIMARY
+  const raw = getComputedStyle(document.documentElement).getPropertyValue('--el-color-primary')?.trim() || ''
+  if (!raw) return DEFAULT_PRIMARY
+  const hex = /^#?[0-9a-f]{6}$/i.test(raw) ? (raw.startsWith('#') ? raw : '#' + raw) : ''
+  if (hex) return hex
+  const rgb = /^rgb\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)$/i.exec(raw)
+  if (rgb) {
+    const r = Math.max(0, Math.min(255, parseInt(rgb[1], 10)))
+    const g = Math.max(0, Math.min(255, parseInt(rgb[2], 10)))
+    const b = Math.max(0, Math.min(255, parseInt(rgb[3], 10)))
+    return rgbToHex(r, g, b)
+  }
+  return DEFAULT_PRIMARY
+}
+
 /** 根据配置应用主题（用于恢复已保存样式） */
 export async function applyThemeFromConfig(
   mode: string,

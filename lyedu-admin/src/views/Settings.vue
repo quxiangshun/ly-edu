@@ -141,7 +141,7 @@ import { ElMessage } from 'element-plus'
 import { QuestionFilled } from '@element-plus/icons-vue'
 import { getConfigAll, batchSetConfig, getConfigByKey, type ConfigItem } from '@/api/config'
 import { uploadImage } from '@/api/image'
-import { applyThemeFromConfig, applyDefaultTheme, applyCustomTheme, applyThemeFromLogoUrl, getThemeColorFromLogoUrl } from '@/utils/theme'
+import { applyThemeFromConfig, applyDefaultTheme, applyCustomTheme, applyThemeFromLogoUrl, getThemeColorFromLogoUrl, getCurrentThemePrimary } from '@/utils/theme'
 import { useHelp } from '@/hooks/useHelp'
 
 const activeTab = ref('site')
@@ -324,13 +324,13 @@ async function loadConfig() {
 async function handleSave() {
   saving.value = true
   try {
-    // 自适应：从 Logo 提取主色并写入 site.theme_color，学员端（unix 等）可直接读取显示
+    // 自适应：优先保存当前已应用的主题色（与预览一致），避免重新请求 Logo 失败导致保存默认色
     let themeColorToSave = ''
     if (form.site_theme_mode === 'custom') {
       themeColorToSave = form.site_theme_color || '#409eff'
     } else if (form.site_theme_mode === 'auto') {
-      const logoUrl = toAbsUrl(form.site_logo || '')
-      themeColorToSave = logoUrl ? await getThemeColorFromLogoUrl(logoUrl) : '#409eff'
+      const current = getCurrentThemePrimary()
+      themeColorToSave = current && current !== '#409eff' ? current : (await getThemeColorFromLogoUrl(toAbsUrl(form.site_logo || '')) || '#409eff')
     }
 
     await batchSetConfig({
