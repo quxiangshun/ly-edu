@@ -1,5 +1,5 @@
 <template>
-	<view class="page">
+	<view class="page" :style="themeRootStyle">
 		<view class="page-header">
 			<view class="container">
 				<view class="search-bar">
@@ -127,6 +127,7 @@
 	import { getVideoPage, type Video } from '../../api/video'
 	import { getCoursePage, type Course } from '../../api/course'
 	import { getEffectiveTags, type Tag } from '../../api/tag'
+	import { themePrimary } from '../../utils/theme'
 
 	type CategoryTab = {
 		id: number | null;
@@ -160,6 +161,8 @@
 	const courseLoading = ref(false)
 	// 控制列表滚动位置：切换标签/排序时置顶，需先改值再设 0 才能生效
 	const pageBodyScrollTop = ref(0)
+	// 主题色：与后台配置同步，供本页 var(--brand-primary) 使用
+	const themeRootStyle = computed((): Record<string, string> => ({ '--brand-primary': themePrimary.value }))
 
 	onShow(() => {
 		refreshData()
@@ -396,7 +399,7 @@
 .page {
 	flex: 1;
 	flex-direction: column;
-	background-color: #f5f6f8;
+	background-color: #f0f2f5;
 }
 .page-header {
 	flex-shrink: 0;
@@ -405,7 +408,7 @@
 	flex: 1;
 }
 .video-wrap {
-	padding: 0 16px 16px 16px;
+	padding: 0 16px 20px 16px;
 }
 .container {
 	flex-direction: column;
@@ -415,9 +418,12 @@
 	flex-direction: row;
 	align-items: center;
 	background-color: #ffffff;
-	border-radius: 20px;
-	padding: 10px 16px;
+	border-radius: 24px;
+	padding: 12px 18px;
 	margin-bottom: 16px;
+	border-width: 1px;
+	border-color: #ebeef5;
+	border-style: solid;
 }
 .search-input {
 	flex: 1;
@@ -467,7 +473,7 @@
 	flex-shrink: 0;
 }
 .tag-item--active {
-	background-color: #1989fa;
+	background-color: var(--brand-primary);
 }
 .tag-item--active .tag-text {
 	color: #ffffff;
@@ -481,6 +487,9 @@
 	border-radius: 12px;
 	margin-bottom: 16px;
 	height: 48px;
+	border-width: 1px;
+	border-color: #ebeef5;
+	border-style: solid;
 }
 .sort-row {
 	flex-direction: row;
@@ -510,7 +519,7 @@
 	flex-shrink: 0;
 }
 .sort-item--active .sort-text {
-	color: #1989fa;
+	color: var(--brand-primary);
 	font-weight: 600;
 }
 .sort-text {
@@ -519,13 +528,17 @@
 	white-space: nowrap;
 }
 .course-section {
-	margin-bottom: 20px;
+	margin-bottom: 24px;
 }
 .section-title {
 	font-size: 16px;
 	font-weight: 600;
 	color: #323233;
 	margin-bottom: 12px;
+	padding-left: 4px;
+	border-left-width: 3px;
+	border-left-color: var(--brand-primary);
+	border-left-style: solid;
 }
 .course-grid {
 	flex-direction: row;
@@ -539,17 +552,20 @@
 	margin-bottom: 12px;
 	width: 48%;
 	flex-direction: column;
+	border-width: 1px;
+	border-color: #ebeef5;
+	border-style: solid;
 }
 .course-cover {
 	width: 100%;
 	height: 100px;
-	background-color: #ebedf0;
+	background-color: #e8eaed;
 }
 .course-title {
 	font-size: 14px;
 	font-weight: 500;
 	color: #323233;
-	padding: 8px 10px;
+	padding: 10px 12px;
 }
 .video-section {
 	background-color: transparent;
@@ -566,11 +582,14 @@
 	margin-bottom: 16px;
 	width: 48%;
 	flex-direction: column;
+	border-width: 1px;
+	border-color: #ebeef5;
+	border-style: solid;
 }
 .video-cover {
 	width: 100%;
 	height: 120px;
-	background-color: #ebedf0;
+	background-color: #e8eaed;
 }
 .video-content {
 	flex: 1;
@@ -578,7 +597,7 @@
 	padding: 12px;
 }
 .video-title {
-	font-size: 16px;
+	font-size: 15px;
 	font-weight: 600;
 	color: #323233;
 	margin-bottom: 6px;

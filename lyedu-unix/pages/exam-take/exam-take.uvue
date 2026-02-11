@@ -1,5 +1,5 @@
 <template>
-	<scroll-view class="page" scroll-y="true" style="flex:1">
+	<scroll-view class="page" scroll-y="true" style="flex:1" :style="themeRootStyle">
 		<view class="content">
 			<view v-if="submitted" class="result-block">
 				<text class="result-title">{{ record != null && record.passed === 1 ? '考试通过' : '未通过' }}</text>
@@ -57,7 +57,11 @@
 </template>
 
 <script setup lang="uts">
+	import { computed } from 'vue'
 	import { getExamById, getPaperQuestions, submitExam, getExamStatus } from '../../api/exam'
+	import { themePrimary } from '../../utils/theme'
+
+	const themeRootStyle = computed((): Record<string, string> => ({ '--brand-primary': themePrimary.value }))
 
 	const examId = ref(0)
 	const loading = ref(true)
@@ -269,7 +273,7 @@
 	margin-top: 12px;
 }
 .back-btn {
-	background-color: #1989fa;
+	background-color: var(--brand-primary);
 	color: #ffffff;
 	border-radius: 24px;
 	margin-top: 24px;
@@ -319,7 +323,7 @@
 }
 .radio-check {
 	font-size: 16px;
-	color: #1989fa;
+	color: var(--brand-primary);
 }
 .text-input {
 	font-size: 14px;
@@ -333,7 +337,7 @@
 	margin-top: 24px;
 }
 .submit-btn {
-	background-color: #1989fa;
+	background-color: var(--brand-primary);
 	color: #ffffff;
 	border-radius: 24px;
 	height: 48px;

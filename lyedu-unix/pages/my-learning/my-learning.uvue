@@ -1,5 +1,5 @@
 <template>
-	<scroll-view class="page" scroll-y="true" style="flex:1">
+	<scroll-view class="page" scroll-y="true" style="flex:1" :style="themeRootStyle">
 		<view class="content">
 			<text class="desc">展示您已加入的课程</text>
 			<view v-if="!hasToken" class="empty-wrap">
@@ -31,9 +31,13 @@
 </template>
 
 <script setup lang="uts">
+	import { computed } from 'vue'
 	import { getMyCourses } from '../../api/learning'
 	import { getCourseById } from '../../api/course'
 	import { isLoggedIn } from '../../utils/auth'
+	import { themePrimary } from '../../utils/theme'
+
+	const themeRootStyle = computed((): Record<string, string> => ({ '--brand-primary': themePrimary.value }))
 
 	const hasToken = ref(isLoggedIn())
 	const loading = ref(false)
@@ -129,7 +133,7 @@
 	margin-bottom: 16px;
 }
 .primary-btn {
-	background-color: #1989fa;
+	background-color: var(--brand-primary);
 	color: #ffffff;
 	border-radius: 24px;
 	padding: 8px 24px;
@@ -182,7 +186,7 @@
 }
 .tag-text {
 	font-size: 12px;
-	color: #1989fa;
+	color: var(--brand-primary);
 	margin-left: 8px;
 }
 </style>

@@ -1,5 +1,5 @@
 <template>
-	<scroll-view class="page" scroll-y="true" style="flex:1">
+	<scroll-view class="page" scroll-y="true" style="flex:1" :style="themeRootStyle">
 		<view class="content">
 			<view v-if="loading" class="loading-wrap">
 				<text class="loading-text">加载中...</text>
@@ -18,7 +18,11 @@
 </template>
 
 <script setup lang="uts">
+	import { computed } from 'vue'
 	import { getMyTasks } from '../../api/userTask'
+	import { themePrimary } from '../../utils/theme'
+
+	const themeRootStyle = computed((): Record<string, string> => ({ '--brand-primary': themePrimary.value }))
 
 	const loading = ref(false)
 	const taskList = ref<any[]>([])
@@ -80,7 +84,7 @@
 }
 .task-status {
 	font-size: 13px;
-	color: #1989fa;
+	color: var(--brand-primary);
 }
 .empty-wrap {
 	padding: 40px 0;

@@ -141,7 +141,7 @@ import { ElMessage } from 'element-plus'
 import { QuestionFilled } from '@element-plus/icons-vue'
 import { getConfigAll, batchSetConfig, getConfigByKey, type ConfigItem } from '@/api/config'
 import { uploadImage } from '@/api/image'
-import { applyThemeFromConfig, applyDefaultTheme, applyCustomTheme, applyThemeFromLogoUrl } from '@/utils/theme'
+import { applyThemeFromConfig, applyDefaultTheme, applyCustomTheme, applyThemeFromLogoUrl, getThemeColorFromLogoUrl } from '@/utils/theme'
 import { useHelp } from '@/hooks/useHelp'
 
 const activeTab = ref('site')
@@ -324,10 +324,19 @@ async function loadConfig() {
 async function handleSave() {
   saving.value = true
   try {
+    // 自适应：从 Logo 提取主色并写入 site.theme_color，学员端（unix 等）可直接读取显示
+    let themeColorToSave = ''
+    if (form.site_theme_mode === 'custom') {
+      themeColorToSave = form.site_theme_color || '#409eff'
+    } else if (form.site_theme_mode === 'auto') {
+      const logoUrl = toAbsUrl(form.site_logo || '')
+      themeColorToSave = logoUrl ? await getThemeColorFromLogoUrl(logoUrl) : '#409eff'
+    }
+
     await batchSetConfig({
       'site.logo': form.site_logo,
       'site.theme_mode': form.site_theme_mode,
-      'site.theme_color': form.site_theme_mode === 'custom' ? (form.site_theme_color || '#409eff') : '',
+      'site.theme_color': themeColorToSave,
       'site.title': form.site_title,
       'site.keywords': form.site_keywords,
       'site.description': form.site_description,

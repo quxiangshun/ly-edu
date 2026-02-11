@@ -1,5 +1,6 @@
 <script lang="uts">
 	import { isLoggedIn } from './utils/auth'
+	import { initTheme } from './utils/theme'
 
 	// #ifdef APP-ANDROID || APP-HARMONY
 	let firstBackTime = 0
@@ -16,6 +17,7 @@
 
 	export default {
 		onLaunch() {
+			initTheme()
 			checkAuthAndRedirect()
 		},
 		onShow() {
@@ -49,12 +51,24 @@
 </script>
 
 <style>
-	/*每个页面公共css */
+	/* 每个页面公共样式；默认主题色与后台一致，各页根节点可 :style 覆盖 --brand-primary */
+	.page {
+		--brand-primary: #409eff;
+	}
 	.uni-row {
 		flex-direction: row;
 	}
 
 	.uni-column {
 		flex-direction: column;
+	}
+
+	/* 全局：主色按钮、链接等统一使用主题色 */
+	.primary-btn {
+		background-color: var(--brand-primary);
+		color: #ffffff;
+		border-radius: 24px;
+		padding: 10px 24px;
+		font-size: 15px;
 	}
 </style>

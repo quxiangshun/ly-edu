@@ -1,5 +1,5 @@
 <template>
-	<scroll-view class="page" scroll-y="true" style="flex:1">
+	<scroll-view class="page" scroll-y="true" style="flex:1" :style="themeRootStyle">
 		<view class="content">
 			<text class="subtitle">可参加的考试（按部门可见）</text>
 			<view v-if="loading" class="loading-wrap">
@@ -32,7 +32,11 @@
 </template>
 
 <script setup lang="uts">
+	import { computed } from 'vue'
 	import { getExamPage, getMyRecords } from '../../api/exam'
+	import { themePrimary } from '../../utils/theme'
+
+	const themeRootStyle = computed((): Record<string, string> => ({ '--brand-primary': themePrimary.value }))
 
 	const loading = ref(false)
 	const examList = ref<any[]>([])
@@ -148,7 +152,7 @@
 	color: #07c160;
 }
 .take-btn {
-	background-color: #1989fa;
+	background-color: var(--brand-primary);
 	color: #ffffff;
 	border-radius: 16px;
 }

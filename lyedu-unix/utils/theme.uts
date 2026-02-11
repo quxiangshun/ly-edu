@@ -1,0 +1,36 @@
+/**
+ * 主题色：与管理后台配置同步（site.theme_color），默认与后台一致 #409eff
+ */
+import { ref } from 'vue'
+import { getConfigByKey } from '../api/config'
+
+const DEFAULT_PRIMARY = '#409eff'
+
+export const themePrimary = ref(DEFAULT_PRIMARY)
+
+const HEX_REG = /^#?[0-9a-fA-F]{6}$/
+
+function normalizeHex(s: string | null | undefined): string {
+	if (s == null || typeof s !== 'string') return DEFAULT_PRIMARY
+	const t = s.trim()
+	if (t.length === 0) return DEFAULT_PRIMARY
+	const hex = t.startsWith('#') ? t : '#' + t
+	return HEX_REG.test(hex) ? hex : DEFAULT_PRIMARY
+}
+
+/** 启动时拉取后台配置的主题色并更新 themePrimary（无需登录） */
+export function initTheme(): Promise<void> {
+	return getConfigByKey('site.theme_color')
+		.then((v: any) => {
+			const raw = v != null ? String(v).trim() : ''
+			themePrimary.value = normalizeHex(raw.length > 0 ? raw : null)
+		})
+		.catch(() => {
+			themePrimary.value = DEFAULT_PRIMARY
+		})
+}
+
+/** 用于页面根节点 :style，使子级可使用 var(--brand-primary) */
+export function themeRootStyle(): Record<string, string> {
+	return { '--brand-primary': themePrimary.value }
+}

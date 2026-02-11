@@ -1,5 +1,5 @@
 <template>
-	<scroll-view class="page" scroll-y="true" style="flex:1">
+	<scroll-view class="page" scroll-y="true" style="flex:1" :style="themeRootStyle">
 		<view class="content">
 			<view class="logo-block">
 				<image class="login-logo" :src="logoSrc" mode="aspectFit"></image>
@@ -24,9 +24,13 @@
 </template>
 
 <script setup lang="uts">
+	import { computed } from 'vue'
 	import { login } from '../../api/auth'
 	import { getConfigByKey } from '../../api/config'
 	import { setToken, setUser } from '../../utils/auth'
+	import { themePrimary } from '../../utils/theme'
+
+	const themeRootStyle = computed((): Record<string, string> => ({ '--brand-primary': themePrimary.value }))
 
 	const siteTitle = ref('LyEdu')
 	const siteLogo = ref('')
@@ -129,7 +133,7 @@
 }
 .login-title {
 	font-size: 28px;
-	color: #1989fa;
+	color: var(--brand-primary);
 	font-weight: 600;
 }
 .login-subtitle {
@@ -160,11 +164,11 @@
 }
 .eye-btn {
 	font-size: 12px;
-	color: #1989fa;
+	color: var(--brand-primary);
 	margin-left: 8px;
 }
 .submit-btn {
-	background-color: #1989fa;
+	background-color: var(--brand-primary);
 	color: #ffffff;
 	border-radius: 24px;
 	height: 44px;

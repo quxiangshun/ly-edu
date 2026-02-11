@@ -1,5 +1,5 @@
 <template>
-	<view class="page">
+	<view class="page" :style="themeRootStyle">
 		<view v-if="loading" class="loading-wrap">
 			<text class="loading-text">加载中...</text>
 		</view>
@@ -41,9 +41,13 @@
 </template>
 
 <script setup lang="uts">
+	import { computed } from 'vue'
 	import { getVideoById, recordPlay, likeVideo, unlikeVideo } from '../../api/video'
 	import { getCourseById } from '../../api/course'
 	import { updateVideoProgress } from '../../api/learning'
+	import { themePrimary } from '../../utils/theme'
+
+	const themeRootStyle = computed((): Record<string, string> => ({ '--brand-primary': themePrimary.value }))
 
 	const videoId = ref(0)
 	const loading = ref(true)
@@ -229,7 +233,7 @@
 	margin-right: 16px;
 }
 .like-item {
-	color: #1989fa;
+	color: var(--brand-primary);
 }
 .video-list-section {
 	flex-direction: column;

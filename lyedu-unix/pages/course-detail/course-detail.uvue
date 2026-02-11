@@ -1,5 +1,5 @@
 <template>
-	<scroll-view class="page" scroll-y="true" style="flex:1">
+	<scroll-view class="page" scroll-y="true" style="flex:1" :style="themeRootStyle">
 		<view v-if="loading" class="loading-wrap">
 			<text class="loading-text">加载中...</text>
 		</view>
@@ -63,8 +63,12 @@
 </template>
 
 <script setup lang="uts">
+	import { computed } from 'vue'
 	import { getCourseById } from '../../api/course'
 	import { joinCourse } from '../../api/learning'
+	import { themePrimary } from '../../utils/theme'
+
+	const themeRootStyle = computed((): Record<string, string> => ({ '--brand-primary': themePrimary.value }))
 
 	const courseId = ref(0)
 	const loading = ref(true)
@@ -244,7 +248,7 @@
 }
 .elective {
 	background-color: #e8f4ff;
-	color: #1989fa;
+	color: var(--brand-primary);
 }
 .meta-text {
 	font-size: 13px;
@@ -289,7 +293,7 @@
 }
 .chapter-num {
 	font-size: 12px;
-	color: #1989fa;
+	color: var(--brand-primary);
 	margin-right: 8px;
 }
 .chapter-title {
@@ -340,7 +344,7 @@
 	border-top-color: #ebedf0;
 }
 .start-btn {
-	background-color: #1989fa;
+	background-color: var(--brand-primary);
 	color: #ffffff;
 	border-radius: 24px;
 	height: 44px;

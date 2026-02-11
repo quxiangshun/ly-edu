@@ -152,6 +152,18 @@ export async function applyThemeFromLogoUrl(logoUrl: string) {
   }
 }
 
+/** 从 Logo URL 提取主色（hex），供保存「自适应」时写入 site.theme_color，学员端可直接读取 */
+export async function getThemeColorFromLogoUrl(logoUrl: string): Promise<string> {
+  const url = logoUrl || ''
+  try {
+    const img = await loadImage(url)
+    const primary = extractDominantColor(img)
+    return /^#?[0-9a-f]{6}$/i.test(primary) ? primary : '#409eff'
+  } catch {
+    return '#409eff'
+  }
+}
+
 /** 根据配置应用主题（用于恢复已保存样式） */
 export async function applyThemeFromConfig(
   mode: string,
