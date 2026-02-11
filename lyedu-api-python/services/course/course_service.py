@@ -73,7 +73,11 @@ def _row_to_course(row: dict) -> dict:
 
 
 def _append_visibility_condition(where: List[str], params: List[Any], user_id: Optional[int]) -> None:
-    """当前登录用户只能看到：公开课程 + 关联了本部门或其子部门的私有课程。未登录仅看公开。"""
+    """
+    当前登录用户可见课程 = 公开课程 + 关联了本部门或其子部门的私有课程 + 带有「用户有效标签」的课程。
+    用户有效标签 = 用户自身标签 ∪ 用户所属部门标签 ∪ 用户所属部门及其所有子部门标签；课程若带有其中任一标签则对该用户可见。
+    未登录仅看公开。
+    """
     if not _course_table_has_visibility():
         return
     if user_id is None:
@@ -86,23 +90,39 @@ def _append_visibility_condition(where: List[str], params: List[Any], user_id: O
     if user.get("role") == "admin":
         return
     dept_id = user.get("department_id")
-    if dept_id is None:
-        where.append("visibility = 1")
-        return
-    allowed = department_service.get_department_id_and_descendant_ids(dept_id)
-    if not allowed:
-        where.append("visibility = 1")
-        return
-    if course_department_service.table_exists():
-        placeholders = ", ".join(["%s"] * len(allowed))
-        where.append(
-            f"(visibility = 1 OR (visibility = 0 AND EXISTS (SELECT 1 FROM ly_course_department cd WHERE cd.course_id = ly_course.id AND cd.department_id IN ({placeholders}))))"
-        )
-        params.extend(allowed)
-    else:
-        placeholders = ", ".join(["%s"] * len(allowed))
-        where.append(f"(visibility = 1 OR (visibility = 0 AND department_id IN ({placeholders})))")
-        params.extend(allowed)
+    allowed = department_service.get_department_id_and_descendant_ids(dept_id) if dept_id is not None else []
+
+    # 条件 A：公开课程；条件 B：私有且关联了用户部门或其子部门；条件 C：课程带有用户有效标签（见 tag_service.get_effective_tag_ids_for_user）
+    parts: List[str] = []
+    part_params: List[Any] = []
+    parts.append("visibility = 1")
+    if allowed:
+        if course_department_service.table_exists():
+            placeholders = ", ".join(["%s"] * len(allowed))
+            parts.append(
+                f"(visibility = 0 AND EXISTS (SELECT 1 FROM ly_course_department cd WHERE cd.course_id = ly_course.id AND cd.department_id IN ({placeholders})))"
+            )
+            part_params.extend(allowed)
+        else:
+            placeholders = ", ".join(["%s"] * len(allowed))
+            parts.append(f"(visibility = 0 AND department_id IN ({placeholders}))")
+            part_params.extend(allowed)
+
+    try:
+        from services.learning import tag_service
+        if tag_service._table_exists():
+            effective_tag_ids = tag_service.get_effective_tag_ids_for_user(user_id)
+            if effective_tag_ids:
+                ph = ", ".join(["%s"] * len(effective_tag_ids))
+                parts.append(
+                    f"(EXISTS (SELECT 1 FROM ly_course_tag ct WHERE ct.course_id = ly_course.id AND ct.tag_id IN ({ph})))"
+                )
+                part_params.extend(effective_tag_ids)
+    except Exception:
+        pass
+
+    where.append("(" + " OR ".join(parts) + ")")
+    params.extend(part_params)
 
 
 def _can_user_see_course(course: dict, user_id: Optional[int]) -> bool:
@@ -116,12 +136,24 @@ def _can_user_see_course(course: dict, user_id: Optional[int]) -> bool:
     if user.get("role") == "admin":
         return True
     dept_id = user.get("department_id")
-    if dept_id is None:
-        return False
-    allowed = department_service.get_department_id_and_descendant_ids(dept_id)
-    if course_department_service.table_exists():
-        return course_department_service.course_visible_to_departments(course.get("id"), allowed)
-    return course.get("department_id") is not None and course["department_id"] in allowed
+    allowed = department_service.get_department_id_and_descendant_ids(dept_id) if dept_id is not None else []
+    if allowed:
+        if course_department_service.table_exists():
+            if course_department_service.course_visible_to_departments(course.get("id"), allowed):
+                return True
+        elif course.get("department_id") is not None and course["department_id"] in allowed:
+            return True
+    try:
+        from services.learning import tag_service
+        if tag_service._table_exists():
+            effective_tags = tag_service.get_effective_tag_ids_for_user(user_id)
+            if effective_tags:
+                course_tag_ids = tag_service.list_tag_ids_by_course(course.get("id") or 0)
+                if any(tid in effective_tags for tid in course_tag_ids):
+                    return True
+    except Exception:
+        pass
+    return False
 
 
 def page(

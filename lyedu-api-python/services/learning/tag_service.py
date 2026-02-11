@@ -106,6 +106,29 @@ def list_tag_ids_by_user(user_id: int) -> List[int]:
         raise
 
 
+def get_effective_tag_ids_for_user(user_id: int) -> List[int]:
+    """
+    合并用户可见的标签 ID：用户自身关联的标签 + 用户所属部门关联的标签 + 用户所属部门及其所有子部门关联的标签。
+    用于课程可见性等：课程若带有上述任一类标签中的任意一个，该用户即可看到该课程（再结合公开/私有与部门可见性）。
+    """
+    if not _table_exists():
+        return []
+    result: List[int] = []
+    # 1. 用户自身拥有的标签
+    result.extend(list_tag_ids_by_user(user_id))
+    user = user_service.get_by_id(user_id)
+    if not user:
+        return list(dict.fromkeys(result))
+    dept_id = user.get("department_id")
+    if dept_id is None:
+        return list(dict.fromkeys(result))
+    # 2. 用户所属部门及其所有子部门 ID
+    dept_ids = department_service.get_department_id_and_descendant_ids(dept_id)
+    for did in dept_ids or []:
+        result.extend(list_tag_ids_by_department(did))
+    return list(dict.fromkeys(result))
+
+
 def list_tag_ids_by_department(department_id: int) -> List[int]:
     if not _table_exists():
         return []
