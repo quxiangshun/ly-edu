@@ -13,12 +13,13 @@
 			</view>
 
 			<!-- 飞书/钉钉/企微 PC 或 浏览器：扫码登录 -->
-			<view v-else-if="showQrcode" class="qrcode-block">
+			<view v-else-if="showQrcode && !(h5CanToggle && h5LoginMode === 'password')" class="qrcode-block">
 				<text class="qrcode-hint">请使用{{ authLabel }}扫码登录</text>
 				<image v-if="qrcodeUrl.length > 0" class="qrcode-img" :src="qrcodeUrl" mode="aspectFit"></image>
 				<view v-else class="qrcode-loading">
 					<text class="qrcode-loading-text">{{ qrcodeLoading ? '加载中...' : '暂无扫码登录' }}</text>
 				</view>
+				<text v-if="h5CanToggle" class="switch-link" @click="h5LoginMode = 'password'">账号密码登录</text>
 			</view>
 
 			<!-- 微信小程序：手机号登录 -->
@@ -27,11 +28,9 @@
 				<button open-type="getPhoneNumber" class="auth-btn" :loading="loading" @getphonenumber="handleWechatPhone">获取手机号登录</button>
 			</view>
 
-			<!-- 账号密码登录（authProvider 为 local 或 both） -->
-			<view v-if="showPasswordForm" class="form-block">
-				<view class="divider" v-if="showDivider">
-					<text class="divider-text">或</text>
-				</view>
+			<!-- 账号密码登录 -->
+			<view v-if="showPasswordForm && (!h5CanToggle || h5LoginMode === 'password')" class="form-block">
+				<text v-if="h5CanToggle" class="switch-link switch-link-top" @click="h5LoginMode = 'qrcode'">{{ authLabel }}扫码登录</text>
 				<view class="field-row">
 					<text class="field-label">用户名</text>
 					<input class="field-input" v-model="username" placeholder="请输入用户名" />
@@ -74,6 +73,11 @@
 	const qrcodeUrl = ref('')
 	const qrcodeLoading = ref(false)
 	const wxLoginCode = ref('')
+	const h5LoginMode = ref<'qrcode' | 'password'>('qrcode')
+
+	const h5CanToggle = computed((): boolean => {
+		return runPlatform.value === 'h5' && showQrcode.value && showPasswordForm.value
+	})
 
 	const showAuthButton = computed((): boolean => {
 		if (platformInfo.value == null) return false
@@ -99,11 +103,8 @@
 		const p = platformInfo.value.platform
 		if (p === 'local') return true
 		if (p === 'wechat_mp' && !isWechatMp()) return true
+		if ((p === 'feishu' || p === 'dingtalk' || p === 'wecom') && runPlatform.value === 'h5') return true
 		return false
-	})
-
-	const showDivider = computed((): boolean => {
-		return (showAuthButton.value || showQrcode.value || showWechatPhone.value) && showPasswordForm.value
 	})
 
 	function getRedirectPath(): string {
@@ -363,8 +364,8 @@
 .qrcode-img { width: 200px; height: 200px; }
 .qrcode-loading { width: 200px; height: 200px; align-items: center; justify-content: center; background-color: #f5f6f8; border-radius: 8px; }
 .qrcode-loading-text { font-size: 14px; color: #969799; }
-.divider { flex-direction: row; align-items: center; margin: 20px 0; }
-.divider-text { font-size: 14px; color: #969799; padding: 0 12px; }
+.switch-link { font-size: 12px; color: var(--brand-primary); margin-top: 12px; }
+.switch-link-top { margin-top: 0; margin-bottom: 16px; }
 .form-block { flex-direction: column; }
 .field-row { flex-direction: row; align-items: center; margin-bottom: 16px; border-bottom-width: 1px; border-bottom-color: #ebedf0; }
 .field-label { font-size: 14px; color: #323233; width: 70px; }
