@@ -1,17 +1,26 @@
 # -*- coding: utf-8 -*-
-"""认证路由，与 Java AuthController 对应（含飞书扫码/免登；扩展：后续可加钉钉/企业微信）"""
+"""认证路由：飞书/钉钉/企微 授权与扫码登录，微信小程序手机号登录；平台由管理后台配置，前端不写死"""
 from typing import Optional
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, Query
 from pydantic import BaseModel
 
 from common.result import ResultCode, error, error_result, success
 from services.user import user_service
 from services.auth import login_log_service
+from services.system import config_service
 from util.jwt_util import generate_token
 from util import feishu_api
+from util import wechat_api
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+# 平台显示名称映射（内部用，前端通过 platform 识别后自行展示）
+_PLATFORM_LABELS: dict[str, str] = {
+    "feishu": "飞书",
+    "dingtalk": "钉钉",
+    "wecom": "企微",
+}
 
 
 class LoginRequest(BaseModel):
@@ -22,6 +31,12 @@ class LoginRequest(BaseModel):
 class FeishuCallbackRequest(BaseModel):
     code: str = ""
     redirectUri: str = ""
+
+
+class WechatMpPhoneRequest(BaseModel):
+    """微信小程序：wx.login 的 code + getPhoneNumber 的 code"""
+    code: str = ""  # wx.login 返回，用于换 openid/session_key
+    phoneCode: str = ""  # getPhoneNumber 返回，用于换手机号
 
 
 def _ensure_str(v) -> str:
@@ -152,12 +167,43 @@ def login(body: LoginRequest, request: Request):
     return success(data)
 
 
+@router.get("/platform-info")
+def auth_platform_info():
+    """返回当前应用发布平台（三选一：feishu/dingtalk/wecom），前端据此展示登录方式"""
+    platform = (config_service.get_by_key("app.platform") or "feishu").strip().lower()
+    if platform not in ("feishu", "dingtalk", "wecom", "wechat_mp", "local"):
+        platform = "feishu"
+    return success({
+        "platform": platform,
+        "authLabel": _PLATFORM_LABELS.get(
+            platform if platform in _PLATFORM_LABELS else "feishu", "企业"
+        ),
+    })
+
+
 @router.get("/feishu/url")
-def feishu_url(redirect_uri: str, state: Optional[str] = None):
-    """获取飞书授权页 URL（与 Java GET /auth/feishu/url 一致）"""
+def feishu_url(
+    redirect_uri: str,
+    state: Optional[str] = None,
+    device: Optional[str] = Query(None, description="mobile=App内跳转授权，pc=扫码登录用 goto URL"),
+):
+    """获取飞书授权 URL。device=pc 时同时返回 qrcodeGoto 供二维码 SDK 使用"""
     try:
         url = feishu_api.build_authorize_url(redirect_uri, state or "")
-        return success({"url": url})
+        data: dict = {"url": url}
+        if device == "pc":
+            data["qrcodeGoto"] = url  # 扫码登录时 QR SDK 的 goto 参数
+        return success(data)
+    except ValueError as e:
+        return error_result(400, str(e))
+
+
+@router.get("/feishu/qrcode")
+def feishu_qrcode(redirect_uri: str, state: Optional[str] = None):
+    """获取飞书扫码登录用 goto URL（PC/浏览器端展示二维码）"""
+    try:
+        url = feishu_api.build_authorize_url(redirect_uri, state or "")
+        return success({"goto": url})
     except ValueError as e:
         return error_result(400, str(e))
 
@@ -263,3 +309,126 @@ def feishu_callback(body: FeishuCallbackRequest, request: Request):
         message="",
     )
     return success(data)
+
+
+def _check_union_id() -> bool:
+    """用户表是否有 union_id 列"""
+    try:
+        import db
+        db.query_one("SELECT union_id FROM ly_user LIMIT 1")
+        return True
+    except Exception:
+        return False
+
+
+@router.post("/wechat-mp/phone")
+def wechat_mp_phone_login(body: WechatMpPhoneRequest, request: Request):
+    """微信小程序：手机号校验用户是否存在，存在则绑定 union_id 并返回 token"""
+    code = (body.code or "").strip()
+    phone_code = (body.phoneCode or "").strip()
+    ip = request.client.host if request.client else None
+    ua = request.headers.get("user-agent", "")
+
+    if not phone_code:
+        login_log_service.add_login_log(
+            user_id=None, username=None, ip=ip, user_agent=ua,
+            channel="wechat_mp", success=False, message="PHONE_CODE_MISSING",
+        )
+        return error(400, "缺少手机号授权 code")
+
+    phone_info = wechat_api.get_phone_number(phone_code)
+    if not phone_info:
+        login_log_service.add_login_log(
+            user_id=None, username=None, ip=ip, user_agent=ua,
+            channel="wechat_mp", success=False, message="PHONE_DECODE_FAILED",
+        )
+        return error(400, "获取手机号失败，请重试")
+
+    mobile = (phone_info.get("purePhoneNumber") or phone_info.get("phoneNumber") or "").strip()
+    if not mobile:
+        return error(400, "未能解析到手机号")
+
+    user = user_service.find_by_mobile(mobile)
+    if not user:
+        login_log_service.add_login_log(
+            user_id=None, username=None, ip=ip, user_agent=ua,
+            channel="wechat_mp", success=False, message="USER_NOT_FOUND",
+        )
+        return error(400, "用户不存在")
+
+    union_id_to_bind = None
+    if code:
+        session_data = wechat_api.code2session(code)
+        if session_data:
+            union_id_to_bind = (session_data.get("unionid") or "").strip()
+            if not union_id_to_bind:
+                union_id_to_bind = (session_data.get("openid") or "").strip()
+
+    if union_id_to_bind and _check_union_id():
+        user_service.update(user["id"], union_id=union_id_to_bind)
+
+    if user.get("status") == 0:
+        login_log_service.add_login_log(
+            user_id=user.get("id"), username=_ensure_str(user.get("username")),
+            ip=ip, user_agent=ua, channel="wechat_mp", success=False, message="FORBIDDEN",
+        )
+        return error_result(ResultCode.FORBIDDEN)
+
+    uid = user.get("id") or 0
+    uid = int(uid)
+    uname = _ensure_str(user.get("username"))
+    token = generate_token(uid, uname)
+    if hasattr(token, "decode"):
+        token = token.decode("utf-8")
+    data = {
+        "token": str(token),
+        "userInfo": {
+            "id": uid,
+            "username": uname,
+            "realName": _ensure_str(user.get("real_name")) or None,
+            "role": _ensure_str(user.get("role")) or "student",
+        },
+    }
+    login_log_service.add_login_log(
+        user_id=uid, username=uname, ip=ip, user_agent=ua,
+        channel="wechat_mp", success=True, message="",
+    )
+    return success(data)
+
+
+# ---------- 钉钉、企微（预留接口，暂未实现） ----------
+
+@router.get("/dingtalk/url")
+def dingtalk_url(redirect_uri: str, state: Optional[str] = None):
+    """钉钉授权 URL（预留）"""
+    return error(501, "钉钉登录暂未开放，请在后端配置 DINGTALK_APP_ID 等并实现")
+
+
+@router.post("/dingtalk/callback")
+def dingtalk_callback():
+    """钉钉授权回调（预留）"""
+    return error(501, "钉钉登录暂未开放")
+
+
+@router.get("/dingtalk/qrcode")
+def dingtalk_qrcode():
+    """钉钉扫码登录（预留）"""
+    return error(501, "钉钉扫码登录暂未开放")
+
+
+@router.get("/wecom/url")
+def wecom_url(redirect_uri: str, state: Optional[str] = None):
+    """企微授权 URL（预留）"""
+    return error(501, "企微登录暂未开放")
+
+
+@router.post("/wecom/callback")
+def wecom_callback():
+    """企微授权回调（预留）"""
+    return error(501, "企微登录暂未开放")
+
+
+@router.get("/wecom/qrcode")
+def wecom_qrcode():
+    """企微扫码登录（预留）"""
+    return error(501, "企微扫码登录暂未开放")

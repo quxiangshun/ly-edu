@@ -1,0 +1,49 @@
+/**
+ * 运行平台检测：飞书 App/PC、微信小程序、浏览器 H5
+ * 用于登录页展示对应登录方式
+ */
+
+export type RunPlatform = 'feishu_app' | 'feishu_pc' | 'wechat_mp' | 'h5' | 'unknown'
+
+/** 当前运行环境 */
+export function getRunPlatform(): string {
+	// #ifdef MP-FEISHU
+	const sys = uni.getSystemInfoSync()
+	const platform = (sys != null && sys.platform != null) ? String(sys.platform) : ''
+	if (platform === 'windows' || platform === 'mac' || platform === 'macos') {
+		return 'feishu_pc'
+	}
+	return 'feishu_app'
+	// #endif
+
+	// #ifdef MP-WEIXIN
+	return 'wechat_mp'
+	// #endif
+
+	// #ifdef H5
+	return 'h5'
+	// #endif
+
+	// #ifdef APP
+	return 'h5'
+	// #endif
+
+	return 'unknown'
+}
+
+/** 是否需展示扫码登录（PC/浏览器） */
+export function needQrcodeLogin(): boolean {
+	const p = getRunPlatform()
+	return p === 'feishu_pc' || p === 'h5'
+}
+
+/** 是否第三方应用内（飞书/钉钉/企微，授权跳转登录） */
+export function isInThirdPartyApp(): boolean {
+	const p = getRunPlatform()
+	return p === 'feishu_app' || p === 'feishu_pc'
+}
+
+/** 是否微信小程序（手机号登录） */
+export function isWechatMp(): boolean {
+	return getRunPlatform() === 'wechat_mp'
+}

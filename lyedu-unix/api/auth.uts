@@ -1,16 +1,43 @@
 import { get, post } from '../utils/request'
 
-type FeishuUrlRes = { url: string }
+type FeishuUrlRes = { url: string; qrcodeGoto?: string }
+type FeishuQrcodeRes = { goto: string }
 type FeishuCallbackRes = { token: string; userInfo: Record<string, any> }
 type LoginRes = { token: string; userInfo: Record<string, any> }
+type PlatformInfoRes = { platform: string; authLabel: string }
 
-export function getFeishuAuthUrl(redirectUri: string, state: string | null = null): Promise<FeishuUrlRes> {
+/** 平台配置（前端根据 platform 展示登录方式，不写死平台名称） */
+export function getPlatformInfo(): Promise<PlatformInfoRes> {
+	return get<PlatformInfoRes>('/auth/platform-info')
+}
+
+/** 飞书授权 URL，device=pc 时返回 qrcodeGoto 供扫码使用 */
+export function getFeishuAuthUrl(redirectUri: string, state: string | null = null, device: string | null = null): Promise<FeishuUrlRes> {
 	const params: Record<string, string> = { redirect_uri: redirectUri, state: state != null ? state : '' }
+	if (device != null && device.length > 0) {
+		params['device'] = device
+	}
 	return get<FeishuUrlRes>('/auth/feishu/url', params)
+}
+
+/** 飞书扫码登录用 goto URL（PC/浏览器） */
+export function getFeishuQrcode(redirectUri: string, state: string | null = null): Promise<FeishuQrcodeRes> {
+	const params: Record<string, string> = { redirect_uri: redirectUri, state: state != null ? state : '' }
+	return get<FeishuQrcodeRes>('/auth/feishu/qrcode', params)
 }
 
 export function feishuCallback(code: string, redirectUri: string): Promise<FeishuCallbackRes> {
 	return post<FeishuCallbackRes>('/auth/feishu/callback', { code: code, redirectUri: redirectUri })
+}
+
+/** 微信小程序：手机号登录 */
+export function wechatMpPhoneLogin(code: string, phoneCode: string): Promise<LoginRes> {
+	return post<LoginRes>('/auth/wechat-mp/phone', { code: code, phoneCode: phoneCode })
+}
+
+/** 钉钉/企微 扫码 URL（预留） */
+export function getThirdPartyQrcode(platform: string): Promise<{ goto: string }> {
+	return get<{ goto: string }>('/auth/' + platform + '/qrcode')
 }
 
 export function login(username: string, password: string): Promise<LoginRes> {

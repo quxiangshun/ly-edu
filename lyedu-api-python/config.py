@@ -67,6 +67,10 @@ FEISHU_APP_ID = os.getenv("FEISHU_APP_ID", "")
 FEISHU_APP_SECRET = os.getenv("FEISHU_APP_SECRET", "")
 FEISHU_REDIRECT_URI = os.getenv("FEISHU_REDIRECT_URI", "")
 
+# 微信小程序（手机号登录、绑定 union_id）
+WECHAT_MP_APP_ID = os.getenv("WECHAT_MP_APP_ID", "")
+WECHAT_MP_APP_SECRET = os.getenv("WECHAT_MP_APP_SECRET", "")
+
 # FA 同步脚本（sync_fa_to_ly.py）：数据源
 FA_SOURCE_HOST = os.getenv("FA_SOURCE_HOST", "127.0.0.1")
 FA_SOURCE_PORT = int(os.getenv("FA_SOURCE_PORT", "3307"))

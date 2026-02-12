@@ -7,7 +7,31 @@
 				<text class="login-subtitle">企业培训平台</text>
 			</view>
 
-			<view class="form-block">
+			<!-- 飞书/钉钉/企微 App 内：授权登录按钮 -->
+			<view v-if="showAuthButton" class="auth-block">
+				<button class="auth-btn" :loading="loading" @click="handleThirdPartyAuth">{{ authLabel }}授权登录</button>
+			</view>
+
+			<!-- 飞书/钉钉/企微 PC 或 浏览器：扫码登录 -->
+			<view v-else-if="showQrcode" class="qrcode-block">
+				<text class="qrcode-hint">请使用{{ authLabel }}扫码登录</text>
+				<image v-if="qrcodeUrl.length > 0" class="qrcode-img" :src="qrcodeUrl" mode="aspectFit"></image>
+				<view v-else class="qrcode-loading">
+					<text class="qrcode-loading-text">{{ qrcodeLoading ? '加载中...' : '暂无扫码登录' }}</text>
+				</view>
+			</view>
+
+			<!-- 微信小程序：手机号登录 -->
+			<view v-else-if="showWechatPhone" class="wechat-block">
+				<text class="wechat-hint">请授权手机号以登录</text>
+				<button open-type="getPhoneNumber" class="auth-btn" :loading="loading" @getphonenumber="handleWechatPhone">获取手机号登录</button>
+			</view>
+
+			<!-- 账号密码登录（authProvider 为 local 或 both） -->
+			<view v-if="showPasswordForm" class="form-block">
+				<view class="divider" v-if="showDivider">
+					<text class="divider-text">或</text>
+				</view>
 				<view class="field-row">
 					<text class="field-label">用户名</text>
 					<input class="field-input" v-model="username" placeholder="请输入用户名" />
@@ -24,46 +48,281 @@
 </template>
 
 <script setup lang="uts">
-	import { computed } from 'vue'
-	import { login } from '../../api/auth'
+	import { computed, ref } from 'vue'
+	import { login, getPlatformInfo, getFeishuAuthUrl, getFeishuQrcode, feishuCallback, wechatMpPhoneLogin } from '../../api/auth'
 	import { getConfigByKey } from '../../api/config'
 	import { setToken, setUser } from '../../utils/auth'
-	import { themePrimary } from '../../utils/theme'
+	import { getThemeRootStyle } from '../../utils/theme'
+	import { getRunPlatform, needQrcodeLogin, isWechatMp } from '../../utils/platform'
 
-	const themeRootStyle = computed((): Record<string, string> => ({ '--brand-primary': themePrimary.value }))
+	const themeRootStyle = computed(() => getThemeRootStyle())
 
 	const siteTitle = ref('LyEdu')
 	const siteLogo = ref('')
 	const logoSrc = computed(() => {
 		const raw = siteLogo.value.length > 0 ? siteLogo.value : '/static/logo.png'
-		if (raw.startsWith('http://') || raw.startsWith('https://')) return raw
-		return raw
+		return raw.startsWith('http') ? raw : raw
 	})
 
 	const username = ref('')
 	const password = ref('')
 	const showPassword = ref(false)
 	const loading = ref(false)
+	const authLabel = ref('企业')
+	const platformInfo = ref<{ platform: string; authLabel: string } | null>(null)
+	const runPlatform = ref('unknown')
+	const qrcodeUrl = ref('')
+	const qrcodeLoading = ref(false)
+	const wxLoginCode = ref('')
+
+	const showAuthButton = computed((): boolean => {
+		if (platformInfo.value == null) return false
+		const p = platformInfo.value.platform
+		if (p === 'local') return false
+		if (runPlatform.value === 'feishu_app') return (p === 'feishu' || p === 'dingtalk' || p === 'wecom')
+		return false
+	})
+
+	const showQrcode = computed((): boolean => {
+		if (platformInfo.value == null) return false
+		const p = platformInfo.value.platform
+		if (p === 'local') return false
+		return needQrcodeLogin() && (p === 'feishu' || p === 'dingtalk' || p === 'wecom')
+	})
+
+	const showWechatPhone = computed((): boolean => {
+		return isWechatMp()
+	})
+
+	const showPasswordForm = computed((): boolean => {
+		if (platformInfo.value == null) return true
+		const p = platformInfo.value.platform
+		if (p === 'local') return true
+		if (p === 'wechat_mp' && !isWechatMp()) return true
+		return false
+	})
+
+	const showDivider = computed((): boolean => {
+		return (showAuthButton.value || showQrcode.value || showWechatPhone.value) && showPasswordForm.value
+	})
+
+	function getRedirectPath(): string {
+		const pages = getCurrentPages()
+		const cur = pages.length > 0 ? (pages[pages.length - 1] as any) : null
+		let redirectPath = '/pages/my/my'
+		if (cur != null && cur.options != null && cur.options['redirect'] != null) {
+			const r = decodeURIComponent((cur.options['redirect'] as string).trim())
+			if (r.length > 0 && r.indexOf('login') < 0) {
+				redirectPath = r.startsWith('/') ? r : '/' + r
+			}
+		}
+		return redirectPath
+	}
+
+	function doRedirect(path: string): void {
+		const tabPaths = ['/pages/index/index', '/pages/courses/courses', '/pages/my/my']
+		const isTab = tabPaths.indexOf(path) >= 0
+		const fullPath = path.startsWith('/') ? path : '/' + path
+		if (isTab) {
+			uni.switchTab({ url: fullPath })
+		} else {
+			uni.reLaunch({ url: fullPath })
+		}
+	}
+
+	function onLoginSuccess(): void {
+		uni.showToast({ title: '登录成功', icon: 'success' })
+		setTimeout(() => doRedirect(getRedirectPath()), 500)
+	}
 
 	onLoad((options: any) => {
+		runPlatform.value = getRunPlatform()
 		loadBranding()
+		loadPlatformInfo()
+		if (options != null && options['code'] != null && (options['code'] as string).length > 0) {
+			handleOAuthCallback(options['code'] as string)
+		}
 	})
 
 	async function loadBranding(): Promise<void> {
 		try {
 			const title = await getConfigByKey('site.title')
-			if (title != null && title.length > 0) {
-				siteTitle.value = title
-			}
+			if (title != null && title.length > 0) siteTitle.value = title
 		} catch (_e) {}
-
 		try {
 			const logo = await getConfigByKey('site.logo')
-			if (logo != null && logo.length > 0) {
-				siteLogo.value = logo
-			}
+			if (logo != null && logo.length > 0) siteLogo.value = logo
 		} catch (_e) {}
 	}
+
+	async function loadPlatformInfo(): Promise<void> {
+		try {
+			const info = await getPlatformInfo()
+			if (info != null) {
+				platformInfo.value = { platform: info.platform ?? 'feishu', authLabel: info.authLabel ?? '企业' }
+				authLabel.value = (info.authLabel != null && (info.authLabel as string).length > 0) ? (info.authLabel as string) : '企业'
+			} else {
+				platformInfo.value = { platform: 'feishu', authLabel: '企业' }
+			}
+		} catch (_e) {
+			platformInfo.value = { platform: 'feishu', authLabel: '企业' }
+		}
+		if (needQrcodeLogin() && platformInfo.value != null && (platformInfo.value.platform === 'feishu' || platformInfo.value.platform === 'dingtalk' || platformInfo.value.platform === 'wecom')) {
+			loadQrcode()
+		}
+	}
+
+	async function getRedirectBaseUri(): Promise<string> {
+		try {
+			const base = await getConfigByKey('app.redirect_uri')
+			if (base != null && base.length > 0) return base.replace(/\/$/, '')
+		} catch (_e) {}
+		return ''
+	}
+
+	async function loadQrcode(): Promise<void> {
+		const p = platformInfo.value
+		if (p == null) return
+		if (p.platform === 'feishu') {
+			qrcodeLoading.value = true
+			try {
+				let base = await getRedirectBaseUri()
+				if (base.length === 0) {
+					// #ifdef H5
+					try {
+						const w = typeof globalThis !== 'undefined' ? (globalThis as any) : null
+						if (w != null && w.location != null) {
+							const loc = w.location
+							base = (loc.origin ?? '') + (loc.pathname ?? '/')
+						}
+					} catch (_e2) {}
+					// #endif
+				}
+				const redirectUri = base.length > 0 ? (base + '?redirect=' + encodeURIComponent(getRedirectPath())) : ''
+				if (redirectUri.length === 0) return
+				const res = await getFeishuQrcode(redirectUri, null)
+				if (res != null && res.goto != null && res.goto.length > 0) {
+					qrcodeUrl.value = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(res.goto)
+				}
+			} catch (_e) {}
+			finally {
+				qrcodeLoading.value = false
+			}
+		}
+	}
+
+	async function handleThirdPartyAuth(): Promise<void> {
+		const p = platformInfo.value
+		if (p == null || p.platform !== 'feishu') return
+		loading.value = true
+		try {
+			let base = await getRedirectBaseUri()
+			if (base.length === 0) {
+				// #ifdef H5
+				try {
+					const w = typeof globalThis !== 'undefined' ? (globalThis as any) : null
+					if (w != null && w.location != null) {
+						const loc = w.location
+						base = (loc.origin ?? '') + (loc.pathname ?? '/')
+					}
+				} catch (_e2) {}
+				// #endif
+			}
+			if (base.length === 0) {
+				uni.showToast({ title: '请配置 app.redirect_uri', icon: 'none' })
+				return
+			}
+			const redirectUri = base + '?redirect=' + encodeURIComponent(getRedirectPath())
+			const res = await getFeishuAuthUrl(redirectUri, null, 'mobile')
+			if (res != null && res.url != null && res.url.length > 0) {
+				// #ifdef H5
+				try {
+					const w = typeof globalThis !== 'undefined' ? (globalThis as any) : null
+					if (w != null && w.location != null && (w as any).location != null) {
+						(w as any).location.href = res.url
+						return
+					}
+				} catch (_e2) {}
+				// #endif
+				uni.showToast({ title: '请在浏览器中打开链接', icon: 'none' })
+			}
+		} catch (_e) {}
+		finally {
+			loading.value = false
+		}
+	}
+
+	async function handleOAuthCallback(code: string): Promise<void> {
+		loading.value = true
+		try {
+			let base = await getRedirectBaseUri()
+			if (base.length === 0) {
+				// #ifdef H5
+				try {
+					const w = typeof globalThis !== 'undefined' ? (globalThis as any) : null
+					if (w != null && w.location != null) {
+						const loc = w.location
+						base = (loc.origin ?? '') + (loc.pathname ?? '/')
+					}
+				} catch (_e2) {}
+				// #endif
+			}
+			const redirectUri = base.length > 0 ? (base + '?redirect=' + encodeURIComponent(getRedirectPath())) : ''
+			const res = await feishuCallback(code, redirectUri)
+			if (res != null && res.token != null) {
+				setToken(res.token)
+				if (res.userInfo != null) setUser(res.userInfo)
+				onLoginSuccess()
+			}
+		} catch (_e) {}
+		finally {
+			loading.value = false
+		}
+	}
+
+	async function handleWechatPhone(e: any): Promise<void> {
+		const detail = e != null ? e.detail : null
+		if (detail == null) {
+			if (e.errMsg != null && (e.errMsg as string).indexOf('cancel') >= 0) return
+			uni.showToast({ title: '需授权手机号才能登录', icon: 'none' })
+			return
+		}
+		const phoneCode = (detail.code != null ? detail.code : '') as string
+		if (phoneCode.length === 0) {
+			uni.showToast({ title: '获取手机号失败', icon: 'none' })
+			return
+		}
+		loading.value = true
+		try {
+			let code = wxLoginCode.value
+			if (code.length === 0) {
+				const loginRes = await new Promise<any>((resolve) => {
+					uni.login({ provider: 'weixin', success: (r) => resolve(r), fail: () => resolve(null) })
+				})
+				code = (loginRes != null && loginRes.code != null) ? (loginRes.code as string) : ''
+			}
+			const res = await wechatMpPhoneLogin(code, phoneCode)
+			if (res != null && res.token != null) {
+				setToken(res.token)
+				if (res.userInfo != null) setUser(res.userInfo)
+				onLoginSuccess()
+			}
+		} catch (_e) {}
+		finally {
+			loading.value = false
+		}
+	}
+
+	onShow(() => {
+		if (isWechatMp()) {
+			uni.login({
+				provider: 'weixin',
+				success: (r) => {
+					if (r.code != null) wxLoginCode.value = r.code as string
+				}
+			})
+		}
+	})
 
 	async function handleLogin(): Promise<void> {
 		const u = username.value.trim()
@@ -81,99 +340,35 @@
 			const res = await login(u, p)
 			if (res != null && res.token != null) {
 				setToken(res.token)
-				if (res.userInfo != null) {
-					setUser(res.userInfo)
-				}
-				uni.showToast({ title: '登录成功', icon: 'success' })
-				const pages = getCurrentPages()
-				const cur = pages.length > 0 ? (pages[pages.length - 1] as any) : null
-				let redirectPath = '/pages/index/index'
-				if (cur != null && cur.options != null && cur.options['redirect'] != null) {
-					const r = decodeURIComponent((cur.options['redirect'] as string).trim())
-					if (r.length > 0 && r.indexOf('login') < 0) {
-						redirectPath = r.startsWith('/') ? r : '/' + r
-					}
-				}
-				setTimeout(() => {
-					const tabPaths = ['/pages/index/index', '/pages/courses/courses', '/pages/my/my']
-					const isTab = tabPaths.indexOf(redirectPath) >= 0 || redirectPath === 'pages/index/index' || redirectPath === 'pages/courses/courses' || redirectPath === 'pages/my/my'
-					if (isTab) {
-						uni.switchTab({ url: redirectPath.startsWith('/') ? redirectPath : '/' + redirectPath })
-					} else {
-						const fullPath = redirectPath.startsWith('/') ? redirectPath : '/' + redirectPath
-						uni.reLaunch({ url: fullPath })
-					}
-				}, 500)
+				if (res.userInfo != null) setUser(res.userInfo)
+				onLoginSuccess()
 			}
-		} catch (_e) {
-			// 错误由 request 拦截器提示
-		} finally {
+		} catch (_e) {}
+		finally {
 			loading.value = false
 		}
 	}
 </script>
 
 <style>
-.page {
-	flex: 1;
-}
-.content {
-	flex-direction: column;
-	padding: 40px 24px;
-}
-.logo-block {
-	flex-direction: column;
-	align-items: center;
-	margin-bottom: 40px;
-}
-.login-logo {
-	width: 72px;
-	height: 72px;
-	margin-bottom: 12px;
-}
-.login-title {
-	font-size: 28px;
-	color: var(--brand-primary);
-	font-weight: 600;
-}
-.login-subtitle {
-	font-size: 16px;
-	color: #969799;
-	margin-top: 8px;
-}
-.form-block {
-	flex-direction: column;
-}
-.field-row {
-	flex-direction: row;
-	align-items: center;
-	margin-bottom: 16px;
-	border-bottom-width: 1px;
-	border-bottom-color: #ebedf0;
-}
-.field-label {
-	font-size: 14px;
-	color: #323233;
-	width: 70px;
-}
-.field-input {
-	flex: 1;
-	font-size: 14px;
-	height: 44px;
-	padding: 0 8px;
-}
-.eye-btn {
-	font-size: 12px;
-	color: var(--brand-primary);
-	margin-left: 8px;
-}
-.submit-btn {
-	background-color: var(--brand-primary);
-	color: #ffffff;
-	border-radius: 24px;
-	height: 44px;
-	line-height: 44px;
-	font-size: 16px;
-	margin-top: 30px;
-}
+.page { flex: 1; }
+.content { flex-direction: column; padding: 40px 24px; }
+.logo-block { flex-direction: column; align-items: center; margin-bottom: 32px; }
+.login-logo { width: 72px; height: 72px; margin-bottom: 12px; }
+.login-title { font-size: 28px; color: var(--brand-primary); font-weight: 600; }
+.login-subtitle { font-size: 16px; color: #969799; margin-top: 8px; }
+.auth-block, .qrcode-block, .wechat-block { flex-direction: column; align-items: center; margin-bottom: 24px; }
+.auth-btn { background-color: var(--brand-primary); color: #ffffff; border-radius: 24px; height: 44px; line-height: 44px; font-size: 16px; width: 100%; }
+.qrcode-hint, .wechat-hint { font-size: 14px; color: #646566; margin-bottom: 16px; }
+.qrcode-img { width: 200px; height: 200px; }
+.qrcode-loading { width: 200px; height: 200px; align-items: center; justify-content: center; background-color: #f5f6f8; border-radius: 8px; }
+.qrcode-loading-text { font-size: 14px; color: #969799; }
+.divider { flex-direction: row; align-items: center; margin: 20px 0; }
+.divider-text { font-size: 14px; color: #969799; padding: 0 12px; }
+.form-block { flex-direction: column; }
+.field-row { flex-direction: row; align-items: center; margin-bottom: 16px; border-bottom-width: 1px; border-bottom-color: #ebedf0; }
+.field-label { font-size: 14px; color: #323233; width: 70px; }
+.field-input { flex: 1; font-size: 14px; height: 44px; padding: 0 8px; }
+.eye-btn { font-size: 12px; color: var(--brand-primary); margin-left: 8px; }
+.submit-btn { background-color: var(--brand-primary); color: #ffffff; border-radius: 24px; height: 44px; line-height: 44px; font-size: 16px; margin-top: 30px; }
 </style>
