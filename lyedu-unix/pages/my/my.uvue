@@ -1,70 +1,78 @@
 <template>
-	<scroll-view class="page" scroll-y="true" style="flex:1">
-		<view class="content">
-			<view class="user-block" @click="handleUserClick">
-				<image class="user-avatar" :src="avatarUrl" mode="aspectFill"></image>
-				<view class="user-info">
-					<text class="user-name">{{ displayName }}</text>
-					<text class="user-desc">{{ userDesc }}</text>
+	<view class="page" :style="themeRootStyle">
+		<scroll-view scroll-y="true" style="flex:1">
+			<view class="content">
+				<view class="user-block" @click="handleUserClick">
+					<image class="user-avatar" :src="avatarUrl" mode="aspectFill"></image>
+					<view class="user-info">
+						<text class="user-name">{{ displayName }}</text>
+						<text class="user-desc">{{ userDesc }}</text>
+					</view>
 				</view>
-			</view>
 
-			<view v-if="hasToken" class="stats-row">
-				<view class="stat-item" @click="navTo('/pages/my-learning/my-learning')">
-					<text class="stat-value">{{ personalStats.courseCount }}</text>
-					<text class="stat-label">学习课程</text>
+				<view v-if="hasToken" class="stats-row">
+					<view class="stat-item" @click="navTo('/pages/my-learning/my-learning')">
+						<text class="stat-value">{{ personalStats.courseCount }}</text>
+						<text class="stat-label">学习课程</text>
+					</view>
+					<view class="stat-item">
+						<text class="stat-value">{{ personalStats.avgProgress }}%</text>
+						<text class="stat-label">平均进度</text>
+					</view>
+					<view class="stat-item" @click="navTo('/pages/my-points/my-points')">
+						<text class="stat-value">{{ personalStats.totalPoints }}</text>
+						<text class="stat-label">积分</text>
+					</view>
+					<view class="stat-item" @click="navTo('/pages/my-certificates/my-certificates')">
+						<text class="stat-value">{{ personalStats.certificateCount }}</text>
+						<text class="stat-label">证书</text>
+					</view>
+					<view class="stat-item" @click="navTo('/pages/my-tasks/my-tasks')">
+						<text class="stat-value">{{ personalStats.taskCompletedCount }}</text>
+						<text class="stat-label">已完成</text>
+					</view>
 				</view>
-				<view class="stat-item">
-					<text class="stat-value">{{ personalStats.avgProgress }}%</text>
-					<text class="stat-label">平均进度</text>
-				</view>
-				<view class="stat-item" @click="navTo('/pages/my-points/my-points')">
-					<text class="stat-value">{{ personalStats.totalPoints }}</text>
-					<text class="stat-label">积分</text>
-				</view>
-				<view class="stat-item" @click="navTo('/pages/my-certificates/my-certificates')">
-					<text class="stat-value">{{ personalStats.certificateCount }}</text>
-					<text class="stat-label">证书</text>
-				</view>
-				<view class="stat-item" @click="navTo('/pages/my-tasks/my-tasks')">
-					<text class="stat-value">{{ personalStats.taskCompletedCount }}</text>
-					<text class="stat-label">已完成</text>
-				</view>
-			</view>
 
-			<view class="menu-section">
-				<view
-					v-for="item in mainMenus"
-					:key="item.path"
-					class="menu-item"
-					@click="navTo(item.path)"
-				>
-					<image class="menu-icon" :src="item.icon" mode="aspectFit"></image>
-					<text class="menu-text">{{ item.text }}</text>
+				<view class="menu-section">
+					<view
+						v-for="item in mainMenus"
+						:key="item.path"
+						class="menu-item"
+						@click="navTo(item.path)"
+					>
+						<image class="menu-icon" :src="item.icon" mode="aspectFit"></image>
+						<text class="menu-text">{{ item.text }}</text>
+					</view>
 				</view>
-			</view>
 
-			<view class="menu-section">
-				<view
-					v-for="item in secondaryMenus"
-					:key="item.path"
-					class="menu-item"
-					@click="navTo(item.path)"
-				>
-					<image class="menu-icon" :src="item.icon" mode="aspectFit"></image>
-					<text class="menu-text">{{ item.text }}</text>
+				<view class="menu-section">
+					<view
+						v-for="item in secondaryMenus"
+						:key="item.path"
+						class="menu-item"
+						@click="navTo(item.path)"
+					>
+						<image class="menu-icon" :src="item.icon" mode="aspectFit"></image>
+						<text class="menu-text">{{ item.text }}</text>
+					</view>
 				</view>
 			</view>
-		</view>
-	</scroll-view>
+		</scroll-view>
+
+		<!-- 自定义 TabBar -->
+		<custom-tab-bar :current="2" @change="handleTabChange"></custom-tab-bar>
+	</view>
 </template>
 
 <script setup lang="uts">
+	import { ref, computed } from 'vue'
 	import { getUser, isLoggedIn } from '../../utils/auth'
+	import { themePrimary } from '../../utils/theme'
 	import { getWatchedCourses } from '../../api/learning'
 	import { getMyTotal } from '../../api/point'
 	import { getMyCertificates } from '../../api/userCertificate'
 	import { getMyTasks } from '../../api/userTask'
+	import CustomTabBar from '../../components/custom-tab-bar.uvue'
 
 	type MenuItem = {
 		text: string;
@@ -72,6 +80,7 @@
 		path: string;
 	}
 
+	const themeRootStyle = computed((): Record<string, string> => ({ '--brand-primary': themePrimary.value }))
 	const hasToken = ref(isLoggedIn())
 	const user = ref<Record<string, any>>({})
 	const personalStats = ref({
@@ -176,16 +185,22 @@
 	function navTo(url: string): void {
 		uni.navigateTo({ url: url })
 	}
+
+	function handleTabChange(index: number): void {
+		// 处理 tab 切换事件
+	}
 </script>
 
 <style>
 .page {
 	flex: 1;
+	flex-direction: column;
+	min-height: 100vh;
 }
 .content {
-	flex-direction: column;
-	padding: 20px 16px;
-}
+		flex-direction: column;
+		padding: 20px 16px 80px 16px;
+	}
 .user-block {
 	flex-direction: row;
 	align-items: center;

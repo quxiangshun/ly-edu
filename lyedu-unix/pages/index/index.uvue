@@ -119,6 +119,9 @@
 				</view>
 			</view>
 		</scroll-view>
+
+		<!-- 自定义 TabBar -->
+		<custom-tab-bar :current="0" @change="handleTabChange"></custom-tab-bar>
 	</view>
 </template>
 
@@ -128,6 +131,7 @@
 	import { getCoursePage, type Course } from '../../api/course'
 	import { getEffectiveTags, type Tag } from '../../api/tag'
 	import { themePrimary } from '../../utils/theme'
+	import CustomTabBar from '../../components/custom-tab-bar.uvue'
 
 	type CategoryTab = {
 		id: number | null;
@@ -393,12 +397,17 @@
 			uni.navigateTo({ url: '/pages/course-detail/course-detail?id=' + id })
 		}
 	}
+
+	function handleTabChange(index: number): void {
+		// 处理 tab 切换事件
+	}
 </script>
 
 <style>
 .page {
 	flex: 1;
 	flex-direction: column;
+	min-height: 100vh;
 	background-color: #f0f2f5;
 }
 .page-header {
@@ -408,8 +417,8 @@
 	flex: 1;
 }
 .video-wrap {
-	padding: 0 16px 20px 16px;
-}
+		padding: 0 16px 80px 16px;
+	}
 .container {
 	flex-direction: column;
 	padding: 16px;

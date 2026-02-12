@@ -54,7 +54,10 @@
 	/* 每个页面公共样式；默认主题色与后台一致，各页根节点可 :style 覆盖 --brand-primary */
 	.page {
 		--brand-primary: #409eff;
+		/* 自定义 tabBar 高度，供含 tabBar 的页面设置 padding-bottom */
+		--tab-bar-height: 50px;
 	}
+
 	.uni-row {
 		flex-direction: row;
 	}

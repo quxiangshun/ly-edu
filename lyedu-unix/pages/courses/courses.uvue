@@ -1,34 +1,40 @@
 <template>
-	<scroll-view class="page" scroll-y="true" style="flex:1" :style="themeRootStyle">
-		<view class="content">
-			<view v-if="loading" class="loading-wrap">
-				<text class="loading-text">加载中...</text>
-			</view>
-			<template v-else>
-				<view v-for="course in courseList" :key="course.id" class="course-card" @click="navToDetail(course)">
-					<image class="course-cover" :src="coverUrl(course.cover)" mode="aspectFill"></image>
-					<view class="course-body">
-						<text class="course-title">{{ course.title }}</text>
-						<text class="course-desc">{{ course.description != null ? course.description : '暂无描述' }}</text>
-						<view class="card-footer">
-							<text v-if="course.status === 1" class="status-tag">上架</text>
-							<button class="start-btn" size="mini" @click.stop="handleStartLearn(course)">开始学习</button>
+	<view class="page" :style="themeRootStyle">
+		<scroll-view scroll-y="true" style="flex:1">
+			<view class="content">
+				<view v-if="loading" class="loading-wrap">
+					<text class="loading-text">加载中...</text>
+				</view>
+				<template v-else>
+					<view v-for="course in courseList" :key="course.id" class="course-card" @click="navToDetail(course)">
+						<image class="course-cover" :src="coverUrl(course.cover)" mode="aspectFill"></image>
+						<view class="course-body">
+							<text class="course-title">{{ course.title }}</text>
+							<text class="course-desc">{{ course.description != null ? course.description : '暂无描述' }}</text>
+							<view class="card-footer">
+								<text v-if="course.status === 1" class="status-tag">上架</text>
+								<button class="start-btn" size="mini" @click.stop="handleStartLearn(course)">开始学习</button>
+							</view>
 						</view>
 					</view>
-				</view>
-				<view v-if="courseList.length === 0" class="empty-wrap">
-					<text class="empty-text">暂无课程</text>
-				</view>
-			</template>
-		</view>
-	</scroll-view>
+					<view v-if="courseList.length === 0" class="empty-wrap">
+						<text class="empty-text">暂无课程</text>
+					</view>
+				</template>
+			</view>
+		</scroll-view>
+
+		<!-- 自定义 TabBar -->
+		<custom-tab-bar :current="1" @change="handleTabChange"></custom-tab-bar>
+	</view>
 </template>
 
 <script setup lang="uts">
-	import { computed } from 'vue'
+	import { computed, ref } from 'vue'
 	import { getCoursePage, type Course } from '../../api/course'
 	import { joinCourse } from '../../api/learning'
 	import { themePrimary } from '../../utils/theme'
+	import CustomTabBar from '../../components/custom-tab-bar.uvue'
 
 	const themeRootStyle = computed((): Record<string, string> => ({ '--brand-primary': themePrimary.value }))
 
@@ -78,15 +84,21 @@
 			uni.showToast({ title: '加入课程失败', icon: 'none' })
 		}
 	}
+
+	function handleTabChange(index: number): void {
+		// 处理 tab 切换事件
+	}
 </script>
 
 <style>
 .page {
 	flex: 1;
+	flex-direction: column;
+	min-height: 100vh;
 }
 .content {
-	padding: 16px;
-}
+		padding: 16px 16px 80px 16px;
+	}
 .loading-wrap {
 	padding: 40px 0;
 	align-items: center;
