@@ -67,7 +67,7 @@
 <script setup lang="uts">
 	import { ref, computed } from 'vue'
 	import { getUser, isLoggedIn } from '../../utils/auth'
-	import { themePrimary } from '../../utils/theme'
+	import { getThemeRootStyle } from '../../utils/theme'
 	import { getWatchedCourses } from '../../api/learning'
 	import { getMyTotal } from '../../api/point'
 	import { getMyCertificates } from '../../api/userCertificate'
@@ -80,7 +80,7 @@
 		path: string;
 	}
 
-	const themeRootStyle = computed((): Record<string, string> => ({ '--brand-primary': themePrimary.value }))
+	const themeRootStyle = computed(() => getThemeRootStyle())
 	const hasToken = ref(isLoggedIn())
 	const user = ref<Record<string, any>>({})
 	const personalStats = ref({
@@ -196,6 +196,7 @@
 	flex: 1;
 	flex-direction: column;
 	min-height: 100vh;
+	background: linear-gradient(180deg, var(--brand-bg-strong) 0%, var(--brand-bg) 30%, #f5f6f8 100%);
 }
 .content {
 		flex-direction: column;
@@ -208,6 +209,9 @@
 	background-color: #ffffff;
 	border-radius: 12px;
 	margin-bottom: 16px;
+	border-width: 1px;
+	border-color: rgba(0,0,0,0.04);
+	border-style: solid;
 }
 .user-avatar {
 	width: 60px;
@@ -235,6 +239,9 @@
 	border-radius: 12px;
 	padding: 16px 0;
 	margin-bottom: 16px;
+	border-width: 1px;
+	border-color: rgba(0,0,0,0.04);
+	border-style: solid;
 }
 .stat-item {
 	flex: 1;
@@ -257,6 +264,9 @@
 	border-radius: 12px;
 	margin-bottom: 16px;
 	overflow: hidden;
+	border-width: 1px;
+	border-color: rgba(0,0,0,0.04);
+	border-style: solid;
 }
 .menu-item {
 	flex-direction: row;

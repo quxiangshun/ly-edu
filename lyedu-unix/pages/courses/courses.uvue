@@ -33,10 +33,10 @@
 	import { computed, ref } from 'vue'
 	import { getCoursePage, type Course } from '../../api/course'
 	import { joinCourse } from '../../api/learning'
-	import { themePrimary } from '../../utils/theme'
+	import { getThemeRootStyle } from '../../utils/theme'
 	import CustomTabBar from '../../components/custom-tab-bar.uvue'
 
-	const themeRootStyle = computed((): Record<string, string> => ({ '--brand-primary': themePrimary.value }))
+	const themeRootStyle = computed(() => getThemeRootStyle())
 
 	const loading = ref(false)
 	const courseList = ref<Course[]>([])
@@ -95,6 +95,7 @@
 	flex: 1;
 	flex-direction: column;
 	min-height: 100vh;
+	background: linear-gradient(180deg, var(--brand-bg-strong) 0%, var(--brand-bg) 30%, #f5f6f8 100%);
 }
 .content {
 		padding: 16px 16px 80px 16px;
@@ -110,9 +111,12 @@
 .course-card {
 	flex-direction: column;
 	margin-bottom: 16px;
-	border-radius: 8px;
+	border-radius: 12px;
 	overflow: hidden;
 	background-color: #ffffff;
+	border-width: 1px;
+	border-color: rgba(0,0,0,0.04);
+	border-style: solid;
 }
 .course-cover {
 	width: 100%;

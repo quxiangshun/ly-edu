@@ -71,9 +71,9 @@
 		min-height: 50px;
 		padding-bottom: constant(safe-area-inset-bottom);
 		padding-bottom: env(safe-area-inset-bottom);
-		background-color: #ffffff;
-		border-top-width: 1px;
-		border-top-color: #ebedf0;
+	background-color: rgba(255,255,255,0.95);
+	border-top-width: 1px;
+	border-top-color: rgba(0,0,0,0.06);
 		border-top-style: solid;
 		z-index: 999;
 		display: flex;

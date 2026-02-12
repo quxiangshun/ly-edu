@@ -148,7 +148,7 @@
 	import { getVideoPage, type Video } from '../../api/video'
 	import { getCoursePage, type Course } from '../../api/course'
 	import { getEffectiveTags, type Tag } from '../../api/tag'
-	import { themePrimary } from '../../utils/theme'
+	import { getThemeRootStyle } from '../../utils/theme'
 	import CustomTabBar from '../../components/custom-tab-bar.uvue'
 
 	type CategoryTab = {
@@ -184,7 +184,7 @@
 	// 控制列表滚动位置：切换标签/排序时置顶，需先改值再设 0 才能生效
 	const pageBodyScrollTop = ref(0)
 	// 主题色：与后台配置同步，供本页 var(--brand-primary) 使用
-	const themeRootStyle = computed((): Record<string, string> => ({ '--brand-primary': themePrimary.value }))
+	const themeRootStyle = computed(() => getThemeRootStyle())
 
 	onShow(() => {
 		refreshData()
@@ -426,7 +426,7 @@
 	flex: 1;
 	flex-direction: column;
 	min-height: 100vh;
-	background-color: #f0f2f5;
+	background: linear-gradient(180deg, var(--brand-bg-strong) 0%, var(--brand-bg) 30%, #f5f6f8 100%);
 }
 .page-header {
 	flex-shrink: 0;
@@ -495,9 +495,12 @@
 	padding: 8px 16px;
 	margin-right: 12px;
 	border-radius: 16px;
-	background-color: #f1f2f5;
+	background-color: rgba(255,255,255,0.7);
 	white-space: nowrap;
 	flex-shrink: 0;
+	border-width: 1px;
+	border-color: rgba(0,0,0,0.04);
+	border-style: solid;
 }
 .tag-item--active {
 	background-color: var(--brand-primary);
