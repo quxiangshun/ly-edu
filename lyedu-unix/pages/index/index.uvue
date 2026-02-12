@@ -82,7 +82,19 @@
 					<view class="course-grid">
 						<view v-for="c in courseList" :key="c.id" class="course-card" @click="navToCourse(c.id)">
 							<image class="course-cover" :src="coverUrl(c.cover)" mode="aspectFill"></image>
-							<text class="course-title">{{ c.title }}</text>
+							<view class="course-content">
+								<text class="course-title">{{ c.title }}</text>
+								<view class="course-meta">
+									<view class="course-meta-item">
+										<image class="meta-icon" src="/static/icons/iconify/play-fill.svg" mode="aspectFit"></image>
+										<text class="course-meta-text">{{ safeNumber(c.playCount) }}</text>
+									</view>
+									<view class="course-meta-item">
+										<image class="meta-icon" src="/static/icons/iconify/thumb-up-fill.svg" mode="aspectFit"></image>
+										<text class="course-meta-text">{{ safeNumber(c.likeCount) }}</text>
+									</view>
+								</view>
+							</view>
 						</view>
 					</view>
 				</view>
@@ -105,9 +117,15 @@
 								<text class="video-title">{{ item.title }}</text>
 								<text class="video-course">{{ item.courseName ?? '课程' }}</text>
 								<view class="video-meta">
-									<text class="video-meta-text">播放 {{ safeNumber(item.playCount) }}</text>
-									<text class="video-meta-text">点赞 {{ safeNumber(item.likeCount) }}</text>
+								<view class="video-meta-item">
+									<image class="meta-icon" src="/static/icons/iconify/play-fill.svg" mode="aspectFit"></image>
+									<text class="video-meta-text">{{ safeNumber(item.playCount) }}</text>
 								</view>
+								<view class="video-meta-item">
+									<image class="meta-icon" src="/static/icons/iconify/thumb-up-fill.svg" mode="aspectFit"></image>
+									<text class="video-meta-text">{{ safeNumber(item.likeCount) }}</text>
+								</view>
+							</view>
 							</view>
 						</view>
 					</view>
@@ -555,27 +573,46 @@
 	justify-content: space-between;
 }
 .course-card {
-	background-color: #ffffff;
-	border-radius: 12px;
-	overflow: hidden;
-	margin-bottom: 12px;
-	width: 48%;
-	flex-direction: column;
-	border-width: 1px;
-	border-color: #ebeef5;
-	border-style: solid;
-}
-.course-cover {
-	width: 100%;
-	height: 100px;
-	background-color: #e8eaed;
-}
-.course-title {
-	font-size: 14px;
-	font-weight: 500;
-	color: #323233;
-	padding: 10px 12px;
-}
+			background-color: #ffffff;
+			border-radius: 12px;
+			overflow: hidden;
+			margin-bottom: 12px;
+			width: 48%;
+			flex-direction: column;
+			border-width: 1px;
+			border-color: #ebeef5;
+			border-style: solid;
+		}
+		.course-cover {
+			width: 100%;
+			height: 100px;
+			background-color: #e8eaed;
+		}
+		.course-content {
+			flex: 1;
+			flex-direction: column;
+			padding: 10px 12px;
+		}
+		.course-title {
+			font-size: 14px;
+			font-weight: 500;
+			color: #323233;
+			margin-bottom: 6px;
+		}
+		.course-meta {
+				flex-direction: row;
+				align-items: center;
+			}
+			.course-meta-item {
+				flex-direction: row;
+				align-items: center;
+				margin-right: 12px;
+			}
+			.course-meta-text {
+				font-size: 12px;
+				color: #969799;
+				margin-left: 4px;
+			}
 .video-section {
 	background-color: transparent;
 }
@@ -617,14 +654,24 @@
 	margin-bottom: 8px;
 }
 .video-meta {
-	flex-direction: row;
-	align-items: center;
-}
-.video-meta-text {
-	font-size: 12px;
-	color: #969799;
-	margin-right: 12px;
-}
+			flex-direction: row;
+			align-items: center;
+		}
+		.video-meta-item {
+			flex-direction: row;
+			align-items: center;
+			margin-right: 12px;
+		}
+		.video-meta-text {
+			font-size: 12px;
+			color: #969799;
+			margin-left: 4px;
+		}
+		.meta-icon {
+			width: 12px;
+			height: 12px;
+			tint-color: #969799;
+		}
 .load-more {
 	padding: 16px 0;
 	align-items: center;

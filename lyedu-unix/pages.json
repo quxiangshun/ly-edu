@@ -125,19 +125,19 @@
 				"pagePath": "pages/index/index",
 				"text": "首页",
 				"iconPath": "static/icons/tabbar/tab-home.png",
-				"selectedIconPath": "static/icons/tabbar/tab-home-active.png"
+				"selectedIconPath": "static/icons/tabbar/tab-home.png"
 			},
 			{
 				"pagePath": "pages/courses/courses",
 				"text": "课程",
 				"iconPath": "static/icons/tabbar/tab-courses.png",
-				"selectedIconPath": "static/icons/tabbar/tab-courses-active.png"
+				"selectedIconPath": "static/icons/tabbar/tab-courses.png"
 			},
 			{
 				"pagePath": "pages/my/my",
 				"text": "我的",
 				"iconPath": "static/icons/tabbar/tab-my.png",
-				"selectedIconPath": "static/icons/tabbar/tab-my-active.png"
+				"selectedIconPath": "static/icons/tabbar/tab-my.png"
 			}
 		]
 	},
