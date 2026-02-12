@@ -132,15 +132,32 @@ def find_by_union_id(union_id: str) -> Optional[dict]:
     return row
 
 
+def find_by_mobile(mobile: str) -> Optional[dict]:
+    """根据手机号查询用户（用于飞书同步唯一性校验）"""
+    if not (mobile or str(mobile).strip()):
+        return None
+    cols = _user_cols()
+    row = db.query_one(
+        f"SELECT {cols} FROM ly_user WHERE mobile = %s AND deleted = 0 LIMIT 1",
+        (str(mobile).strip(),),
+    )
+    return row
+
+
 def _row_to_user(row: dict) -> dict:
+    """转为前端可用的用户对象，同时提供 snake_case 与 camelCase，与前端 User 类型一致"""
     if not row:
         return {}
     dept_id = row.get("department_id")
+    real_name = row.get("real_name")
+    entry_date = row.get("entry_date")
+    create_time = row.get("create_time")
     return {
         "id": row["id"],
         "username": row.get("username"),
         "password": row.get("password"),
-        "real_name": row.get("real_name"),
+        "real_name": real_name,
+        "realName": real_name,
         "nickname": row.get("nickname"),
         "email": row.get("email"),
         "mobile": row.get("mobile"),
@@ -148,13 +165,13 @@ def _row_to_user(row: dict) -> dict:
         "feishu_open_id": row.get("feishu_open_id"),
         "union_id": row.get("union_id"),
         "department_id": dept_id,
-        "departmentId": dept_id,  # 前端使用的驼峰命名
-        "entry_date": row.get("entry_date"),
-        "entryDate": row.get("entry_date"),
+        "departmentId": dept_id,
+        "entry_date": entry_date,
+        "entryDate": entry_date,
         "role": row.get("role"),
         "status": row.get("status"),
-        "create_time": row.get("create_time"),
-        "createTime": row.get("create_time"),
+        "create_time": create_time,
+        "createTime": create_time,
     }
 
 
@@ -266,6 +283,10 @@ def save(
     )
 
 
+# 用于 update：传入 None 表示「将部门置为 NULL」，不传表示不更新部门
+_DEPT_UNSET: Any = object()
+
+
 def update(
     user_id: int,
     real_name: Optional[str] = None,
@@ -274,7 +295,7 @@ def update(
     mobile: Optional[str] = None,
     avatar: Optional[str] = None,
     union_id: Optional[str] = None,
-    department_id: Optional[int] = None,
+    department_id: Any = _DEPT_UNSET,
     entry_date: Optional[Any] = None,
     role: Optional[str] = None,
     status: Optional[int] = None,
@@ -303,7 +324,8 @@ def update(
     if union_id is not None and _check_union_id():
         set_parts.append("union_id = %s")
         params.append(union_id)
-    if department_id is not None:
+    # 飞书同步需关联部门：传入 int 设部门，传入 None 清空部门，不传则不更新
+    if department_id is not _DEPT_UNSET:
         set_parts.append("department_id = %s")
         params.append(department_id)
     if role is not None:

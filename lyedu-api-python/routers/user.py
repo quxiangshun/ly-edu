@@ -18,7 +18,7 @@ router = APIRouter(prefix="/user", tags=["user"])
 
 @router.get("/info")
 def get_current_user(authorization: Optional[str] = Header(None, alias="Authorization")):
-    """根据 token 返回当前用户信息，与前端 getUserInfo() 对接"""
+    """根据 token 返回当前用户信息，与前端 getUserInfo() 对接；返回字段与登录 userInfo 一致"""
     user_id = parse_authorization(authorization)
     if user_id is None:
         return error_result(ResultCode.UNAUTHORIZED)
@@ -28,6 +28,7 @@ def get_current_user(authorization: Optional[str] = Header(None, alias="Authoriz
     return success({
         "id": user.get("id"),
         "username": user.get("username"),
+        "real_name": user.get("real_name"),
         "realName": user.get("real_name"),
         "nickname": user.get("nickname"),
         "avatar": user.get("avatar"),
@@ -44,6 +45,7 @@ def page(
     role: Optional[str] = None,
     status: Optional[int] = None,
 ):
+    """分页查询用户列表，支持 keyword、departmentId、role、status；返回 records/total/current/size/pages，每条含 departmentId、tagIds"""
     result = user_service.page(
         page_num=page,
         size=size,
@@ -59,6 +61,7 @@ def page(
 
 @router.get("/{id}")
 def get_by_id(id: int):
+    """根据 id 获取用户详情，返回与前端 User 类型一致（含 realName、departmentId、entryDate、tagIds），不含 password"""
     user = user_service.get_by_id(id)
     if not user:
         return error(404, "用户不存在")
@@ -69,6 +72,7 @@ def get_by_id(id: int):
 
 @router.post("")
 def create(body: UserRequest):
+    """新增用户，请求体支持 username/real_name/nickname/email/mobile/avatar/departmentId/entryDate/role/status/tagIds"""
     if not body.username or not body.username.strip():
         return error(400, "用户名不能为空")
     existing = user_service.find_by_username(body.username.strip())
@@ -102,6 +106,7 @@ def create(body: UserRequest):
 
 @router.put("/{id}")
 def update(id: int, body: UserRequest):
+    """更新用户，路径 id 为用户 ID，请求体同创建（departmentId/entryDate 等），会同步更新部门与标签"""
     user = user_service.get_by_id(id)
     if not user:
         return error(404, "用户不存在")

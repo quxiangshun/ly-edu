@@ -36,7 +36,7 @@ def _do_feishu_sync(opts: FeishuSyncRequest):
     errors = result.get("errors") or []
     return {
         "success": len(errors) == 0,
-        "message": "同步完成" if not errors else "同步完成，存在部分错误",
+        "message": "同步完成" if not errors else "同步完成但有部分错误",
         "stats": FeishuSyncStats(**stats),
         "departments": result.get("departments"),
         "users": result.get("users"),

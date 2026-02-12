@@ -380,22 +380,24 @@
             <span>飞书通讯录同步</span>
           </div>
         </template>
-        <p><strong>功能说明</strong>：飞书同步功能可将企业通讯录中的<strong>机构（部门）</strong>和<strong>用户</strong>同步至本系统。同步逻辑：不存在则创建，存在则更新。支持手动触发与定时更新。</p>
-        <p><strong>第三方配置</strong>：飞书 App ID、App Secret 等第三方应用配置在<strong>系统设置</strong>中完成，详见「系统设置」→「飞书应用」Tab。</p>
+        <p><strong>功能说明</strong>：将飞书企业通讯录中的<strong>部门</strong>和<strong>用户</strong>同步至本系统。支持仅同步部门、仅同步用户或同时同步；支持「覆盖已存在」选项。</p>
+        <p><strong>同步方式（业务逻辑）</strong>：</p>
+        <ol>
+          <li><strong>先同步所有部门</strong>：从飞书根部门递归拉取全部部门，再同步到本系统。</li>
+          <li><strong>再按部门拉取用户</strong>：遍历每个部门，调用飞书「部门下用户」接口拉取该部门及子部门下的用户，按 open_id 去重后逐条处理。</li>
+          <li><strong>部门 ID 与缓存</strong>：本系统部门以 <code>feishu_department_id</code> 与飞书对应。同步用户前会构建「飞书部门 ID → 本地部门 id」缓存，写用户时直接用缓存得到所属部门，避免多次查库，保证效率。</li>
+        </ol>
+        <p><strong>只同步部门时</strong>：根据 <code>feishu_department_id</code> 匹配。勾选「覆盖」则已存在则更新，不勾选则已存在跳过、不存在则插入。</p>
+        <p><strong>只同步用户时</strong>：仍按部门维度拉取用户（不处理部门数据）。用户以<strong>手机号</strong>做唯一性校验：已存在则按「覆盖」决定更新或跳过；不存在则插入。用户所属部门从上述缓存解析。</p>
+        <p><strong>第三方配置</strong>：飞书 App ID、App Secret 在<strong>系统设置</strong>→「飞书应用」中配置（与飞书登录共用）。</p>
         <p><strong>使用前准备</strong>：</p>
         <ul>
-          <li><strong>飞书开放平台配置</strong>：在自建应用中，<strong>权限管理</strong> → 申请并启用「通讯录 - 部门信息（只读）」「通讯录 - 用户信息（只读）」。</li>
-          <li><strong>系统设置</strong>：在管理后台「系统设置」中配置飞书 App ID、App Secret（与飞书登录共用）。</li>
-          <li><strong>数据库迁移</strong>：需执行数据库迁移（Alembic v3 / Flyway V3），为部门表增加 <code>feishu_department_id</code> 字段。</li>
+          <li>飞书开放平台：自建应用<strong>权限管理</strong>中申请「通讯录 - 部门信息（只读）」「通讯录 - 用户信息（只读）」。</li>
+          <li>系统设置：配置飞书 App ID、App Secret。</li>
+          <li>数据库：部门表需有 <code>feishu_department_id</code> 字段（迁移已包含）。</li>
         </ul>
-        <p><strong>数据同步</strong>：数据同步在<strong>员工管理</strong>页面触发。</p>
-        <ul>
-          <li>管理后台 → <strong>员工管理</strong> → 点击「从第三方同步」→ 选择「飞书」→ 点击后触发同步。</li>
-          <li>同步完成后会提示部门/用户的新增与更新数量。</li>
-          <li>接口：<code>POST /api/feishu/sync</code>，返回同步结果（部门与用户的 created、updated、errors）。</li>
-        </ul>
-        <p><strong>定时更新</strong>：由后端自行配置定时任务（如 cron、APScheduler）定期调用 <code>POST /api/feishu/sync</code> 即可。建议根据企业人员变动频率设置（如每日一次或每周一次）。</p>
-        <p><strong>同步范围</strong>：同步时会拉取飞书企业通讯录中的全部部门（递归）和全部用户（含子部门用户），并自动建立部门层级关系与用户-部门关联。</p>
+        <p><strong>触发同步</strong>：<strong>员工管理</strong> → 「从第三方同步」→ 选择「飞书」→ 勾选「同步部门」「同步用户」及「覆盖已存在」→ 确认。同步采用后台任务，完成后提示部门/用户新增与更新数量。接口：<code>POST /api/feishu/sync?background=1</code>，轮询 <code>GET /api/feishu/sync/task/{task_id}</code> 获取结果。</p>
+        <p><strong>定时更新</strong>：可由后端配置定时任务定期调用 <code>POST /api/feishu/sync</code>（可传 <code>sync_departments</code>、<code>sync_users</code>、<code>overwrite_existing</code>），建议按企业人员变动频率设置（如每日或每周）。</p>
       </el-card>
 
       <el-card id="settings" class="help-card" shadow="hover">

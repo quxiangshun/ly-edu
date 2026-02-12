@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-飞书通讯录同步：与 docs/飞书同步.md（完整实现：部门 + 用户 + 覆盖）对齐。
-- 部门：递归拉取全量，两阶段写库（先 parent_id=0 建映射，再更新 parent_id）；overwrite_existing 控制是否更新已存在部门。
-- 用户：优先全量用户列表，≤5 则按部门兜底去重；union_id/open_id 匹配；手机号去国家码；覆盖时若用手机号作用户名则校验唯一性（已被占用则保留原用户名并记入 errors）。
-- 本系统无 department_closures、user_oauth 表，部门用 ly_department.parent_id，用户用 ly_user.feishu_open_id/union_id。
+飞书通讯录同步（按部门拉取、缓存部门映射、手机号唯一性）：
+1. 先同步所有部门，再按每个部门拉取该部门下所有用户（含子部门），部门 id 以 feishu_department_id 匹配，写入用户时用缓存 feishu_department_id->本地 id。
+2. 部门：仅根据 feishu_department_id 匹配；覆盖则更新，不覆盖则存在跳过、不存在插入。
+3. 用户：始终按部门维度拉取（遍历部门调用接口），保证效率；用户以手机号做唯一性校验，存在则覆盖/跳过，不存在则插入；部门 id 从缓存取，不重复查库。
 """
 import re
 import random
@@ -14,7 +14,7 @@ from services.org import department_service
 from services.user import user_service
 
 
-# ---------- 部门：递归拉取（与文档 2.2 一致） ----------
+# ---------- 部门：递归拉取 ----------
 
 def _normalize_dept_item(it: dict, parent_feishu_id: str) -> Optional[Dict[str, Any]]:
     """从飞书部门项解析 feishu_id、name、sort、parent_feishu_id。"""
@@ -37,10 +37,9 @@ def _normalize_dept_item(it: dict, parent_feishu_id: str) -> Optional[Dict[str, 
 
 
 def _collect_all_departments_recursive() -> List[Dict[str, Any]]:
-    """
-    递归拉取全量部门（文档 2.2）：从根 "0" 开始，对每层调用「获取子部门」，分页拉全。
-    返回列表，每项含 feishu_id, name, sort, parent_feishu_id。
-    """
+    """从根 0 递归拉取全量部门（仅用「获取子部门」接口），返回 feishu_id, name, sort, parent_feishu_id。"""
+    import logging
+    log = logging.getLogger(__name__)
     all_depts: List[Dict[str, Any]] = []
     seen: set = set()
     queue: List[str] = ["0"]
@@ -54,11 +53,8 @@ def _collect_all_departments_recursive() -> List[Dict[str, Any]]:
                 parent_feishu_id, page_token=page_token, page_size=page_size
             )
             items = page.get("items") or []
-            if not items and page_token is None:
-                page = feishu_api.list_departments_by_parent(
-                    parent_feishu_id, page_token=None, page_size=page_size
-                )
-                items = page.get("items") or []
+            if not items and page_token is None and parent_feishu_id == "0":
+                log.warning("feishu 根部门 0 下未获取到任何子部门，请检查飞书应用权限与 token")
             for it in items:
                 norm = _normalize_dept_item(it, parent_feishu_id)
                 if not norm or norm["feishu_id"] in seen:
@@ -74,20 +70,23 @@ def _collect_all_departments_recursive() -> List[Dict[str, Any]]:
 
 def sync_departments(overwrite_existing: bool = False) -> Dict[str, Any]:
     """
-    部门同步（文档三）：两阶段。
-    第一次遍历：创建/更新部门，parent_id 先统一 0，建立 飞书部门ID → 本地部门ID 映射。
-    第二次遍历：根据 parent_department_id 更新每个部门的 parent_id。
-    返回 {"created": int, "updated": int, "skipped": int, "failed": int, "errors": []}
+    只同步部门：根据 feishu_department_id 匹配。
+    - 覆盖：已存在则按 feishu_department_id 更新记录。
+    - 不覆盖：已存在则跳过，不存在则插入。
+    两阶段写库：先 parent_id=0 建映射，再按 parent_feishu_id 更新 parent_id。
     """
     result = {"created": 0, "updated": 0, "skipped": 0, "failed": 0, "errors": []}
     feishu_to_our: Dict[str, int] = {"0": 0}
 
     try:
+        import logging
+        log = logging.getLogger(__name__)
         all_depts = _collect_all_departments_recursive()
         if not all_depts:
+            log.warning("feishu sync_departments: 未拉取到任何部门，跳过写库")
             return result
+        log.info("feishu sync_departments: 拉取到 %d 个部门，开始写库", len(all_depts))
 
-        # 第一次遍历：创建或更新（仅 name），parent_id 先设为 0
         for d in all_depts:
             feishu_id = d["feishu_id"]
             name = d["name"]
@@ -122,7 +121,6 @@ def sync_departments(overwrite_existing: bool = False) -> Dict[str, Any]:
                 result["failed"] += 1
                 result["errors"].append(f"部门 {name}({feishu_id}): {e}")
 
-        # 第二次遍历：更新 parent_id（文档 3.3）
         for d in all_depts:
             feishu_id = d["feishu_id"]
             parent_feishu_id = d["parent_feishu_id"]
@@ -145,10 +143,20 @@ def sync_departments(overwrite_existing: bool = False) -> Dict[str, Any]:
     return result
 
 
-# ---------- 用户：手机号去国家码（文档 4.6） ----------
+def _build_feishu_to_our_cache() -> Dict[str, int]:
+    """从数据库构建 feishu_department_id -> 本地部门 id 的缓存，避免同步用户时重复查库。"""
+    cache: Dict[str, int] = {"0": 0}
+    flat = department_service.list_all()
+    for d in flat:
+        fid = d.get("feishuDepartmentId") or d.get("feishu_department_id")
+        if fid:
+            cache[str(fid)] = d["id"]
+    return cache
+
+
+# ---------- 用户：手机号去国家码、头像 ----------
 
 def _normalize_mobile(mobile: str) -> str:
-    """飞书可能返回 +8613800138000，去掉国家码后入库。"""
     if not mobile or not isinstance(mobile, str):
         return ""
     s = mobile.strip()
@@ -163,7 +171,6 @@ def _normalize_mobile(mobile: str) -> str:
 
 
 def _get_avatar_url(feishu_user: dict) -> Optional[str]:
-    """文档 5.2：avatar.avatar_240。"""
     avatar = feishu_user.get("avatar")
     if isinstance(avatar, dict):
         return (avatar.get("avatar_240") or avatar.get("avatar_72") or "").strip() or None
@@ -172,42 +179,8 @@ def _get_avatar_url(feishu_user: dict) -> Optional[str]:
     return None
 
 
-# ---------- 用户同步（文档四） ----------
-
-def _fetch_all_users_method_a() -> List[dict]:
-    """方式 A：全量用户列表（不传 department_id），分页拉全。部分应用/权限下可能返回空。"""
-    all_items: List[dict] = []
-    page_token: Optional[str] = None
-    page_size = 50
-    while True:
-        page = feishu_api.list_all_users(page_token=page_token, page_size=page_size)
-        items = page.get("items") or []
-        all_items.extend(items)
-        page_token = page.get("page_token") or ""
-        if not page.get("has_more") or not page_token:
-            break
-    return all_items
-
-
-def _fetch_all_users_under_root() -> List[dict]:
-    """兜底：按根部门(0)+含子部门(fetch_child=True)分页拉全量用户，飞书通讯录常用方式。"""
-    all_items: List[dict] = []
-    page_token: Optional[str] = None
-    page_size = 100
-    while True:
-        page = feishu_api.list_users_by_department(
-            "0", page_token=page_token, page_size=page_size, fetch_child=True
-        )
-        items = page.get("items") or []
-        all_items.extend(items)
-        page_token = page.get("page_token") or ""
-        if not page.get("has_more") or not page_token:
-            break
-    return all_items
-
-
-def _fetch_all_users_method_b(feishu_dept_id_to_our: Dict[str, int]) -> List[dict]:
-    """方式 B：按每个部门拉取（含子部门 fetch_child=True）并按 open_id 去重。"""
+def _fetch_users_by_departments(feishu_dept_id_to_our: Dict[str, int]) -> List[dict]:
+    """按部门拉取：遍历所有有映射的飞书部门，逐个调用「部门下用户」接口，按 open_id 去重。"""
     user_map: Dict[str, dict] = {}
     for feishu_dept_id in feishu_dept_id_to_our:
         if feishu_dept_id == "0":
@@ -227,35 +200,33 @@ def _fetch_all_users_method_b(feishu_dept_id_to_our: Dict[str, int]) -> List[dic
     return list(user_map.values())
 
 
+def _resolve_our_dept_id(feishu_user: dict, feishu_dept_id_to_our: Dict[str, int]) -> Optional[int]:
+    """从飞书用户信息中取第一个部门 id，在缓存中解析为本地部门 id。"""
+    raw_depts = feishu_user.get("department_ids") or feishu_user.get("department_id") or feishu_user.get("open_department_id")
+    if isinstance(raw_depts, str) and raw_depts.strip():
+        raw_depts = [raw_depts]
+    elif not isinstance(raw_depts, list):
+        raw_depts = []
+    for d in raw_depts:
+        feishu_dept_id = (d if isinstance(d, str) else str(d)).strip() if d is not None else ""
+        if feishu_dept_id and feishu_dept_id in feishu_dept_id_to_our:
+            return feishu_dept_id_to_our[feishu_dept_id]
+    return None
+
+
 def sync_users(
-    feishu_dept_id_to_our: Optional[Dict[str, int]] = None,
+    feishu_dept_id_to_our: Dict[str, int],
     overwrite_existing: bool = False,
 ) -> Dict[str, Any]:
     """
-    用户同步（文档四）：
-    - 优先方式 A 全量；若条数 ≤5 则用方式 B 按部门拉取去重。
-    - 匹配：union_id 优先，否则 open_id（文档 4.3）。
-    - 已存在：overwrite_existing 为 True 时更新，否则跳过。
-    - 新用户：用户名 = 手机号 or 邮箱前缀 or feishu_<open_id前8位>，冲突加后缀；不设密码（文档 4.5 可配置）。
-    返回 {"created": int, "updated": int, "skipped": int, "failed": int, "errors": []}
+    只同步用户：仍通过部门维度拉取（遍历部门查用户），不处理部门数据。
+    - 部门 id：从缓存 feishu_dept_id_to_our 根据 feishu_department_id 得到本地 id 写入用户。
+    - 唯一性：按手机号判断是否存在；存在则覆盖则更新、不覆盖则跳过；不存在则插入。
+    - 无手机号时用 union_id / feishu_open_id 匹配已存在用户。
     """
     result = {"created": 0, "updated": 0, "skipped": 0, "failed": 0, "errors": []}
-    if feishu_dept_id_to_our is None:
-        flat = department_service.list_all()
-        feishu_dept_id_to_our = {}
-        for d in flat:
-            fid = d.get("feishuDepartmentId") or d.get("feishu_department_id")
-            if fid:
-                feishu_dept_id_to_our[str(fid)] = d["id"]
-        feishu_dept_id_to_our["0"] = 0
 
-    feishu_users = _fetch_all_users_method_a()
-    if len(feishu_users) <= 5:
-        under_root = _fetch_all_users_under_root()
-        if len(under_root) > len(feishu_users):
-            feishu_users = under_root
-        if len(feishu_users) <= 5:
-            feishu_users = _fetch_all_users_method_b(feishu_dept_id_to_our)
+    feishu_users = _fetch_users_by_departments(feishu_dept_id_to_our)
 
     for it in feishu_users:
         open_id = (it.get("open_id") or it.get("user_id") or "").strip()
@@ -266,18 +237,16 @@ def sync_users(
         mobile = _normalize_mobile(mobile_raw) or None
         email = (it.get("email") or "").strip() or None
         avatar_url = _get_avatar_url(it)
-        dept_ids = it.get("department_ids") or []
-        our_dept_id = None
-        if dept_ids:
-            first = dept_ids[0] if isinstance(dept_ids[0], str) else str(dept_ids[0])
-            our_dept_id = feishu_dept_id_to_our.get(first)
-
+        our_dept_id = _resolve_our_dept_id(it, feishu_dept_id_to_our)
         union_id_raw = it.get("union_id")
         union_id = str(union_id_raw).strip() if union_id_raw else None
 
         try:
+            # 唯一性：优先手机号，无手机号时用 union_id / feishu_open_id
             existing = None
-            if union_id:
+            if mobile:
+                existing = user_service.find_by_mobile(mobile)
+            if existing is None and union_id:
                 existing = user_service.find_by_union_id(union_id)
             if existing is None:
                 existing = user_service.find_by_feishu_open_id(open_id)
@@ -338,7 +307,9 @@ def run_full_sync(
     overwrite_existing: bool = False,
 ) -> Dict[str, Any]:
     """
-    飞书同步入口（文档六）：先部门后用户，返回完整统计与错误列表。
+    1. 先同步所有部门（若勾选），并构建 feishu_department_id -> 本地 id 缓存；
+    2. 再同步用户时按部门拉取、用缓存写部门 id，不重复查库；
+    3. 若只同步用户，不处理部门数据，但仍从 DB 读缓存用于解析用户部门。
     """
     dept_result = {"created": 0, "updated": 0, "skipped": 0, "failed": 0, "errors": []}
     user_result = {"created": 0, "updated": 0, "skipped": 0, "failed": 0, "errors": []}
@@ -346,14 +317,11 @@ def run_full_sync(
 
     if sync_departments_flag:
         dept_result = sync_departments(overwrite_existing=overwrite_existing)
-        flat = department_service.list_all()
-        for d in flat:
-            fid = d.get("feishuDepartmentId") or d.get("feishu_department_id")
-            if fid:
-                feishu_to_our[str(fid)] = d["id"]
-        feishu_to_our["0"] = 0
+        feishu_to_our = _build_feishu_to_our_cache()
 
     if sync_users_flag:
+        if not feishu_to_our or feishu_to_our == {"0": 0}:
+            feishu_to_our = _build_feishu_to_our_cache()
         user_result = sync_users(
             feishu_dept_id_to_our=feishu_to_our,
             overwrite_existing=overwrite_existing,

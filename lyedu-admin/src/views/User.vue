@@ -236,7 +236,7 @@ import {
   importUsersByExcel,
   type User
 } from '@/api/user'
-import { feishuSync } from '@/api/feishu'
+import { feishuSyncBackground, feishuSyncTaskStatus } from '@/api/feishu'
 import { getConfigByKey } from '@/api/config'
 import { getDepartmentTree, type Department } from '@/api/department'
 import { getTagList, type Tag } from '@/api/tag'
@@ -519,22 +519,52 @@ async function handleSyncConfirm() {
   }
   syncLoading.value = true
   try {
-    const res = await feishuSync({
+    const res = await feishuSyncBackground({
       sync_departments: syncOptions.sync_departments,
       sync_users: syncOptions.sync_users,
       overwrite_existing: syncOptions.overwrite_existing
     })
-    const data = (res as any)?.data ?? res
-    const dept = data?.departments ?? {}
-    const usr = data?.users ?? {}
-    const dc = (dept.created ?? 0) + (dept.updated ?? 0)
-    const uc = (usr.created ?? 0) + (usr.updated ?? 0)
-    ElMessage.success(`飞书同步完成：部门 ${dc} 个（新增 ${dept.created ?? 0}，更新 ${dept.updated ?? 0}），用户 ${uc} 个（新增 ${usr.created ?? 0}，更新 ${usr.updated ?? 0}）`)
-    syncDialogVisible.value = false
-    loadData()
-    loadDepartments()
+    const taskId = (res as any)?.task_id
+    if (!taskId) {
+      ElMessage.error('同步启动失败：未返回任务 ID')
+      return
+    }
+    const pollInterval = 2000
+    const poll = (): Promise<void> =>
+      new Promise((resolve, reject) => {
+        const tick = () => {
+          feishuSyncTaskStatus(taskId)
+            .then((r: any) => {
+              const d = r?.data ?? r
+              const status = d?.status
+              if (status === 'completed') {
+                const result = d?.result
+                const stats = result?.stats ?? {}
+                const dept = result?.departments ?? {}
+                const usr = result?.users ?? {}
+                const dc = (dept.created ?? 0) + (dept.updated ?? 0)
+                const uc = (usr.created ?? 0) + (usr.updated ?? 0)
+                ElMessage.success(`飞书同步完成：部门 ${dc} 个（新增 ${stats.departments_created ?? dept.created ?? 0}，更新 ${stats.departments_updated ?? dept.updated ?? 0}），用户 ${uc} 个（新增 ${stats.users_created ?? usr.created ?? 0}，更新 ${stats.users_updated ?? usr.updated ?? 0}）`)
+                syncDialogVisible.value = false
+                loadData()
+                loadDepartments()
+                resolve()
+                return
+              }
+              if (status === 'failed') {
+                ElMessage.error(d?.error || '同步失败')
+                reject(new Error(d?.error || '同步失败'))
+                return
+              }
+              setTimeout(tick, pollInterval)
+            })
+            .catch(reject)
+        }
+        tick()
+      })
+    await poll()
   } catch (e: any) {
-    ElMessage.error(e?.response?.data?.message || '飞书同步失败，请先在「系统设置」中配置飞书应用')
+    ElMessage.error(e?.response?.data?.message || e?.message || '飞书同步失败，请先在「系统设置」中配置飞书应用')
   } finally {
     syncLoading.value = false
   }

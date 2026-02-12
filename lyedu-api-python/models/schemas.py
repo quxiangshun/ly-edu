@@ -77,6 +77,7 @@ class UserRequest(BaseModel):
     username: Optional[str] = None
     password: Optional[str] = None
     real_name: Optional[str] = None
+    realName: Optional[str] = None  # 前端驼峰，validator 会同步到 real_name
     nickname: Optional[str] = None
     email: Optional[str] = None
     mobile: Optional[str] = None
@@ -94,16 +95,18 @@ class UserRequest(BaseModel):
 
     @root_validator(pre=True)
     def convert_camel_case(cls, values):
-        # 统一处理：如果前端传了驼峰命名，转换为下划线命名
+        # 统一处理：前端可能传驼峰命名，转换为下划线供后端使用
         if isinstance(values, dict):
-            if 'departmentId' in values and 'department_id' not in values:
+            if values.get('departmentId') is not None and values.get('department_id') is None:
                 values['department_id'] = values.get('departmentId')
-            if 'entryDate' in values and 'entry_date' not in values:
+            if values.get('entryDate') is not None and values.get('entry_date') is None:
                 values['entry_date'] = values.get('entryDate')
-            if 'unionId' in values and 'union_id' not in values:
+            if values.get('unionId') is not None and values.get('union_id') is None:
                 values['union_id'] = values.get('unionId')
-            if 'tagIds' in values and 'tag_ids' not in values:
+            if values.get('tagIds') is not None and values.get('tag_ids') is None:
                 values['tag_ids'] = values.get('tagIds')
+            if values.get('realName') is not None and values.get('real_name') is None:
+                values['real_name'] = values.get('realName')
         return values
 
 

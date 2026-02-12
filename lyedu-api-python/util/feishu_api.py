@@ -84,7 +84,15 @@ def list_department_children(
             "page_token": d.get("page_token") or "",
             "has_more": bool(d.get("has_more")),
         }
-    except Exception:
+    except Exception as e:
+        try:
+            import logging
+            logging.getLogger(__name__).warning(
+                "feishu list_department_children 请求异常 department_id=%s: %s",
+                department_id, e,
+            )
+        except Exception:
+            pass
         return {"items": [], "page_token": "", "has_more": False}
 
 
@@ -94,15 +102,16 @@ def list_departments_by_parent(
     page_size: int = 100,
 ) -> dict:
     """
-    按父部门 ID 获取子部门列表（部门列表接口，支持任意层级）。
-    parent_department_id=0 表示根部门下的直属部门。
-    返回格式与 list_department_children 一致，便于 BFS 拉取所有层级。
+    按父部门 ID 获取子部门列表（仅用于根 0 的兜底；飞书仅保证「子部门」接口 /departments/{id}/children 可用）。
+    parent_department_id=0 表示根部门下的直属部门。非根部门请用 list_department_children。
+    返回格式与 list_department_children 一致。
     """
     token = _get_tenant_access_token()
     if not token:
         return {"items": [], "page_token": "", "has_more": False}
     try:
         import requests
+        # 飞书无 /department/list，使用 /departments 路径尝试根部门兜底；若 404 则调用方仅依赖 children 接口
         url = f"{FEISHU_BASE}/contact/v3/departments"
         params = {
             "parent_department_id": parent_department_id,
@@ -116,6 +125,9 @@ def list_departments_by_parent(
             params=params,
             timeout=15,
         )
+        # 飞书可能无此路径，404 时静默返回空，避免异常日志
+        if resp.status_code == 404:
+            return {"items": [], "page_token": "", "has_more": False}
         resp.raise_for_status()
         data = resp.json()
         if data.get("code") != 0:
@@ -137,7 +149,15 @@ def list_departments_by_parent(
             "page_token": d.get("page_token") or "",
             "has_more": bool(d.get("has_more")),
         }
-    except Exception:
+    except Exception as e:
+        try:
+            import logging
+            logging.getLogger(__name__).warning(
+                "feishu list_departments_by_parent 请求异常 parent_department_id=%s: %s",
+                parent_department_id, e,
+            )
+        except Exception:
+            pass
         return {"items": [], "page_token": "", "has_more": False}
 
 
