@@ -8,7 +8,7 @@
 
 | 目录 | 作用 |
 |------|------|
-| **dev/** | 本地开发环境一键启动/停止，与 `dev-config.json` 搭配使用 |
+| **dev/** | 本地开发环境一键启动/停止，与 `dev-config.yml` 搭配使用（支持 .yml，无则回退 .json） |
 | **docker/** | Docker 部署：`.env` 与 `compose.yml` 组合使用，在此目录内执行 compose |
 
 ---
@@ -19,10 +19,11 @@
 
 | 文件 | 作用 |
 |------|------|
-| **start.ps1** | 读取 `dev-config.json`，按配置初始化环境（虚拟环境、npm install、Docker MySQL+Redis），在新终端中启动各服务；将终端 PID 写入仓库根目录 `.dev-servers.json` |
+| **start.ps1** | 读取 `dev-config.yml`（无则 `dev-config.json`），按配置初始化环境（虚拟环境、npm install、Docker MySQL+Redis），在新终端中启动各服务；将终端 PID 写入仓库根目录 `.dev-servers.json` |
 | **stop.ps1** | 根据 `.dev-servers.json` 关闭由 start 打开的终端，并结束占用 9700/9800/9900 端口的进程 |
-| **dev-config.json** | 当前使用的配置：`database`、`redis` 连接信息；`start_docker_mysql_redis`、`start_lyedu_api`、`start_lyedu_api_python`、`start_lyedu_admin`、`start_lyedu_pc` 等开关 |
-| **dev-config.example.json** | 配置示例，可复制为 `dev-config.json` 后修改 |
+| **dev-config.yml** | 当前使用的配置（YAML，可写注释）：`database`、`redis` 连接信息及用途说明；`start_docker_mysql_redis`、`start_lyedu_api`、`start_lyedu_api_python`、`start_lyedu_admin`、`start_lyedu_pc` 等开关。说明见文件内注释 |
+| **dev-config.example.yml** | 配置示例，可复制为 `dev-config.yml` 后修改 |
+| **dev-config.json** / **dev-config.example.json** | 仍支持，当不存在 `dev-config.yml` 时使用 |
 
 **使用方式**（在仓库根目录执行）：
 

@@ -1,16 +1,65 @@
-# LyEdu 开发环境一键启动（根据 dev-config.json）
+# LyEdu 开发环境一键启动（根据 dev-config.yml 或 dev-config.json）
 # 建议在项目根目录执行: .\scripts\dev\start.ps1
 $ErrorActionPreference = "Stop"
 $ScriptDir = $PSScriptRoot
 $Root = (Resolve-Path (Join-Path (Join-Path $ScriptDir '..') '..')).Path
 Set-Location $Root
 
-$ConfigPath = Join-Path $ScriptDir 'dev-config.json'
-if (-not (Test-Path $ConfigPath)) {
-    Write-Host 'Config not found: copy dev-config.example.json to dev-config.json and edit.' -ForegroundColor Red
+function Parse-DevConfigValue {
+    param([string]$v)
+    $v = ($v -replace '\s*#.*$', '').Trim().Trim('"').Trim("'")
+    if ($v -eq 'true') { return $true }
+    if ($v -eq 'false') { return $false }
+    if ($v -match '^\d+$') { return [int]$v }
+    return $v
+}
+function Parse-DevConfigYaml {
+    param([string]$path)
+    $lines = Get-Content $path -Encoding UTF8
+    $config = @{}
+    $section = $null
+    foreach ($line in $lines) {
+        $line = $line -replace '#.*$', ''
+        $line = $line.Trim()
+        if (-not $line) { continue }
+        if ($line -match '^(\w+):\s*$') {
+            $section = $matches[1]
+            $config[$section] = @{}
+            continue
+        }
+        if ($line -match '^\s{2,}(\w+):\s*(.*)$' -and $section) {
+            $config[$section][$matches[1]] = Parse-DevConfigValue $matches[2]
+            continue
+        }
+        if ($line -match '^(\w+):\s*(.*)$' -and -not $line.StartsWith('  ')) {
+            $section = $null
+            $config[$matches[1]] = Parse-DevConfigValue $matches[2]
+            continue
+        }
+    }
+    $db = [PSCustomObject]$config.database
+    $redis = [PSCustomObject]$config.redis
+    [PSCustomObject]@{
+        database = $db
+        redis = $redis
+        start_docker_mysql_redis = $config['start_docker_mysql_redis']
+        start_lyedu_api = $config['start_lyedu_api']
+        start_lyedu_api_python = $config['start_lyedu_api_python']
+        start_lyedu_admin = $config['start_lyedu_admin']
+        start_lyedu_pc = $config['start_lyedu_pc']
+    }
+}
+
+$ConfigYml = Join-Path $ScriptDir 'dev-config.yml'
+$ConfigJson = Join-Path $ScriptDir 'dev-config.json'
+if (Test-Path $ConfigYml) {
+    $config = Parse-DevConfigYaml $ConfigYml
+} elseif (Test-Path $ConfigJson) {
+    $config = Get-Content $ConfigJson -Raw -Encoding UTF8 | ConvertFrom-Json
+} else {
+    Write-Host 'Config not found: copy dev-config.example.yml to dev-config.yml and edit.' -ForegroundColor Red
     exit 1
 }
-$config = Get-Content $ConfigPath -Raw -Encoding UTF8 | ConvertFrom-Json
 
 $ServersFile = Join-Path $Root '.dev-servers.json'
 $servers = @{ windows = @() }
@@ -70,8 +119,15 @@ if ($config.start_lyedu_api_python) {
             $reqFile = Join-Path $apiPyDir 'requirements.txt'
             $needInstall = $false
             if (Test-Path $pythonExe) {
-                & $pythonExe -c 'import openpyxl' 2>$null
-                if ($LASTEXITCODE -ne 0) { $needInstall = $true }
+                $errFile = [System.IO.Path]::GetTempFileName()
+                $outFile = [System.IO.Path]::GetTempFileName()
+                try {
+                    $p = Start-Process -FilePath $pythonExe -ArgumentList '-c', 'import openpyxl' -Wait -NoNewWindow -PassThru -RedirectStandardError $errFile -RedirectStandardOutput $outFile
+                    if ($p.ExitCode -ne 0) { $needInstall = $true }
+                } finally {
+                    Remove-Item $errFile -Force -ErrorAction SilentlyContinue
+                    Remove-Item $outFile -Force -ErrorAction SilentlyContinue
+                }
             } else {
                 $needInstall = $true
             }

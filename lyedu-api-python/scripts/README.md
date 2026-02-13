@@ -36,7 +36,7 @@ start.ps1 / start.sh
   └── 不创建 .venv，仅激活后执行迁移 + 启动
 
 _start_runner.ps1
-  └── 由 仓库根 scripts/dev/start.ps1 按 dev-config.json 生成
+  └── 由 仓库根 scripts/dev/start.ps1 按 dev-config.yml（或 dev-config.json）生成
   └── 依赖：.venv、alembic、uvicorn
   └── 环境变量由生成方注入（MYSQL_*、REDIS_*、ENV 等）
 
@@ -68,7 +68,7 @@ scripts/*.py（generate_demo_data、seed_questions、sync_fa_to_ly）
 | **start.ps1** | Windows 下在本目录执行：设置 PYTHONUTF8；若存在 .venv 则激活；执行 `alembic upgrade head`；启动 `uvicorn main:app`（HOST/PORT 从环境变量读，未设则 uvicorn 默认）。 | .venv（可选）、alembic、uvicorn、config/.env |
 | **start.sh** | Linux/Mac 下同上：`alembic upgrade head` → `uvicorn main:app --reload`。 | 已安装依赖（alembic、uvicorn）、.env |
 | **install.ps1** | 创建 **venv**（非 .venv）、用清华源 `pip install -r requirements.txt`。与根目录 start.ps1 使用的 .venv 可并存，若用 start.ps1 建议建 .venv。 | python、requirements.txt |
-| **_start_runner.ps1** | 由仓库根 **scripts/dev/start.ps1** 按 dev-config.json 动态生成，写入 MYSQL_*、REDIS_*、ENV 等环境变量后激活 .venv、执行 alembic、启动 uvicorn。勿手动编辑。 | .venv、alembic、uvicorn |
+| **_start_runner.ps1** | 由仓库根 **scripts/dev/start.ps1** 按 dev-config.yml（或 dev-config.json）动态生成，写入 MYSQL_*、REDIS_*、ENV 等环境变量后激活 .venv、执行 alembic、启动 uvicorn。勿手动编辑。 | .venv、alembic、uvicorn |
 | **docker-entrypoint.sh** | Docker 容器入口：循环检测 MySQL 可连后执行 `alembic upgrade head`，再 `uvicorn main:app`。 | 镜像内已安装依赖、环境变量 MYSQL_* 等 |
 
 ---

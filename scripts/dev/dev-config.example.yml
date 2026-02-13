@@ -1,0 +1,19 @@
+# LyEdu 开发环境配置示例（复制为 dev-config.yml 后修改）
+# 说明见 dev-config.yml 内注释。
+
+database:
+  host: "127.0.0.1"
+  port: 3306
+  user: lyedu
+  password: lyedu123456
+  database: lyedu
+
+redis:
+  host: "127.0.0.1"
+  port: 6379
+
+start_docker_mysql_redis: true
+start_lyedu_api: false
+start_lyedu_api_python: true
+start_lyedu_admin: true
+start_lyedu_pc: true

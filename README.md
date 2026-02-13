@@ -37,17 +37,27 @@ LyEdu 采用**前后端分离**架构：前端为 Vue3，后端提供 **Java（S
 
 ### 本地开发
 
-#### 一键启动（Windows，项目根目录）
+#### 一键启动开发环境（Windows，项目根目录）
 
-开发环境脚本与配置在 **scripts/** 下按场景分目录，详见 [scripts/README.md](scripts/README.md)。一键启动/停止：
+开发环境脚本与配置在 **scripts/** 下，详见 [scripts/README.md](scripts/README.md)。
+
+**1. 配置**（首次或需改连接时）
+
+- 复制 `scripts/dev/dev-config.example.yml` 为 `scripts/dev/dev-config.yml`，按需修改：
+  - **database** / **redis**：MySQL、Redis 连接信息（供 lyedu-api-python 使用；`database.port` 也用于判断是否自动启动 Docker MySQL+Redis）
+  - **start_docker_mysql_redis**：为 `true` 时，若本机未监听 MySQL 端口则自动执行 `docker compose` 启动 MySQL+Redis
+  - **start_lyedu_api_python** / **start_lyedu_admin** / **start_lyedu_pc**：是否启动对应服务（true/false）
+
+**2. 启动与停止**
+
+在项目根目录执行：
 
 ```powershell
-.\scripts\dev\start.ps1   # 按 scripts/dev/dev-config.json 启动 Docker(可选)、Python API、管理后台、PC 端等
-.\scripts\dev\stop.ps1    # 关闭上述终端及端口上的进程
+.\scripts\dev\start.ps1   # 按 dev-config.yml 初始化环境（.venv、npm install、可选 Docker），在新终端中启动各服务
+.\scripts\dev\stop.ps1    # 关闭上述终端，并结束占用 9700/9800/9900 端口的进程
 ```
 
-- **scripts/dev/**：`dev-config.json` 配置数据库/Redis 及要启动的服务；`start.ps1` 负责初始化环境并在新终端启动各服务；`stop.ps1` 关闭终端并结束 9700/9800/9900 端口进程。
-- **scripts/docker/**：Docker 部署时 `.env` 与 `compose.yml` 组合使用，进入 `scripts/docker` 后执行 `docker compose`。
+**start.ps1 会**：若不存在 `lyedu-api-python/.venv` 则创建并安装依赖；若已存在则检查关键依赖（如 openpyxl），缺则执行 `pip install -r requirements.txt`；按配置在新开 PowerShell 窗口中启动 Python API、管理后台、PC 端等，并将窗口 PID 写入根目录 `.dev-servers.json`。**stop.ps1** 根据该文件关闭窗口并清理端口。
 
 #### 1. 克隆项目
 ```bash
