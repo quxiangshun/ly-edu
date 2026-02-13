@@ -93,7 +93,7 @@
 
 	const mainMenus: MenuItem[] = [
 		{ text: '我的学习', icon: '/static/icons/fontawesome/book-open.svg', path: '/pages/my-learning/my-learning' },
-		{ text: '我点赞的视频', icon: '/static/icons/fontawesome/thumbs-up.svg', path: '/pages/my-liked-videos/my-liked-videos' },
+		{ text: '我点赞的视频', icon: '/static/icons/fontawesome/thumb-up.svg', path: '/pages/my-liked-videos/my-liked-videos' },
 		{ text: '课程中心', icon: '/static/icons/fontawesome/book.svg', path: '/pages/courses/courses' },
 		{ text: '考试中心', icon: '/static/icons/fontawesome/file-lines.svg', path: '/pages/exam-list/exam-list' },
 		{ text: '我的积分', icon: '/static/icons/fontawesome/coins.svg', path: '/pages/my-points/my-points' },
@@ -196,7 +196,7 @@
 	flex: 1;
 	flex-direction: column;
 	min-height: 100vh;
-	background: linear-gradient(180deg, var(--brand-bg-strong) 0%, var(--brand-bg) 30%, #f5f6f8 100%);
+	background: var(--brand-gradient-immersive);
 }
 .content {
 		flex-direction: column;

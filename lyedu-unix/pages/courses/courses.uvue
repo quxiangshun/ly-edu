@@ -24,8 +24,6 @@
 			</view>
 		</scroll-view>
 
-		<!-- 自定义 TabBar -->
-		<custom-tab-bar :current="1" @change="handleTabChange"></custom-tab-bar>
 	</view>
 </template>
 
@@ -34,7 +32,6 @@
 	import { getCoursePage, type Course } from '../../api/course'
 	import { joinCourse } from '../../api/learning'
 	import { getThemeRootStyle } from '../../utils/theme'
-	import CustomTabBar from '../../components/custom-tab-bar.uvue'
 
 	const themeRootStyle = computed(() => getThemeRootStyle())
 
@@ -85,9 +82,6 @@
 		}
 	}
 
-	function handleTabChange(index: number): void {
-		// 处理 tab 切换事件
-	}
 </script>
 
 <style>
@@ -95,7 +89,7 @@
 	flex: 1;
 	flex-direction: column;
 	min-height: 100vh;
-	background: linear-gradient(180deg, var(--brand-bg-strong) 0%, var(--brand-bg) 30%, #f5f6f8 100%);
+	background: var(--brand-gradient-immersive);
 }
 .content {
 		padding: 16px 16px 80px 16px;

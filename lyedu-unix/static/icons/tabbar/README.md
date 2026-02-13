@@ -6,8 +6,7 @@
 |--------|------|
 | tab-home.png | 首页（未选中） |
 | tab-home-active.png | 首页（选中） |
-| tab-courses.png | 课程（未选中） |
-| tab-courses-active.png | 课程（选中） |
+| tab-exam.png | 考试（未选中/选中） |
 | tab-my.png | 我的（未选中） |
 | tab-my-active.png | 我的（选中） |
 

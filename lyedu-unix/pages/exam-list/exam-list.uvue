@@ -1,6 +1,7 @@
 <template>
-	<scroll-view class="page" scroll-y="true" style="flex:1" :style="themeRootStyle">
-		<view class="content">
+	<view class="page" :style="themeRootStyle">
+		<scroll-view scroll-y="true" style="flex:1">
+			<view class="content">
 			<text class="subtitle">可参加的考试（按部门可见）</text>
 			<view v-if="loading" class="loading-wrap">
 				<text class="loading-text">加载中...</text>
@@ -28,15 +29,20 @@
 				</view>
 			</template>
 		</view>
-	</scroll-view>
+		</scroll-view>
+		<custom-tab-bar :current="1" @change="handleTabChange"></custom-tab-bar>
+	</view>
 </template>
 
 <script setup lang="uts">
 	import { computed } from 'vue'
 	import { getExamPage, getMyRecords } from '../../api/exam'
-	import { themePrimary } from '../../utils/theme'
+	import { getThemeRootStyle } from '../../utils/theme'
+	import CustomTabBar from '../../components/custom-tab-bar.uvue'
 
-	const themeRootStyle = computed((): Record<string, string> => ({ '--brand-primary': themePrimary.value }))
+	const themeRootStyle = computed(() => getThemeRootStyle())
+
+	function handleTabChange(index: number): void {}
 
 	const loading = ref(false)
 	const examList = ref<any[]>([])
@@ -93,10 +99,13 @@
 <style>
 .page {
 	flex: 1;
+	flex-direction: column;
+	min-height: 100vh;
+	background: var(--brand-gradient-immersive);
 }
 .content {
 	flex-direction: column;
-	padding: 16px;
+	padding: 16px 16px 80px 16px;
 }
 .subtitle {
 	font-size: 13px;

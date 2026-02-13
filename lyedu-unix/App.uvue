@@ -56,6 +56,8 @@
 		--brand-primary: #409eff;
 		--brand-bg: rgba(64,158,255,0.06);
 		--brand-bg-strong: rgba(64,158,255,0.12);
+		/* 沉浸式渐变：顶部主题色 → 中部过渡 → 底部白色 */
+		--brand-gradient-immersive: linear-gradient(180deg, rgba(64,158,255,0.22) 0%, rgba(64,158,255,0.08) 35%, #ffffff 100%);
 		/* 自定义 tabBar 高度，供含 tabBar 的页面设置 padding-bottom */
 		--tab-bar-height: 50px;
 	}

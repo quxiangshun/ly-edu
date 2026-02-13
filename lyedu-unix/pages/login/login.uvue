@@ -121,7 +121,7 @@
 	}
 
 	function doRedirect(path: string): void {
-		const tabPaths = ['/pages/index/index', '/pages/courses/courses', '/pages/my/my']
+		const tabPaths = ['/pages/index/index', '/pages/exam-list/exam-list', '/pages/my/my']
 		const isTab = tabPaths.indexOf(path) >= 0
 		const fullPath = path.startsWith('/') ? path : '/' + path
 		if (isTab) {

@@ -41,9 +41,12 @@ export function hexToRgba(hex: string, alpha: number): string {
 
 /** 用于页面根节点 :style，使子级可使用 var(--brand-primary)、var(--brand-bg) 等 */
 export function getThemeRootStyle(): Record<string, string> {
+	const top = hexToRgba(themePrimary.value, 0.22)
+	const mid = hexToRgba(themePrimary.value, 0.08)
 	return {
 		'--brand-primary': themePrimary.value,
 		'--brand-bg': hexToRgba(themePrimary.value, 0.06),
-		'--brand-bg-strong': hexToRgba(themePrimary.value, 0.12)
+		'--brand-bg-strong': hexToRgba(themePrimary.value, 0.12),
+		'--brand-gradient-immersive': 'linear-gradient(180deg, ' + top + ' 0%, ' + mid + ' 35%, #ffffff 100%)'
 	}
 }
