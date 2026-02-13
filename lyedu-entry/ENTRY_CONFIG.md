@@ -96,7 +96,7 @@ server {
 
 - 入口：`cd lyedu-entry && npm run dev`（默认端口 9777）
 - PC：`cd lyedu-pc && npm run dev`（9800）
-- H5：`cd lyedu-h5 && npm run dev`（9801）
+- 学员端 H5/小程序：使用 HBuilderX 打开 lyedu-unix 运行到浏览器或微信开发者工具
 - 管理后台：`cd lyedu-admin && npm run dev`（9900）
 
 本地用不同端口时，可在 `lyedu-entry` 的 `.env` 里写完整地址，例如：

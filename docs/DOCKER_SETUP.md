@@ -19,7 +19,6 @@
    - 6379 (Redis)
    - 9700 (API)
    - 9800 (PC端)
-   - 9801 (H5端)
    - 9900 (管理后台)
 
 ## 启动步骤
@@ -34,7 +33,7 @@ docker compose -f compose-mysql-redis.yml up -d
 
 - **MySQL**：localhost:3306（root / lyedu123456，库 lyedu）  
 - **Redis**：localhost:6379  
-- 本地启动 Python API、lyedu-admin、lyedu-pc、lyedu-h5 直连上述地址；Python 启动时会自动执行 Alembic 迁移。
+- 本地启动 Python API、lyedu-admin、lyedu-pc、lyedu-unix 等直连上述地址；Python 启动时会自动执行 Alembic 迁移。
 
 ### 方式二：完整启动（MySQL + Redis + Java API + 前端全部容器化）
 
@@ -68,7 +67,7 @@ docker-compose up -d api
 Start-Sleep -Seconds 60
 
 # 5. 启动前端服务
-docker-compose up -d admin pc h5
+docker-compose up -d admin pc
 ```
 
 ### 方式四：仅 MySQL + Redis，本地跑 Python 后端
@@ -153,7 +152,6 @@ docker-compose ps
 
 - 管理后台: http://localhost:9900
 - PC端: http://localhost:9800
-- H5端: http://localhost:9801
 - API: http://localhost:9700/api/hello
 
 ### 3. 查看日志

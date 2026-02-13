@@ -8,9 +8,9 @@ LyEdu 采用**前后端分离**架构：前端为 Vue3，后端提供 **Java（S
 
 - 🎯 **功能完善**：部门/学员管理、在线视频学习、进度追踪、课程评论、知识中心、周期任务、新员工任务、考试中心、证书、积分与排行、图片库、系统配置、防拖拽/快进等
 - 🚀 **双后端**：SpringBoot 4 + JDK 25 与 FastAPI + Python 3，接口对齐，可按团队技术栈选择
-- 🎨 **界面美观**：Vue3 + TypeScript + Vite，现代化 UI，管理后台 / PC / H5 多端一致体验
+- 🎨 **界面美观**：Vue3 + TypeScript + Vite，现代化 UI，管理后台 / PC / 学员端多端一致体验
 - 🔒 **安全可靠**：视频私有化存储、JWT 认证、飞书集成登录，可配置播放器防拖拽与禁倍速
-- 📱 **多端支持**：PC 端、H5 端、管理后台、统一入口
+- 📱 **多端支持**：PC 端、学员端（H5/微信小程序，uni-app x）、管理后台、统一入口
 
 ## 技术栈
 
@@ -20,7 +20,7 @@ LyEdu 采用**前后端分离**架构：前端为 Vue3，后端提供 **Java（S
 
 ### 前端
 - Vue 3、TypeScript、Vite
-- Element Plus（管理后台 / PC）、Vant（H5）
+- Element Plus（管理后台 / PC）、uni-app x（学员端 H5/小程序）
 
 ### 数据库与迁移
 - MySQL 8.0+
@@ -90,10 +90,8 @@ cd lyedu-pc
 npm install
 npm run dev
 
-# H5 端 (不再维护， 使用lyedu-unix)
-cd lyedu-h5
-npm install
-npm run dev
+# 学员端 H5/小程序（uni-app x）
+使用 HBuilderX 打开 lyedu-unix 项目，运行到浏览器或微信开发者工具。
 ```
 
 ### Docker 部署
@@ -116,8 +114,8 @@ docker-compose up -d
 访问地址：
 - 管理后台：http://localhost:9900
 - PC 端：http://localhost:9800
-- H5 端：http://localhost:9801
 - API：http://localhost:9700
+- 学员端 H5/小程序：使用 lyedu-unix 运行到浏览器或微信开发者工具
 
 ## 项目结构
 
@@ -127,7 +125,7 @@ lyedu/
 ├── lyedu-api-python/       # 后端 API（Python，FastAPI）
 ├── lyedu-admin/            # 管理后台前端
 ├── lyedu-pc/               # PC 端前端
-├── lyedu-h5/               # H5 端前端
+├── lyedu-unix/             # 学员端 H5/小程序（uni-app x）
 ├── lyedu-entry/            # 统一入口（可选）
 ├── db/                     # 数据库迁移（Flyway + Alembic）
 │   ├── flyway/             # Java 用

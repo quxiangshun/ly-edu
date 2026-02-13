@@ -1,6 +1,6 @@
 # lyedu-unix
 
-LyEdu 学员端 uni-app x 版本，支持 H5 与微信小程序，功能与 lyedu-h5 保持一致。
+LyEdu 学员端 uni-app x 版本，支持 H5 与微信小程序。
 
 ## 技术栈
 
@@ -17,7 +17,7 @@ LyEdu 学员端 uni-app x 版本，支持 H5 与微信小程序，功能与 lyed
 
 ```
 lyedu-unix/
-├── api/              # 接口封装（与 lyedu-h5 一致）
+├── api/              # 接口封装
 ├── config/           # 配置
 │   ├── api.uts       # API 基础地址
 │   └── auth.uts      # 登录方式（local / feishu / both）
@@ -75,8 +75,7 @@ export const API_BASE_URL = '/api'
 - Token 存储于本地，请求自动携带 `Authorization` 头
 - 401 时清除登录态并跳转登录页
 
-## 与 lyedu-h5 的关系
+## 后端对接
 
-- 接口路径、参数、返回值与 lyedu-h5 相同
-- 业务逻辑按 lyedu-h5 页面实现
+- 接口路径、参数、返回值与 PC 端（lyedu-pc）一致
 - 后端共用 lyedu-api-python 或 lyedu-api

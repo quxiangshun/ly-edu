@@ -42,7 +42,7 @@ lyedu:
 | `both` | 飞书扫码 + 账号密码 |
 
 - **PC**：在 `lyedu-pc` 下创建 `.env` 或 `.env.production`，例如 `VITE_AUTH_PROVIDER=feishu`。
-- **H5**：在 `lyedu-h5` 下同理。
+- **学员端 H5/小程序**：在 `lyedu-unix` 下配置 `config/auth.uts` 同理。
 
 后续扩展企业微信、钉钉时，可在此增加 `wecom`、`dingtalk` 等，并在 `src/utils/auth.ts` 中增加对应判断与 API 调用。
 

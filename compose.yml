@@ -92,22 +92,6 @@ services:
       - lyedu-network
     restart: unless-stopped
 
-  h5:
-    build:
-      context: ./lyedu-h5
-      dockerfile: Dockerfile
-      args:
-        DOCKER_REGISTRY: ${DOCKER_REGISTRY:-}
-        NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmmirror.com}
-    container_name: lyedu-h5
-    ports:
-      - "9801:80"
-    depends_on:
-      - api
-    networks:
-      - lyedu-network
-    restart: unless-stopped
-
 volumes:
   mysql_data:
   redis_data:

@@ -55,20 +55,15 @@ lyedu/
 │   ├── vite.config.ts
 │   └── Dockerfile
 │
-├── lyedu-h5/               # H5 端前端
-│   ├── src/
-│   │   ├── api/
-│   │   ├── assets/
-│   │   ├── components/
-│   │   ├── router/
-│   │   ├── stores/
-│   │   ├── utils/
-│   │   ├── views/
-│   │   ├── App.vue
-│   │   └── main.ts
-│   ├── package.json
-│   ├── vite.config.ts
-│   └── Dockerfile
+├── lyedu-unix/              # 学员端 H5/微信小程序（uni-app x）
+│   ├── api/
+│   ├── config/
+│   ├── pages/
+│   ├── utils/
+│   ├── App.uvue
+│   ├── main.uts
+│   ├── pages.json
+│   └── manifest.json
 │
 ├── docker/                  # Docker 相关文件
 │   └── mysql/
@@ -97,7 +92,7 @@ lyedu/
 - **TypeScript**: 类型安全的 JavaScript 超集
 - **Vite**: 下一代前端构建工具
 - **Element Plus**: PC 端 UI 组件库（管理后台、PC 端）
-- **Vant**: 移动端 UI 组件库（H5 端）
+- **uni-app x**: 学员端 H5/微信小程序
 - **Pinia**: Vue 3 状态管理库
 - **Vue Router**: Vue 官方路由管理器
 - **Axios**: HTTP 客户端

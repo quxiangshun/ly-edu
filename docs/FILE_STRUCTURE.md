@@ -13,7 +13,7 @@
 | **.gitignore** | Git 忽略规则（如 node_modules、target、.env 等） |
 | **.dockerignore** | Docker 构建时忽略的文件 |
 | **.env.example** | 根目录环境变量示例（Docker 镜像源、端口等） |
-| **compose.yml** | 完整 Docker Compose：MySQL + Redis + Java API + admin/pc/h5 前端 |
+| **compose.yml** | 完整 Docker Compose：MySQL + Redis + Java API + admin/pc 前端 |
 | **compose-mysql-redis.yml** | 仅启动 MySQL + Redis，供本地开发直连 |
 | **build-api.ps1** / **build-api.sh** | 构建 Java 后端 jar 并复制到 pkg/ |
 | **init-gradle.ps1** | Windows 下初始化 Gradle 包装器（可选） |
@@ -172,20 +172,16 @@
 
 ---
 
-## lyedu-h5/ — H5 移动端学员前端（Vue3 + Vant）
+## lyedu-unix/ — 学员端 H5/微信小程序（uni-app x）
 
 | 文件/目录 | 作用 |
 |-----------|------|
-| **package.json** / **vite.config.ts** 等 | H5 独立工程 |
-| **src/router/index.ts** | H5 路由（含底部 Tab：首页、课程、我的） |
-| **src/views/MainLayout.vue** | 主布局（底部 Tab 栏常驻） |
-| **src/views/Home.vue** / **Courses.vue** / **My.vue** | Tab 对应页面 |
-| **src/views/Login.vue** | 登录 |
-| **src/views/CourseDetail.vue** / **VideoPlayer.vue** | 课程详情、视频播放 |
-| **src/views/MyLearning.vue** | 我的学习 |
-| **src/views/KnowledgeCenter.vue** | 知识中心 |
-| **src/api/** | H5 端 API 封装 |
-| **src/utils/auth.ts** / **request.ts** | 鉴权与请求 |
+| **pages.json** | 页面与路由配置 |
+| **manifest.json** | 应用与平台配置 |
+| **api/** | 接口封装 |
+| **config/api.uts** / **config/auth.uts** | API 地址、登录方式 |
+| **pages/** | 页面（首页、课程、我的、登录、学习、考试等） |
+| **utils/** | 请求、鉴权等工具 |
 
 ---
 
@@ -209,7 +205,7 @@
 - **lyedu-api-python/**：Python 后端（FastAPI、Alembic 自动迁移）。  
 - **lyedu-admin/**：管理后台（课程、考试、用户、配置等）。  
 - **lyedu-pc/**：PC 学员端（学习、考试、任务、证书、积分）。  
-- **lyedu-h5/**：H5 学员端（精简功能、底部 Tab）。  
+- **lyedu-unix/**：学员端 H5/微信小程序（uni-app x）。  
 - **lyedu-entry/**：可选统一入口。
 
 更多细节可参考 **README.md** 与 **docs/PROJECT_STRUCTURE.md**。
