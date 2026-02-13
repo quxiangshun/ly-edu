@@ -1,41 +1,87 @@
 <template>
 	<view class="page" :style="themeRootStyle">
+		<!-- 蓝色渐变头部 -->
+		<view class="exam-header">
+			<text class="exam-header-title">我的考试</text>
+		</view>
+
+		<!-- 待考试 / 已考试 标签切换 -->
+		<view class="tab-bar">
+			<view
+				:class="['tab-item', activeTab === 0 ? 'tab-item--active' : '']"
+				@click="activeTab = 0"
+			>
+				<text class="tab-text">待考试 ({{ pendingList.length }})</text>
+			</view>
+			<view
+				:class="['tab-item', activeTab === 1 ? 'tab-item--active' : '']"
+				@click="activeTab = 1"
+			>
+				<text class="tab-text">已考试 ({{ completedList.length }})</text>
+			</view>
+		</view>
+
 		<scroll-view scroll-y="true" style="flex:1">
 			<view class="content">
-			<text class="subtitle">可参加的考试（按部门可见）</text>
-			<view v-if="loading" class="loading-wrap">
-				<text class="loading-text">加载中...</text>
+				<view v-if="loading" class="loading-wrap">
+					<text class="loading-text">加载中...</text>
+				</view>
+				<template v-else>
+					<!-- 待考试列表 -->
+					<template v-if="activeTab === 0">
+						<view v-if="pendingList.length === 0" class="empty-wrap">
+							<text class="empty-text">暂无待考考试</text>
+						</view>
+						<view v-else>
+							<view v-for="row in pendingList" :key="row.id" class="exam-card" @click="goTake(row)">
+								<text class="exam-title">{{ row.title }}</text>
+								<text class="exam-detail">
+									时长: {{ row.durationMinutes ?? '-' }}分钟
+									<text v-if="row.questionCount != null">共{{ row.questionCount }}题</text>
+								</text>
+								<view class="exam-meta">
+									<text v-if="row.startTime != null" class="exam-meta-text">开始：{{ formatTime(row.startTime) }}</text>
+									<text v-if="row.endTime != null" class="exam-meta-text">结束：{{ formatTime(row.endTime) }}</text>
+								</view>
+								<view class="exam-action">
+									<button class="take-btn" size="mini">参加考试</button>
+								</view>
+							</view>
+						</view>
+					</template>
+					<!-- 已考试列表 -->
+					<template v-else>
+						<view v-if="completedList.length === 0" class="empty-wrap">
+							<text class="empty-text">暂无已考记录</text>
+						</view>
+						<view v-else>
+							<view v-for="row in completedList" :key="row.id" class="exam-card" @click="goResult(row)">
+								<text class="exam-title">{{ row.title }}</text>
+								<text class="exam-detail">
+									时长: {{ row.durationMinutes ?? '-' }}分钟
+									<text v-if="row.questionCount != null">共{{ row.questionCount }}题</text>
+								</text>
+								<view class="exam-row">
+									<text class="exam-meta-text" v-if="row.answerCount != null">{{ row.answerCount }}人作答</text>
+									<view class="exam-score-wrap">
+										<text class="exam-score">得分: </text>
+										<text class="exam-score-value">{{ row.record != null ? row.record.score : '-' }}</text>
+									</view>
+									<button class="retake-btn" size="mini" @click.stop="goTake(row)">重考</button>
+								</view>
+							</view>
+						</view>
+					</template>
+				</template>
 			</view>
-			<template v-else>
-				<view v-if="examList.length === 0" class="empty-wrap">
-					<text class="empty-text">暂无考试</text>
-				</view>
-				<view v-else>
-					<view v-for="row in examList" :key="row.id" class="exam-card" @click="row.record != null ? goResult(row) : goTake(row)">
-						<text class="exam-title">{{ row.title }}</text>
-						<view class="exam-info">
-							<text v-if="row.startTime != null">开始：{{ formatTime(row.startTime) }}</text>
-							<text v-if="row.endTime != null">结束：{{ formatTime(row.endTime) }}</text>
-						</view>
-						<view class="exam-info">
-							<text v-if="row.durationMinutes != null">时长 {{ row.durationMinutes }} 分钟</text>
-							<text v-if="row.passScore != null">及格分 {{ row.passScore }} 分</text>
-						</view>
-						<view class="exam-action">
-							<text v-if="row.record != null" class="done-tag">已考 {{ row.record.score }} 分</text>
-							<button v-else class="take-btn" size="mini">参加考试</button>
-						</view>
-					</view>
-				</view>
-			</template>
-		</view>
 		</scroll-view>
+
 		<custom-tab-bar :current="1" @change="handleTabChange"></custom-tab-bar>
 	</view>
 </template>
 
 <script setup lang="uts">
-	import { computed } from 'vue'
+	import { computed, ref } from 'vue'
 	import { getExamPage, getMyRecords } from '../../api/exam'
 	import { getThemeRootStyle } from '../../utils/theme'
 	import CustomTabBar from '../../components/custom-tab-bar.uvue'
@@ -45,8 +91,12 @@
 	function handleTabChange(index: number): void {}
 
 	const loading = ref(false)
+	const activeTab = ref(0)
 	const examList = ref<any[]>([])
 	const pagination = { page: 1, size: 15, total: 0 }
+
+	const pendingList = computed(() => examList.value.filter((row: any) => row.record == null))
+	const completedList = computed(() => examList.value.filter((row: any) => row.record != null))
 
 	onShow(() => {
 		loadList()
@@ -101,16 +151,54 @@
 	flex: 1;
 	flex-direction: column;
 	min-height: 100vh;
-	background: var(--brand-gradient-immersive);
+	background-color: #f5f6f8;
+}
+.exam-header {
+	flex-shrink: 0;
+	background: linear-gradient(180deg, var(--brand-primary) 0%, rgba(64,158,255,0.88) 100%);
+	padding: 12px 20px 20px 20px;
+	/* 自定义导航时预留状态栏高度；env 不支持时使用 44px 回退 */
+	padding-top: 44px;
+	padding-top: calc(constant(safe-area-inset-top) + 12px);
+	padding-top: calc(env(safe-area-inset-top) + 12px);
+}
+.exam-header-title {
+	font-size: 20px;
+	font-weight: 600;
+	color: #ffffff;
+}
+.tab-bar {
+	flex-shrink: 0;
+	flex-direction: row;
+	background-color: #ffffff;
+	padding: 0 16px;
+	border-bottom-width: 1px;
+	border-bottom-color: #ebeef5;
+}
+.tab-item {
+	flex: 1;
+	padding: 14px 0;
+	align-items: center;
+}
+.tab-item--active .tab-text {
+	color: #323233;
+	font-weight: 600;
+}
+.tab-item:not(.tab-item--active) .tab-text {
+	color: #969799;
+}
+.tab-item--active {
+	border-bottom-width: 3px;
+	border-bottom-color: var(--brand-primary);
+	border-bottom-style: solid;
+}
+.tab-text {
+	font-size: 15px;
 }
 .content {
 	flex-direction: column;
 	padding: 16px 16px 80px 16px;
-}
-.subtitle {
-	font-size: 13px;
-	color: #969799;
-	margin-bottom: 16px;
+	background-color: #ffffff;
 }
 .loading-wrap {
 	padding: 40px 0;
@@ -132,8 +220,12 @@
 	flex-direction: column;
 	padding: 16px;
 	background-color: #ffffff;
-	border-radius: 8px;
+	border-radius: 12px;
 	margin-bottom: 12px;
+	border-width: 1px;
+	border-color: rgba(0,0,0,0.06);
+	border-style: solid;
+	box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
 .exam-title {
 	font-size: 16px;
@@ -141,28 +233,55 @@
 	color: #323233;
 	margin-bottom: 8px;
 }
-.exam-info {
+.exam-detail {
+	font-size: 13px;
+	color: #646566;
+	margin-bottom: 6px;
+}
+.exam-meta {
 	flex-direction: row;
 	flex-wrap: wrap;
-	margin-bottom: 4px;
+	margin-bottom: 8px;
 }
-.exam-info text {
+.exam-meta-text {
 	font-size: 12px;
 	color: #969799;
 	margin-right: 16px;
+}
+.exam-row {
+	flex-direction: row;
+	align-items: center;
+	justify-content: space-between;
+	margin-top: 8px;
+}
+.exam-score-wrap {
+	flex-direction: row;
+	align-items: center;
+}
+.exam-score {
+	font-size: 13px;
+	color: #646566;
+}
+.exam-score-value {
+	font-size: 14px;
+	font-weight: 600;
+	color: #ee0a24;
+	margin-left: 2px;
 }
 .exam-action {
 	flex-direction: row;
 	justify-content: flex-end;
 	margin-top: 12px;
 }
-.done-tag {
-	font-size: 13px;
-	color: #07c160;
-}
 .take-btn {
 	background-color: var(--brand-primary);
 	color: #ffffff;
 	border-radius: 16px;
+}
+.retake-btn {
+	background-color: var(--brand-primary);
+	color: #ffffff;
+	border-radius: 16px;
+	opacity: 0.9;
 }
 </style>

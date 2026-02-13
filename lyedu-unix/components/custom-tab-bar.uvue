@@ -39,9 +39,9 @@
 	})
 	let switching = false
 	const tabList = ref([
-		{ pagePath: '/pages/index/index', text: '首页', iconPath: '/static/icons/tabbar/tab-home.png', selectedIconPath: '/static/icons/tabbar/tab-home-active.png' },
-		{ pagePath: '/pages/exam-list/exam-list', text: '考试', iconPath: '/static/icons/tabbar/tab-exam.png', selectedIconPath: '/static/icons/tabbar/tab-exam.png' },
-		{ pagePath: '/pages/my/my', text: '我的', iconPath: '/static/icons/tabbar/tab-my.png', selectedIconPath: '/static/icons/tabbar/tab-my-active.png' }
+		{ pagePath: '/pages/index/index', text: '首页', iconPath: '/static/icons/tabbar/tab-home.png', selectedIconPath: '/static/icons/tabbar/tab-home.png' },
+		{ pagePath: '/pages/exam-list/exam-list', text: '考试', iconPath: '/static/icons/tabbar/ri--file-list-3-line.png', selectedIconPath: '/static/icons/tabbar/ri--file-list-3-line.png' },
+		{ pagePath: '/pages/my/my', text: '我的', iconPath: '/static/icons/tabbar/tab-my.png', selectedIconPath: '/static/icons/tabbar/tab-my.png' }
 	])
 
 	function handleTabClick(index: number, pagePath: string): void {
