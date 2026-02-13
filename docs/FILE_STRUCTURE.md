@@ -12,12 +12,9 @@
 | **LICENSE** | Apache 2.0 开源协议全文 |
 | **.gitignore** | Git 忽略规则（如 node_modules、target、.env 等） |
 | **.dockerignore** | Docker 构建时忽略的文件 |
-| **.env.example** | 根目录环境变量示例（Docker 镜像源、端口等） |
-| **compose.yml** | 完整 Docker Compose：MySQL + Redis + Java API + admin/pc 前端 |
-| **compose-mysql-redis.yml** | 仅启动 MySQL + Redis，供本地开发直连 |
-| **build-api.ps1** / **build-api.sh** | 构建 Java 后端 jar 并复制到 pkg/ |
-| **init-gradle.ps1** | Windows 下初始化 Gradle 包装器（可选） |
-| **pkg/** | 构建产物目录，存放 lyedu-api.jar 等 |
+| **scripts/docker/** | Docker 用 `.env.example`、`compose.yml`、`compose-mysql-redis.yml` 组合使用，见 [scripts/README.md](../scripts/README.md) |
+| **pkg/** | 构建产物目录，存放 lyedu-api.jar 等（由 lyedu-api/build-api.ps1 生成） |
+| **scripts/** | 脚本与配置目录，按使用场景分子目录：**dev/** 一键启动/停止，**docker/** 下 .env 与 compose 组合使用。详见 [scripts/README.md](../scripts/README.md) |
 
 ---
 
@@ -61,8 +58,9 @@
 
 | 文件/目录 | 作用 |
 |-----------|------|
-| **pom.xml** | Maven 依赖与构建配置 |
-| **build.gradle** / **settings.gradle** / **gradle.properties** | Gradle 构建配置（与 Maven 二选一或并行） |
+| **init-gradle.ps1** | Windows 下初始化 Gradle 包装器（生成 gradlew、gradle/wrapper），在 lyedu-api 目录下执行 |
+| **build-api.ps1** / **build-api.sh** | 构建 jar 并复制到仓库根目录 pkg/lyedu-api.jar，在 lyedu-api 目录下执行 |
+| **build.gradle** / **settings.gradle** / **gradle.properties** | Gradle 构建配置 |
 | **gradlew** / **gradlew.bat** | Gradle 包装器脚本 |
 | **gradle/wrapper/** | Gradle 包装器 jar 与配置 |
 | **Dockerfile** | 构建 Java API 镜像（依赖 pkg/lyedu-api.jar） |
@@ -197,7 +195,8 @@
 
 ## 小结
 
-- **根目录**：Compose、构建脚本、README、许可证。  
+- **根目录**：Compose、构建脚本、README、许可证。
+- **scripts/**：开发环境一键脚本（dev）、Docker 用 .env+compose 组合（docker）。  
 - **db/**：与 Flyway/Alembic 同源的迁移脚本，Java 用 Flyway，Python 用 Alembic。  
 - **docker/**：MySQL 容器初始化 SQL。  
 - **docs/**：结构、部署、功能、飞书、JDK/Gradle、支持等文档。  

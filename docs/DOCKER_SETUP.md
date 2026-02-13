@@ -25,9 +25,11 @@
 
 ### 方式一：仅 MySQL + Redis（开发环境直连）
 
-仅启动数据库，本地跑 API 和前端：
+仅启动数据库，本地跑 API 和前端。进入 **scripts/docker** 后执行（该目录下 .env 与 compose 组合使用，见 [scripts/README.md](../scripts/README.md)）：
 
 ```powershell
+cd scripts\docker
+copy .env.example .env
 docker compose -f compose-mysql-redis.yml up -d
 ```
 
@@ -72,7 +74,7 @@ docker-compose up -d admin pc
 
 ### 方式四：仅 MySQL + Redis，本地跑 Python 后端
 
-即方式一：`docker compose -f compose-mysql-redis.yml up -d` 后，在 `lyedu-api-python` 下复制 `.env.example` 为 `.env`（可选），再本地运行 `uvicorn main:app --reload --host 0.0.0.0 --port 9700`。启动时会自动执行 Alembic 迁移。
+即方式一：在 `scripts/docker` 下执行 `docker compose -f compose-mysql-redis.yml up -d` 后，在 `lyedu-api-python` 下复制 `.env.example` 为 `.env`（可选），再本地运行 `uvicorn main:app --reload --host 0.0.0.0 --port 9700`。启动时会自动执行 Alembic 迁移。
 
 ## 常见问题
 
@@ -100,7 +102,7 @@ Bind for 0.0.0.0:3306 failed: port is already allocated
    ```powershell
    netstat -ano | findstr :3306
    ```
-2. 停止占用端口的服务，或修改 `compose.yml` 中的端口映射
+2. 停止占用端口的服务，或修改 `scripts/docker/compose.yml` 中的端口映射
 
 ### 3. 构建失败
 

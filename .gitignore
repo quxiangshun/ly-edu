@@ -90,6 +90,11 @@ Thumbs.db
 # Docker
 .dockerignore
 
+# 开发环境启动脚本记录的 PID
+.dev-servers.json
+# 开发环境临时启动脚本（含配置）
+lyedu-api-python/_start_runner.ps1
+
 # Temporary files
 *.tmp
 *.temp

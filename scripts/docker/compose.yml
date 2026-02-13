@@ -1,3 +1,7 @@
+# 完整编排：MySQL + Redis + Java API + admin + pc
+# 使用: 在本目录 (scripts/docker) 下执行: docker compose up -d
+# 需先构建 API jar: cd lyedu-api 后运行 .\build-api.ps1 或 ./build-api.sh
+# 本目录下的 .env 会被自动加载（DOCKER_REGISTRY、NPM_REGISTRY）
 services:
   mysql:
     image: ${DOCKER_REGISTRY:-}mysql:8.0
@@ -12,7 +16,7 @@ services:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ../../docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
@@ -33,10 +37,8 @@ services:
 
   api:
     build:
-      context: .
+      context: ../..
       dockerfile: lyedu-api/Dockerfile
-      # 注意：jar 文件需要预先构建并放在 pkg/ 目录
-      # 运行: .\build-api.ps1 或 ./build-api.sh
     container_name: lyedu-api
     ports:
       - "9700:9700"
@@ -52,7 +54,7 @@ services:
       - REDIS_PORT=6379
       - UPLOAD_PATH=/app/uploads
     volumes:
-      - ./uploads:/app/uploads
+      - ../../uploads:/app/uploads
     depends_on:
       - mysql
       - redis
@@ -62,7 +64,7 @@ services:
 
   admin:
     build:
-      context: ./lyedu-admin
+      context: ../../lyedu-admin
       dockerfile: Dockerfile
       args:
         DOCKER_REGISTRY: ${DOCKER_REGISTRY:-}
@@ -78,7 +80,7 @@ services:
 
   pc:
     build:
-      context: ./lyedu-pc
+      context: ../../lyedu-pc
       dockerfile: Dockerfile
       args:
         DOCKER_REGISTRY: ${DOCKER_REGISTRY:-}

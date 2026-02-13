@@ -37,6 +37,18 @@ LyEdu 采用**前后端分离**架构：前端为 Vue3，后端提供 **Java（S
 
 ### 本地开发
 
+#### 一键启动（Windows，项目根目录）
+
+开发环境脚本与配置在 **scripts/** 下按场景分目录，详见 [scripts/README.md](scripts/README.md)。一键启动/停止：
+
+```powershell
+.\scripts\dev\start.ps1   # 按 scripts/dev/dev-config.json 启动 Docker(可选)、Python API、管理后台、PC 端等
+.\scripts\dev\stop.ps1    # 关闭上述终端及端口上的进程
+```
+
+- **scripts/dev/**：`dev-config.json` 配置数据库/Redis 及要启动的服务；`start.ps1` 负责初始化环境并在新终端启动各服务；`stop.ps1` 关闭终端并结束 9700/9800/9900 端口进程。
+- **scripts/docker/**：Docker 部署时 `.env` 与 `compose.yml` 组合使用，进入 `scripts/docker` 后执行 `docker compose`。
+
 #### 1. 克隆项目
 ```bash
 git clone https://github.com/quxiangshun/ly-edu.git
@@ -47,15 +59,15 @@ cd lyedu
 
 **方式 A：Java（Gradle）版本落后未及时更新，最新版的是Python**
 ```bash
-# 使用构建脚本（推荐）
-.\build-api.ps1   # Windows
-# 或
-./build-api.sh    # Linux/Mac
+# 使用构建脚本（在 lyedu-api 目录下）
+cd lyedu-api
+.\init-gradle.ps1   # 首次需初始化 Gradle Wrapper（Windows）
+.\build-api.ps1     # Windows
+# 或 ./build-api.sh   # Linux/Mac
+# jar 会复制到仓库根目录 pkg/lyedu-api.jar
 
 # 或手动构建
-cd lyedu-api
 ./gradlew bootJar   # Windows: gradlew.bat bootJar
-# jar 会复制到根目录 pkg/lyedu-api.jar，然后运行该 jar 启动服务
 ```
 
 **方式 B：Python**
@@ -66,7 +78,7 @@ cd lyedu-api
 # Java修改application.yml
 # Python修改.env.dev
 # ########################################################
-docker compose -f compose-mysql-redis.yml up -d
+docker compose -f scripts/docker/compose-mysql-redis.yml up -d
 
 # 2. 本地启动 Python（可复制 .env.example 或使用 .env.dev；需指定 ENV）
 cd lyedu-api-python
@@ -76,7 +88,7 @@ python -m venv .venv
 pip install -r requirements.txt
 ENV=dev uvicorn main:app --reload --host 0.0.0.0 --port 9700
 ```
-也可使用脚本（先迁移再启动）：`.\start.ps1`（Windows）或 `./start.sh`（Linux/Mac）。若自动迁移未执行，可手动：`cd lyedu-api-python && alembic -c alembic.ini upgrade head`。
+也可使用一键脚本：`.\scripts\dev\start.ps1`（会先迁移再启动）。若自动迁移未执行，可手动：`cd lyedu-api-python && alembic -c alembic.ini upgrade head`。
 
 #### 3. 启动前端
 ```bash
@@ -99,17 +111,17 @@ npm run dev
 当前 Docker 默认使用 **Java** 后端。需先本地构建 jar：
 
 ```bash
-# 1. 构建 jar
-.\build-api.ps1   # Windows
-# 或
-./build-api.sh    # Linux/Mac
+# 1. 构建 jar（在 lyedu-api 目录下）
+cd lyedu-api
+.\build-api.ps1   # Windows；或 ./build-api.sh（Linux/Mac）
 
-# 2. 启动服务
-docker-compose build api
-docker-compose up -d
+# 2. 启动服务（在 scripts/docker 目录下执行，会加载该目录的 .env）
+cd scripts/docker
+docker compose build api
+docker compose up -d
 ```
 
-**国内镜像源**：若访问 Docker Hub 不稳定，可配置 `.env` 中的 `DOCKER_REGISTRY` / `NPM_REGISTRY`。
+**国内镜像源**：在 **scripts/docker/** 下复制 `.env.example` 为 `.env`，配置 `DOCKER_REGISTRY` / `NPM_REGISTRY`。
 
 访问地址：
 - 管理后台：http://localhost:9900
@@ -131,6 +143,7 @@ lyedu/
 │   ├── flyway/             # Java 用
 │   └── alembic/            # Python 用
 ├── docker/                 # Docker 相关
+├── scripts/                # 脚本与配置（dev 一键启动、docker .env+compose 组合），见 scripts/README.md
 ├── pkg/                    # 构建产物（如 lyedu-api.jar）
 ├── docs/                   # 项目文档
 └── README.md

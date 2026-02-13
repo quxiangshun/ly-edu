@@ -69,8 +69,7 @@ lyedu/
 │   └── mysql/
 │       └── init.sql        # 数据库初始化脚本
 │
-├── compose.yml              # Docker Compose 配置
-├── .env.example             # 环境变量示例
+├── scripts/docker/          # Docker 用 .env + compose，见 scripts/README.md
 ├── .gitignore              # Git 忽略文件
 ├── .dockerignore           # Docker 忽略文件
 ├── README.md               # 项目说明

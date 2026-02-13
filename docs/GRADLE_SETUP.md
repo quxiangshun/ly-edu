@@ -9,37 +9,36 @@
 
 ## 初始化 Gradle Wrapper
 
-首次使用需要初始化 Gradle Wrapper：
+Gradle 仅 lyedu-api 使用，相关脚本均在 **lyedu-api** 目录下。首次使用需初始化 Wrapper：
 
 ### Windows
 ```powershell
+cd lyedu-api
 .\init-gradle.ps1
 ```
 
 ### Linux/Mac
 ```bash
 cd lyedu-api
-gradle wrapper --gradle-version 8.10.2
-# 或如果已安装 Gradle
-./gradlew wrapper --gradle-version 8.10.2
+gradle wrapper --gradle-version 9.1.0
+# 或若已有 gradlew：./gradlew wrapper --gradle-version 9.1.0
 ```
 
-如果系统没有安装 Gradle，可以手动下载 Wrapper jar：
-
-1. 下载：https://raw.githubusercontent.com/gradle/gradle/v8.10.2/gradle/wrapper/gradle-wrapper.jar
-2. 放到：`lyedu-api/gradle/wrapper/gradle-wrapper.jar`
+若未安装 Gradle，可手动下载 Wrapper jar 放到 `lyedu-api/gradle/wrapper/gradle-wrapper.jar`。
 
 ## 构建项目
 
-### 方式一：使用构建脚本（推荐）
+### 方式一：使用构建脚本（在 lyedu-api 目录下）
 
 **Windows:**
 ```powershell
+cd lyedu-api
 .\build-api.ps1
 ```
 
 **Linux/Mac:**
 ```bash
+cd lyedu-api
 ./build-api.sh
 ```
 
@@ -47,18 +46,19 @@ gradle wrapper --gradle-version 8.10.2
 
 ```bash
 cd lyedu-api
-./gradlew bootJar  # Windows: gradlew.bat bootJar
+./gradlew bootJar   # Windows: .\gradlew.bat bootJar
 ```
 
-构建完成后，jar 会自动复制到根目录 `pkg/lyedu-api.jar`
+构建完成后，jar 会自动复制到仓库根目录 `pkg/lyedu-api.jar`。
 
 ## Docker 部署
 
-构建好 jar 后，启动 Docker：
+构建好 jar 后，在 **scripts/docker** 目录下启动 Docker：
 
 ```bash
-docker-compose build api
-docker-compose up -d
+cd scripts/docker
+docker compose build api
+docker compose up -d
 ```
 
 ## 构建配置
@@ -75,7 +75,7 @@ Gradle 构建已配置使用阿里云 Maven 镜像，依赖下载会更快。
 ## 常见问题
 
 ### Q: 找不到 gradlew 命令
-A: 先运行 `.\init-gradle.ps1` 初始化 Wrapper
+A: 在 lyedu-api 目录下运行 `.\init-gradle.ps1` 初始化 Wrapper
 
 ### Q: 构建失败，提示找不到依赖
 A: 检查网络连接，确保能访问 Maven 仓库（已配置阿里云镜像）
