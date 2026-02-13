@@ -39,13 +39,13 @@ LyEdu 采用**前后端分离**架构：前端为 Vue3，后端提供 **Java（S
 
 #### 1. 克隆项目
 ```bash
-git clone <your-repo-url> lyedu
+git clone https://github.com/quxiangshun/ly-edu.git
 cd lyedu
 ```
 
 #### 2. 启动后端（任选其一）
 
-**方式 A：Java（Gradle）**
+**方式 A：Java（Gradle）版本落后未及时更新，最新版的是Python**
 ```bash
 # 使用构建脚本（推荐）
 .\build-api.ps1   # Windows
@@ -61,12 +61,17 @@ cd lyedu-api
 **方式 B：Python**
 ```bash
 # 1. 仅用 Docker 起 MySQL + Redis（开发直连 localhost）
+# ########################################################
+# 如果使用自己的数据库，忽略这个步骤，直接更改配置文件中的数据库
+# Java修改application.yml
+# Python修改.env.dev
+# ########################################################
 docker compose -f compose-mysql-redis.yml up -d
 
 # 2. 本地启动 Python（可复制 .env.example 或使用 .env.dev；需指定 ENV）
 cd lyedu-api-python
-python -m venv venv
-.\venv\Scripts\activate   # Windows
+python -m venv .venv
+.\.venv\Scripts\activate   # Windows
 # source venv/bin/activate  # Linux/Mac
 pip install -r requirements.txt
 ENV=dev uvicorn main:app --reload --host 0.0.0.0 --port 9700
@@ -85,7 +90,7 @@ cd lyedu-pc
 npm install
 npm run dev
 
-# H5 端
+# H5 端 (不再维护， 使用lyedu-unix)
 cd lyedu-h5
 npm install
 npm run dev
