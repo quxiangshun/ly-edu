@@ -6,7 +6,7 @@
         <h2>我的任务</h2>
         <p class="subtitle">按顺序完成闯关项（课程学习 + 考试），全部完成后可获证书</p>
         <el-empty v-if="!loading && list.length === 0" description="暂无任务" />
-        <el-table v-else :data="list" v-loading="loading" border class="task-table">
+        <el-table v-else :data="list" v-loading="loading" border stripe class="task-table">
           <el-table-column prop="task.title" label="任务名称" min-width="200" show-overflow-tooltip>
             <template #default="{ row }">{{ row.task?.title }}</template>
           </el-table-column>

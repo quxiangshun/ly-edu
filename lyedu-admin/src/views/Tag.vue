@@ -16,7 +16,7 @@
         </div>
       </template>
 
-      <el-table :data="tagList" v-loading="loading" border :max-height="tableMaxHeight">
+      <el-table :data="tagList" v-loading="loading" border stripe :max-height="tableMaxHeight">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="name" label="标签名称" min-width="160" />
         <el-table-column prop="sort" label="排序" width="100" />
@@ -69,7 +69,7 @@
             </el-select>
             <el-button type="primary" size="small" style="margin-left: 8px; margin-top: 8px" @click="addSelectedUsers">添加</el-button>
           </div>
-          <el-table :data="linkedUsers" border size="small" max-height="280">
+          <el-table :data="linkedUsers" border stripe size="small" max-height="280">
             <el-table-column prop="id" label="ID" width="70" />
             <el-table-column prop="displayName" label="姓名" />
             <el-table-column label="操作" width="80">
@@ -99,7 +99,7 @@
             </el-select>
             <el-button type="primary" size="small" style="margin-left: 8px; margin-top: 8px" @click="addSelectedDepartments">添加</el-button>
           </div>
-          <el-table :data="linkedDepartments" border size="small" max-height="280">
+          <el-table :data="linkedDepartments" border stripe size="small" max-height="280">
             <el-table-column prop="id" label="ID" width="70" />
             <el-table-column prop="name" label="部门名称" />
             <el-table-column label="操作" width="80">
@@ -129,7 +129,7 @@
             </el-select>
             <el-button type="primary" size="small" style="margin-left: 8px; margin-top: 8px" @click="addSelectedCourses">添加</el-button>
           </div>
-          <el-table :data="linkedCourses" border size="small" max-height="280">
+          <el-table :data="linkedCourses" border stripe size="small" max-height="280">
             <el-table-column prop="id" label="ID" width="70" />
             <el-table-column prop="title" label="课程名称" />
             <el-table-column label="操作" width="80">

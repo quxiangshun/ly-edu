@@ -25,7 +25,7 @@
         </el-form-item>
       </el-form>
 
-      <el-table :data="examList" v-loading="loading" border :max-height="tableMaxHeight">
+      <el-table :data="examList" v-loading="loading" border stripe :max-height="tableMaxHeight">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="title" label="考试名称" min-width="180" show-overflow-tooltip />
         <el-table-column prop="paperTitle" label="试卷" width="180" show-overflow-tooltip>
@@ -142,7 +142,7 @@
     </el-dialog>
 
     <el-dialog v-model="recordsDialogVisible" :title="`成绩 - ${currentExam?.title || ''}`" width="720px">
-      <el-table :data="recordList" border size="small" max-height="360">
+      <el-table :data="recordList" border stripe size="small" max-height="360">
         <el-table-column prop="id" label="ID" width="70" />
         <el-table-column prop="userId" label="用户ID" width="90" />
         <el-table-column prop="score" label="得分" width="80" />

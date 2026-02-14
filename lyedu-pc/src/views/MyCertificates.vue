@@ -6,7 +6,7 @@
         <h2>我的证书</h2>
         <p class="subtitle">考试/任务合格后自动颁发</p>
         <el-empty v-if="!loading && list.length === 0" description="暂无证书" />
-        <el-table v-else :data="list" v-loading="loading" border class="cert-table">
+        <el-table v-else :data="list" v-loading="loading" border stripe class="cert-table">
           <el-table-column prop="title" label="证书名称" min-width="200" show-overflow-tooltip />
           <el-table-column prop="certificateNo" label="证书编号" width="220" show-overflow-tooltip />
           <el-table-column prop="issuedAt" label="颁发时间" width="180">

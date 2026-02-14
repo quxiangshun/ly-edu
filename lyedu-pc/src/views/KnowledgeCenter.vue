@@ -13,7 +13,7 @@
             <el-button type="primary" @click="loadList">搜索</el-button>
           </el-form-item>
         </el-form>
-        <el-table :data="knowledgeList" v-loading="loading" border class="knowledge-table">
+        <el-table :data="knowledgeList" v-loading="loading" border stripe class="knowledge-table">
           <el-table-column prop="title" label="标题" min-width="200" show-overflow-tooltip />
           <el-table-column prop="category" label="分类" width="120">
             <template #default="{ row }">{{ row.category || '-' }}</template>

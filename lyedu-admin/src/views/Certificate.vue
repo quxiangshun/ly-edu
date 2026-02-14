@@ -15,7 +15,7 @@
         </div>
       </template>
 
-      <el-table :data="certList" v-loading="loading" border :max-height="tableMaxHeight">
+      <el-table :data="certList" v-loading="loading" border stripe :max-height="tableMaxHeight">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="name" label="证书名称" min-width="180" show-overflow-tooltip />
         <el-table-column prop="templateId" label="模板ID" width="90" />

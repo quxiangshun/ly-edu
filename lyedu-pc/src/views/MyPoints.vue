@@ -17,7 +17,7 @@
 
         <el-tabs v-model="activeTab" class="points-tabs">
           <el-tab-pane label="积分流水" name="log">
-            <el-table :data="logList" v-loading="logLoading" border class="log-table">
+            <el-table :data="logList" v-loading="logLoading" border stripe class="log-table">
               <el-table-column prop="remark" label="说明" min-width="160" show-overflow-tooltip />
               <el-table-column prop="points" label="积分" width="100">
                 <template #default="{ row }">+{{ row.points }}</template>
@@ -38,7 +38,7 @@
             />
           </el-tab-pane>
           <el-tab-pane label="积分排行" name="ranking">
-            <el-table :data="rankingList" v-loading="rankLoading" border class="rank-table">
+            <el-table :data="rankingList" v-loading="rankLoading" border stripe class="rank-table">
               <el-table-column prop="rank" label="排名" width="80" />
               <el-table-column prop="realName" label="姓名" min-width="120">
                 <template #default="{ row }">{{ row.realName || row.username || '-' }}</template>

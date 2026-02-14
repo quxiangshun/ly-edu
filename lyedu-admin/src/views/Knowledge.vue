@@ -28,7 +28,7 @@
         </el-form-item>
       </el-form>
 
-      <el-table :data="knowledgeList" v-loading="loading" border :max-height="tableMaxHeight">
+      <el-table :data="knowledgeList" v-loading="loading" border stripe :max-height="tableMaxHeight">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="title" label="标题" min-width="160" show-overflow-tooltip />
         <el-table-column prop="category" label="分类" width="120">

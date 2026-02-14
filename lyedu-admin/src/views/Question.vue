@@ -34,7 +34,7 @@
         </el-form-item>
       </el-form>
 
-      <el-table :data="questionList" v-loading="loading" border :max-height="tableMaxHeight">
+      <el-table :data="questionList" v-loading="loading" border stripe :max-height="tableMaxHeight">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="type" label="题型" width="90">
           <template #default="{ row }">{{ typeLabel(row.type) }}</template>

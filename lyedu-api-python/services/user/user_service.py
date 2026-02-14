@@ -244,13 +244,14 @@ def save(
     set_password: bool = True,
 ) -> None:
     """创建用户。set_password=False 时使用随机占位密码（仅飞书同步等场景，用户通过飞书登录）。"""
-    from passlib.hash import bcrypt
+    import bcrypt
     import secrets
     if set_password:
         pwd = (password or "123456").strip()
     else:
         pwd = secrets.token_urlsafe(32)
-    encoded = bcrypt.hash(pwd)
+    raw = (pwd[:72]).encode("utf-8")  # bcrypt 限制 72 字节
+    encoded = bcrypt.hashpw(raw, bcrypt.gensalt()).decode("ascii")
     has_feishu = _check_feishu_open_id()
     has_union = _check_union_id()
     has_entry = _check_entry_date()
@@ -351,6 +352,7 @@ def delete(user_id: int) -> int:
 
 
 def update_password(user_id: int, password: str) -> int:
-    from passlib.hash import bcrypt
-    encoded = bcrypt.hash(password.strip())
+    import bcrypt
+    pwd = password.strip()[:72]  # bcrypt 限制 72 字节
+    encoded = bcrypt.hashpw(pwd.encode("utf-8"), bcrypt.gensalt()).decode("ascii")
     return db.execute("UPDATE ly_user SET password = %s WHERE id = %s AND deleted = 0", (encoded, user_id))

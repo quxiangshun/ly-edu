@@ -45,7 +45,7 @@
         </el-form-item>
       </el-form>
 
-      <el-table :data="videoList" v-loading="loading" border :max-height="tableMaxHeight">
+      <el-table :data="videoList" v-loading="loading" border stripe :max-height="tableMaxHeight">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="courseName" label="课程名称" min-width="120" show-overflow-tooltip />
         <el-table-column prop="chapterName" label="章节名称" min-width="120" show-overflow-tooltip />

@@ -45,7 +45,7 @@
         </el-form-item>
       </el-form>
 
-      <el-table :data="userList" v-loading="loading" border :max-height="tableMaxHeight">
+      <el-table :data="userList" v-loading="loading" border stripe :max-height="tableMaxHeight">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="username" label="用户名" width="120" />
         <el-table-column prop="nickname" label="昵称" width="120">

@@ -15,7 +15,7 @@
         </div>
       </template>
 
-      <el-table :data="templateList" v-loading="loading" border :max-height="tableMaxHeight">
+      <el-table :data="templateList" v-loading="loading" border stripe :max-height="tableMaxHeight">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="name" label="模板名称" min-width="160" show-overflow-tooltip />
         <el-table-column prop="description" label="说明" min-width="200" show-overflow-tooltip />

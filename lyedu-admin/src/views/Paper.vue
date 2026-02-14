@@ -25,7 +25,7 @@
         </el-form-item>
       </el-form>
 
-      <el-table :data="paperList" v-loading="loading" border :max-height="tableMaxHeight">
+      <el-table :data="paperList" v-loading="loading" border stripe :max-height="tableMaxHeight">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="title" label="试卷名称" min-width="200" show-overflow-tooltip />
         <el-table-column prop="totalScore" label="总分" width="80" />
@@ -81,7 +81,7 @@
           <div class="question-list-actions">
             <el-button type="primary" size="small" @click="openQuestionPicker">添加题目</el-button>
           </div>
-          <el-table :data="form.questions" border size="small" max-height="280">
+          <el-table :data="form.questions" border stripe size="small" max-height="280">
             <el-table-column type="index" label="#" width="50" />
             <el-table-column prop="title" label="题干" min-width="200" show-overflow-tooltip>
               <template #default="{ row }">{{ questionTitleMap[row.questionId] || row.questionId }}</template>
@@ -118,6 +118,7 @@
         ref="pickerTableRef"
         :data="pickerQuestionList"
         border
+        stripe
         max-height="360"
         @selection-change="pickerSelectionChange"
       >

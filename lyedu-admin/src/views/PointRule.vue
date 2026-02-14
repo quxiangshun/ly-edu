@@ -15,7 +15,7 @@
         </div>
       </template>
 
-      <el-table :data="ruleList" v-loading="loading" border :max-height="tableMaxHeight">
+      <el-table :data="ruleList" v-loading="loading" border stripe :max-height="tableMaxHeight">
         <el-table-column prop="ruleKey" label="规则键" width="140" />
         <el-table-column prop="ruleName" label="规则名称" min-width="120" />
         <el-table-column prop="points" label="奖励积分" width="100">

@@ -25,7 +25,7 @@
         </el-form-item>
       </el-form>
 
-      <el-table :data="taskList" v-loading="loading" border :max-height="tableMaxHeight">
+      <el-table :data="taskList" v-loading="loading" border stripe :max-height="tableMaxHeight">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="title" label="任务名称" min-width="180" show-overflow-tooltip />
         <el-table-column prop="cycleType" label="周期" width="90">

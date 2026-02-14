@@ -1,0 +1,4 @@
+feat(lyedu-admin, lyedu-pc): Element Plus 中文与表格斑马纹
+
+- 引入 Element Plus 中文语言包(zh-cn)，表格空状态显示「暂无数据」
+- 所有 el-table 增加 stripe 属性，启用斑马纹表格

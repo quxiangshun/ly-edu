@@ -112,7 +112,7 @@ def login(body: LoginRequest, request: Request):
             message="NO_STORED_PASSWORD",
         )
         return error_result(ResultCode.LOGIN_ERROR)
-    # 使用 bcrypt 包校验，与 Java Spring BCrypt 哈希兼容（passlib 与部分 Java 哈希不兼容）
+    # 使用 bcrypt 包校验，与 Java Spring BCrypt 哈希兼容
     ok = False
     try:
         import bcrypt
@@ -121,12 +121,7 @@ def login(body: LoginRequest, request: Request):
         stored_bytes = stored.encode("utf-8") if isinstance(stored, str) else stored
         ok = bool(bcrypt.checkpw(password_bytes, stored_bytes))
     except Exception:
-        try:
-            from passlib.hash import bcrypt as passlib_bcrypt
-
-            ok = bool(passlib_bcrypt.verify(password, stored))
-        except Exception:
-            ok = False
+        ok = False
     if not ok:
         login_log_service.add_login_log(
             user_id=user.get("id"),

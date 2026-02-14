@@ -30,7 +30,7 @@
         </el-form-item>
       </el-form>
 
-      <el-table :data="taskList" v-loading="loading" border :max-height="tableMaxHeight">
+      <el-table :data="taskList" v-loading="loading" border stripe :max-height="tableMaxHeight">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="nickname" label="用户" width="140">
           <template #default="{ row }">

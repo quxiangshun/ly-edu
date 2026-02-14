@@ -5,7 +5,7 @@
       <div class="exam-content">
         <h2>考试中心</h2>
         <p class="subtitle">可参加的考试（按部门可见）</p>
-        <el-table :data="examList" v-loading="loading" border class="exam-table">
+        <el-table :data="examList" v-loading="loading" border stripe class="exam-table">
           <el-table-column prop="title" label="考试名称" min-width="200" show-overflow-tooltip />
           <el-table-column prop="startTime" label="开始时间" width="170">
             <template #default="{ row }">{{ row.startTime ? formatTime(row.startTime) : '-' }}</template>

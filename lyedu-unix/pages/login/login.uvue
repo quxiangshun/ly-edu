@@ -37,8 +37,8 @@
 				</view>
 				<view class="field-row">
 					<text class="field-label">密码</text>
-					<input class="field-input" type="password" v-model="password" placeholder="请输入密码" :password="!showPassword" />
-					<text class="eye-btn" @click="showPassword = !showPassword">{{ showPassword ? '隐藏' : '显示' }}</text>
+					<input class="field-input" :type="showPassword ? 'text' : 'password'" v-model="password" placeholder="请输入密码" />
+					<image class="eye-btn" :src="showPassword ? '/static/icons/iconify/ri--eye-close-line.svg' : '/static/icons/iconify/ri--eye-line.svg'" mode="aspectFit" @click="showPassword = !showPassword"></image>
 				</view>
 				<button class="submit-btn" :loading="loading" @click="handleLogin">登录</button>
 			</view>
@@ -367,9 +367,20 @@
 .switch-link { font-size: 12px; color: var(--brand-primary); margin-top: 12px; }
 .switch-link-top { margin-top: 0; margin-bottom: 16px; }
 .form-block { flex-direction: column; }
-.field-row { flex-direction: row; align-items: center; margin-bottom: 16px; border-bottom-width: 1px; border-bottom-color: #ebedf0; }
-.field-label { font-size: 14px; color: #323233; width: 70px; }
-.field-input { flex: 1; font-size: 14px; height: 44px; padding: 0 8px; }
-.eye-btn { font-size: 12px; color: var(--brand-primary); margin-left: 8px; }
+.field-row {
+	flex-direction: row;
+	align-items: center;
+	margin-bottom: 16px;
+	background-color: #ffffff;
+	border-width: 1px;
+	border-color: #d9e3f0;
+	border-style: solid;
+	border-radius: 8px;
+	padding: 0 12px;
+	min-height: 48px;
+}
+.field-label { font-size: 14px; color: #323233; width: 56px; flex-shrink: 0; }
+.field-input { flex: 1; font-size: 14px; height: 46px; padding: 0 8px; background-color: transparent; }
+.eye-btn { width: 22px; height: 22px; margin-left: 4px; flex-shrink: 0; tint-color: #969799; }
 .submit-btn { background-color: var(--brand-primary); color: #ffffff; border-radius: 24px; height: 44px; line-height: 44px; font-size: 16px; margin-top: 30px; }
 </style>
