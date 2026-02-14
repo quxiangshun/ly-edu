@@ -54,7 +54,11 @@
           </template>
         </el-table-column>
         <el-table-column prop="email" label="邮箱" width="180" />
-        <el-table-column prop="mobile" label="手机号" width="120" />
+        <el-table-column prop="mobile" label="手机号" width="120">
+          <template #default="{ row }">
+            {{ maskMobile(row.mobile) }}
+          </template>
+        </el-table-column>
         <el-table-column prop="departmentId" label="部门" width="160">
           <template #default="{ row }">
             {{ row.departmentId ? (departmentNameMap.get(row.departmentId) || row.departmentId) : '-' }}
@@ -310,6 +314,14 @@ const departmentNameMap = computed(() => {
   flat.forEach((d) => map.set(d.id, d.name))
   return map
 })
+
+/** 手机号脱敏：前3位 + **** + 后4位 */
+function maskMobile(mobile: string | null | undefined): string {
+  if (mobile == null || mobile === '') return '-'
+  const s = String(mobile).trim()
+  if (s.length <= 7) return s.length > 0 ? s.slice(0, 2) + '****' : '-'
+  return s.slice(0, 3) + '****' + s.slice(-4)
+}
 
 const form = reactive<Partial<User>>({
   username: '',
