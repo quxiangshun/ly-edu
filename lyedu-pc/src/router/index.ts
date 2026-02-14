@@ -15,7 +15,8 @@ const routes: RouteRecordRaw[] = [
     name: 'Home',
     component: () => import('@/views/Home.vue'),
     meta: {
-      title: '首页'
+      title: '首页',
+      requiresAuth: true
     }
   },
   {
@@ -166,7 +167,8 @@ const routes: RouteRecordRaw[] = [
     name: 'Help',
     component: () => import('@/views/Help.vue'),
     meta: {
-      title: '使用说明'
+      title: '使用说明',
+      requiresAuth: true
     }
   },
   {

@@ -148,7 +148,7 @@ const handleLogout = () => {
   token.value = null
   userInfo.value = null
   ElMessage.success('已退出登录')
-  router.push('/')
+  router.push('/login')
 }
 
 const loadUserInfo = async () => {
