@@ -60,8 +60,9 @@ export interface PageResult<T> {
   pages: number
 }
 
+/** 学员端课程列表：仅返回上架课程 */
 export const getCoursePage = (params: { page: number; size: number; keyword?: string; categoryId?: number }) => {
-  return request.get<PageResult<Course>>('/course/page', { params })
+  return request.get<PageResult<Course>>('/course/page', { params: { ...params, status: 1 } })
 }
 
 export const getCourseById = (id: number) => {

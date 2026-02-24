@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS `ly_course_category` (
     KEY `idx_parent_id` (`parent_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='课程分类表';
 
--- 课程表（含 visibility、is_required；部门关联见 ly_course_department）
+-- 课程表
 CREATE TABLE IF NOT EXISTS `ly_course` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
     `title` VARCHAR(200) NOT NULL COMMENT '课程标题',
@@ -64,24 +64,12 @@ CREATE TABLE IF NOT EXISTS `ly_course` (
     `status` TINYINT DEFAULT 1 COMMENT '状态：0-下架，1-上架',
     `sort` INT DEFAULT 0 COMMENT '排序',
     `is_required` TINYINT DEFAULT 0 COMMENT '是否必修：0-选修，1-必修',
-    `visibility` TINYINT DEFAULT 1 COMMENT '可见性：1-公开，0-私有',
     `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted` TINYINT DEFAULT 0 COMMENT '是否删除：0-未删除，1-已删除',
     PRIMARY KEY (`id`),
     KEY `idx_category_id` (`category_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='课程表';
-
--- 课程-部门关联表（多对多）
-CREATE TABLE IF NOT EXISTS `ly_course_department` (
-    `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-    `course_id` BIGINT NOT NULL COMMENT '课程ID',
-    `department_id` BIGINT NOT NULL COMMENT '部门ID',
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `uk_course_department` (`course_id`, `department_id`),
-    KEY `idx_course_id` (`course_id`),
-    KEY `idx_department_id` (`department_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='课程-部门关联表';
 
 -- 课程章节表
 CREATE TABLE IF NOT EXISTS `ly_course_chapter` (

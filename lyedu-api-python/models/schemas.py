@@ -14,8 +14,6 @@ class CourseRequest(BaseModel):
     status: Optional[int] = 1
     sort: Optional[int] = 0
     is_required: Optional[int] = 0
-    visibility: Optional[int] = 1  # 1-公开，0-私有
-    department_ids: Optional[List[int]] = None  # 关联部门ID列表（私有时必填，可多选）
     tag_ids: Optional[List[int]] = None
     tagIds: Optional[List[int]] = None
 

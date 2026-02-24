@@ -44,16 +44,16 @@ def page(
     keyword: Optional[str] = None,
     categoryId: Optional[int] = None,
     tagId: Optional[int] = None,
-    authorization: Optional[str] = Header(None, alias="Authorization"),
+    status: Optional[int] = None,
 ):
-    user_id = _user_id(authorization)
+    """status=1 时仅返回上架课程（PC/uni 学员端）；不传则返回全部（管理端）"""
     result = course_service.page(
         page_num=page,
         size=size,
         keyword=keyword,
         category_id=categoryId,
         tag_id=tagId,
-        user_id=user_id,
+        status=status,
     )
     for record in result.get("records") or []:
         record["tagIds"] = tag_service.list_tag_ids_by_course(record.get("id") or 0)
@@ -193,8 +193,6 @@ def create(body: CourseRequest):
         status=body.status or 1,
         sort=body.sort or 0,
         is_required=body.is_required or 0,
-        visibility=body.visibility if body.visibility is not None else 1,
-        department_ids=body.department_ids,
     )
     if course_id:
         tag_service.set_tags_for_course(course_id, body.tagIds or body.tag_ids or [])
@@ -215,8 +213,6 @@ def update(id: int, body: CourseRequest):
         status=body.status,
         sort=body.sort,
         is_required=body.is_required,
-        visibility=body.visibility if body.visibility is not None else 1,
-        department_ids=body.department_ids,
     )
     tag_service.set_tags_for_course(id, body.tagIds or body.tag_ids or [])
     return success()

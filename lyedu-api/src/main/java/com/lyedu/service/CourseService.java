@@ -13,18 +13,18 @@ import java.util.List;
 public interface CourseService {
 
     /**
-     * 分页查询课程（可选按用户部门过滤可见性）
-     * @param userId 当前用户ID，为 null 时仅返回公开课程
+     * 分页查询课程
+     * @param status 为 1 时仅返回上架课程（PC/uni 学员端）；为 null 时返回全部（管理端）
      */
-    PageResult<Course> page(Integer page, Integer size, String keyword, Long categoryId, Long userId);
+    PageResult<Course> page(Integer page, Integer size, String keyword, Long categoryId, Integer status);
 
     /**
-     * 根据ID获取课程详情（包含章节和视频）；若传 userId 则校验可见性
+     * 根据ID获取课程详情（包含章节和视频）
      */
     Course getDetailById(Long id, Long userId);
 
     /**
-     * 按ID获取课程（不做可见性校验，管理端用）
+     * 按ID获取课程（管理端用）
      */
     Course getByIdIgnoreVisibility(Long id);
 
@@ -44,8 +44,7 @@ public interface CourseService {
     void delete(Long id);
 
     /**
-     * 获取推荐课程列表（可选按用户部门过滤可见性）
-     * @param userId 当前用户ID，为 null 时仅返回公开课程
+     * 获取推荐课程列表（仅返回上架课程）
      */
     List<Course> listRecommended(Integer limit, Long userId);
 }

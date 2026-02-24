@@ -55,7 +55,7 @@ public class CourseController {
     }
 
     /**
-     * 分页查询课程（带 Authorization 时按用户部门过滤可见性）
+     * 分页查询课程。status=1 时仅返回上架课程（PC/uni 学员端）；不传则返回全部（管理端）
      */
     @NoAuth
     @GetMapping("/page")
@@ -64,9 +64,8 @@ public class CourseController {
             @RequestParam(defaultValue = "10") Integer size,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Long categoryId,
-            @RequestHeader(value = "Authorization", required = false) String authorization) {
-        Long userId = getUserIdFromAuth(authorization);
-        return Result.success(courseService.page(page, size, keyword, categoryId, userId));
+            @RequestParam(required = false) Integer status) {
+        return Result.success(courseService.page(page, size, keyword, categoryId, status));
     }
 
     /**

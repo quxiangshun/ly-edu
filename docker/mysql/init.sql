@@ -67,14 +67,11 @@ CREATE TABLE IF NOT EXISTS `ly_course` (
     `status` TINYINT DEFAULT 1 COMMENT '状态：0-下架，1-上架',
     `sort` INT DEFAULT 0 COMMENT '排序',
     `is_required` TINYINT DEFAULT 0 COMMENT '是否必修：0-选修，1-必修',
-    `visibility` TINYINT DEFAULT 1 COMMENT '可见性：1-公开，0-私有',
-    `department_id` BIGINT DEFAULT NULL COMMENT '关联部门（私有时必填）',
     `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted` TINYINT DEFAULT 0 COMMENT '是否删除：0-未删除，1-已删除',
     PRIMARY KEY (`id`),
-    KEY `idx_category_id` (`category_id`),
-    KEY `idx_department_id` (`department_id`)
+    KEY `idx_category_id` (`category_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='课程表';
 
 -- 课程章节表（课程详情依赖，缺表会导致 bad SQL grammar）

@@ -2,44 +2,13 @@
 """课程服务，与 Java CourseService 对应"""
 from typing import Any, List, Optional
 
-import pymysql
-
 import db
 from models.schemas import page_result
-from services.course import course_department_service
-from services.org import department_service
-from services.user import user_service
 
-SELECT_COLS_FULL = (
-    "id, title, cover, description, category_id, status, sort, is_required, visibility, "
-    "create_time, update_time, deleted"
-)
-SELECT_COLS_LEGACY = (
+SELECT_COLS = (
     "id, title, cover, description, category_id, status, sort, is_required, "
     "create_time, update_time, deleted"
 )
-
-_has_visibility_columns: Optional[bool] = None
-
-
-def _course_table_has_visibility() -> bool:
-    """检测 ly_course 是否已有 visibility 列（V12 迁移后为 True）"""
-    global _has_visibility_columns
-    if _has_visibility_columns is not None:
-        return _has_visibility_columns
-    try:
-        db.query_one("SELECT visibility FROM ly_course LIMIT 0", ())
-        _has_visibility_columns = True
-    except pymysql.err.OperationalError as e:
-        if e.args[0] == 1054:
-            _has_visibility_columns = False
-        else:
-            raise
-    return _has_visibility_columns
-
-
-def _select_cols() -> str:
-    return SELECT_COLS_FULL if _course_table_has_visibility() else SELECT_COLS_LEGACY
 
 
 def _int(v: Any, default: int = 0) -> int:
@@ -64,96 +33,10 @@ def _row_to_course(row: dict) -> dict:
         "status": _int(row.get("status"), 1),
         "sort": _int(row.get("sort"), 0),
         "is_required": _int(row.get("is_required"), 0),
-        "visibility": _int(row.get("visibility"), 1),
-        "department_ids": [],  # 由 fill_department_ids 填充
         "create_time": row.get("create_time"),
         "update_time": row.get("update_time"),
         "deleted": row.get("deleted"),
     }
-
-
-def _append_visibility_condition(where: List[str], params: List[Any], user_id: Optional[int]) -> None:
-    """
-    当前登录用户可见课程 = 公开课程 + 关联了本部门或其子部门的私有课程 + 带有「用户有效标签」的课程。
-    用户有效标签 = 用户自身标签 ∪ 用户所属部门标签 ∪ 用户所属部门及其所有子部门标签；课程若带有其中任一标签则对该用户可见。
-    未登录仅看公开。
-    """
-    if not _course_table_has_visibility():
-        return
-    if user_id is None:
-        where.append("visibility = 1")
-        return
-    user = user_service.get_by_id(user_id)
-    if not user:
-        where.append("visibility = 1")
-        return
-    if user.get("role") == "admin":
-        return
-    dept_id = user.get("department_id")
-    allowed = department_service.get_department_id_and_descendant_ids(dept_id) if dept_id is not None else []
-
-    # 条件 A：公开课程；条件 B：私有且关联了用户部门或其子部门；条件 C：课程带有用户有效标签（见 tag_service.get_effective_tag_ids_for_user）
-    parts: List[str] = []
-    part_params: List[Any] = []
-    parts.append("visibility = 1")
-    if allowed:
-        if course_department_service.table_exists():
-            placeholders = ", ".join(["%s"] * len(allowed))
-            parts.append(
-                f"(visibility = 0 AND EXISTS (SELECT 1 FROM ly_course_department cd WHERE cd.course_id = ly_course.id AND cd.department_id IN ({placeholders})))"
-            )
-            part_params.extend(allowed)
-        else:
-            placeholders = ", ".join(["%s"] * len(allowed))
-            parts.append(f"(visibility = 0 AND department_id IN ({placeholders}))")
-            part_params.extend(allowed)
-
-    try:
-        from services.learning import tag_service
-        if tag_service._table_exists():
-            effective_tag_ids = tag_service.get_effective_tag_ids_for_user(user_id)
-            if effective_tag_ids:
-                ph = ", ".join(["%s"] * len(effective_tag_ids))
-                parts.append(
-                    f"(EXISTS (SELECT 1 FROM ly_course_tag ct WHERE ct.course_id = ly_course.id AND ct.tag_id IN ({ph})))"
-                )
-                part_params.extend(effective_tag_ids)
-    except Exception:
-        pass
-
-    where.append("(" + " OR ".join(parts) + ")")
-    params.extend(part_params)
-
-
-def _can_user_see_course(course: dict, user_id: Optional[int]) -> bool:
-    if (course.get("visibility") or 1) == 1:
-        return True
-    if user_id is None:
-        return False
-    user = user_service.get_by_id(user_id)
-    if not user:
-        return False
-    if user.get("role") == "admin":
-        return True
-    dept_id = user.get("department_id")
-    allowed = department_service.get_department_id_and_descendant_ids(dept_id) if dept_id is not None else []
-    if allowed:
-        if course_department_service.table_exists():
-            if course_department_service.course_visible_to_departments(course.get("id"), allowed):
-                return True
-        elif course.get("department_id") is not None and course["department_id"] in allowed:
-            return True
-    try:
-        from services.learning import tag_service
-        if tag_service._table_exists():
-            effective_tags = tag_service.get_effective_tag_ids_for_user(user_id)
-            if effective_tags:
-                course_tag_ids = tag_service.list_tag_ids_by_course(course.get("id") or 0)
-                if any(tid in effective_tags for tid in course_tag_ids):
-                    return True
-    except Exception:
-        pass
-    return False
 
 
 def page(
@@ -162,12 +45,15 @@ def page(
     keyword: Optional[str] = None,
     category_id: Optional[int] = None,
     tag_id: Optional[int] = None,
-    user_id: Optional[int] = None,
+    status: Optional[int] = None,
 ) -> dict:
+    """分页查询课程。status=1 时仅返回上架课程（PC/uni 学员端用）；不传则返回全部（管理端用）。"""
     offset = (page_num - 1) * size
     where = ["deleted = 0"]
     params: List[Any] = []
-    _append_visibility_condition(where, params, user_id)
+    if status is not None:
+        where.append("status = %s")
+        params.append(status)
     if keyword and keyword.strip():
         where.append("(title LIKE %s OR description LIKE %s)")
         like = "%" + keyword.strip() + "%"
@@ -192,48 +78,29 @@ def page(
     )
     total = total_row["cnt"] or 0
     sql = (
-        f"SELECT {_select_cols()} FROM ly_course WHERE " + where_sql + " ORDER BY sort ASC, id DESC LIMIT %s OFFSET %s"
+        f"SELECT {SELECT_COLS} FROM ly_course WHERE " + where_sql + " ORDER BY sort ASC, id DESC LIMIT %s OFFSET %s"
     )
     params.extend([size, offset])
     rows = db.query_all(sql, tuple(params))
     records = [_row_to_course(r) for r in rows]
-    _fill_department_ids(records)
     return page_result(records, total, page_num, size)
-
-
-def _fill_department_ids(courses: List[dict]) -> None:
-    if not courses or not course_department_service.table_exists():
-        return
-    for c in courses:
-        cid = c.get("id")
-        if cid is not None:
-            c["department_ids"] = course_department_service.list_department_ids_by_course_id(cid)
 
 
 def get_detail_by_id(course_id: int, user_id: Optional[int] = None) -> Optional[dict]:
     row = db.query_one(
-        f"SELECT {_select_cols()} FROM ly_course WHERE id = %s AND deleted = 0",
+        f"SELECT {SELECT_COLS} FROM ly_course WHERE id = %s AND deleted = 0",
         (course_id,),
     )
-    course = _row_to_course(row) if row else None
-    if not course:
-        return None
-    _fill_department_ids([course])
-    if not _can_user_see_course(course, user_id):
-        return None
-    return course
+    return _row_to_course(row) if row else None
 
 
 def get_by_id_ignore_visibility(course_id: int) -> Optional[dict]:
-    """管理端用：按ID获取课程，不做可见性校验"""
+    """管理端用：按ID获取课程"""
     row = db.query_one(
-        f"SELECT {_select_cols()} FROM ly_course WHERE id = %s AND deleted = 0",
+        f"SELECT {SELECT_COLS} FROM ly_course WHERE id = %s AND deleted = 0",
         (course_id,),
     )
-    course = _row_to_course(row) if row else None
-    if course:
-        _fill_department_ids([course])
-    return course
+    return _row_to_course(row) if row else None
 
 
 def save(
@@ -244,21 +111,11 @@ def save(
     status: int = 1,
     sort: int = 0,
     is_required: int = 0,
-    visibility: int = 1,
-    department_ids: Optional[List[int]] = None,
 ) -> int:
-    if _course_table_has_visibility():
-        last_id = db.execute_insert(
-            "INSERT INTO ly_course (title, cover, description, category_id, status, sort, is_required, visibility) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
-            (title or "", cover, description, category_id, status, sort, is_required, visibility),
-        )
-    else:
-        last_id = db.execute_insert(
-            "INSERT INTO ly_course (title, cover, description, category_id, status, sort, is_required) VALUES (%s, %s, %s, %s, %s, %s, %s)",
-            (title or "", cover, description, category_id, status, sort, is_required),
-        )
-    if last_id and course_department_service.table_exists() and department_ids:
-        course_department_service.set_course_departments(last_id, department_ids)
+    last_id = db.execute_insert(
+        "INSERT INTO ly_course (title, cover, description, category_id, status, sort, is_required) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+        (title or "", cover, description, category_id, status, sort, is_required),
+    )
     return last_id or 0
 
 
@@ -271,27 +128,15 @@ def update(
     status: Optional[int] = None,
     sort: Optional[int] = None,
     is_required: Optional[int] = None,
-    visibility: Optional[int] = None,
-    department_ids: Optional[List[int]] = None,
 ) -> int:
-    row = db.query_one(f"SELECT {_select_cols()} FROM ly_course WHERE id = %s AND deleted = 0", (course_id,))
+    row = db.query_one(f"SELECT {SELECT_COLS} FROM ly_course WHERE id = %s AND deleted = 0", (course_id,))
     if not row:
         return 0
-    if _course_table_has_visibility():
-        vis = visibility if visibility is not None else row.get("visibility", 1)
-        sql = "UPDATE ly_course SET title = %s, cover = %s, description = %s, category_id = %s, status = %s, sort = %s, is_required = %s, visibility = %s WHERE id = %s AND deleted = 0"
-        db.execute(
-            sql,
-            (title or row.get("title"), cover if cover is not None else row.get("cover"), description if description is not None else row.get("description"), category_id if category_id is not None else row.get("category_id"), status if status is not None else row.get("status"), sort if sort is not None else row.get("sort"), is_required if is_required is not None else row.get("is_required", 0), vis, course_id),
-        )
-    else:
-        sql = "UPDATE ly_course SET title = %s, cover = %s, description = %s, category_id = %s, status = %s, sort = %s, is_required = %s WHERE id = %s AND deleted = 0"
-        db.execute(
-            sql,
-            (title or "", cover, description, category_id, status, sort, is_required if is_required is not None else 0, course_id),
-        )
-    if course_department_service.table_exists() and department_ids is not None:
-        course_department_service.set_course_departments(course_id, department_ids)
+    sql = "UPDATE ly_course SET title = %s, cover = %s, description = %s, category_id = %s, status = %s, sort = %s, is_required = %s WHERE id = %s AND deleted = 0"
+    db.execute(
+        sql,
+        (title or row.get("title"), cover if cover is not None else row.get("cover"), description if description is not None else row.get("description"), category_id if category_id is not None else row.get("category_id"), status if status is not None else row.get("status"), sort if sort is not None else row.get("sort"), is_required if is_required is not None else row.get("is_required", 0), course_id),
+    )
     return 0
 
 
@@ -300,14 +145,9 @@ def delete(course_id: int) -> int:
 
 
 def list_recommended(limit: int = 6, user_id: Optional[int] = None) -> List[dict]:
-    where = ["deleted = 0", "status = 1"]
-    params: List[Any] = []
-    _append_visibility_condition(where, params, user_id)
-    where_sql = " AND ".join(where)
+    """推荐课程：仅返回上架课程"""
     rows = db.query_all(
-        f"SELECT {_select_cols()} FROM ly_course WHERE {where_sql} ORDER BY sort ASC, id DESC LIMIT %s",
-        tuple(params) + (limit,),
+        f"SELECT {SELECT_COLS} FROM ly_course WHERE deleted = 0 AND status = 1 ORDER BY sort ASC, id DESC LIMIT %s",
+        (limit,),
     )
-    records = [_row_to_course(r) for r in rows]
-    _fill_department_ids(records)
-    return records
+    return [_row_to_course(r) for r in rows]

@@ -128,8 +128,8 @@ def main():
 
         # 7. ly_course
         sql = (
-            "INSERT INTO ly_course (title, cover, description, category_id, status, sort, is_required, visibility) "
-            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
+            "INSERT INTO ly_course (title, cover, description, category_id, status, sort, is_required) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s)"
         )
         ids["course"] = []
         for i in range(1, N + 1):
@@ -145,19 +145,12 @@ def main():
                     1,
                     i,
                     i % 2,
-                    1,
                 ),
             )
             ids["course"].append(lid)
         print("  ly_course: 15")
 
-        # 8. ly_course_department (uk course_id, department_id)
-        sql = "INSERT INTO ly_course_department (course_id, department_id) VALUES (%s, %s)"
-        for i in range(N):
-            cur.execute(sql, (ids["course"][i], ids["department"][i]))
-        print("  ly_course_department: 15")
-
-        # 9. ly_course_chapter
+        # 8. ly_course_chapter
         sql = "INSERT INTO ly_course_chapter (course_id, title, sort) VALUES (%s, %s, %s)"
         ids["chapter"] = []
         for i in range(N):

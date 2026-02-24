@@ -204,24 +204,12 @@ def upgrade() -> None:
             status TINYINT DEFAULT 1,
             sort INT DEFAULT 0,
             is_required TINYINT DEFAULT 0 COMMENT '是否必修',
-            visibility TINYINT DEFAULT 1 COMMENT '可见性：1-公开，0-私有',
             create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
             update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             deleted TINYINT DEFAULT 0,
             PRIMARY KEY (id),
             KEY idx_category_id (category_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='课程表'
-    """)
-    op.execute("""
-        CREATE TABLE IF NOT EXISTS ly_course_department (
-            id BIGINT NOT NULL AUTO_INCREMENT,
-            course_id BIGINT NOT NULL,
-            department_id BIGINT NOT NULL,
-            PRIMARY KEY (id),
-            UNIQUE KEY uk_course_department (course_id, department_id),
-            KEY idx_course_id (course_id),
-            KEY idx_department_id (department_id)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='课程-部门关联表'
     """)
     op.execute("""
         CREATE TABLE IF NOT EXISTS ly_course_chapter (

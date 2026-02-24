@@ -34,13 +34,6 @@
             <span v-else>-</span>
           </template>
         </el-table-column>
-        <el-table-column prop="visibility" label="可见性" width="90">
-          <template #default="{ row }">
-            <el-tag :type="row.visibility === 1 ? 'success' : 'warning'">
-              {{ row.visibility === 1 ? '公开' : '私有' }}
-            </el-tag>
-          </template>
-        </el-table-column>
         <el-table-column prop="tagIds" label="标签" width="160">
           <template #default="{ row }">
             {{ (row.tagIds || []).map((id: number) => tagNameMap.get(id)).filter(Boolean).join('、') || '-' }}
@@ -178,25 +171,6 @@
             <el-radio :label="1">必修</el-radio>
           </el-radio-group>
         </el-form-item>
-        <el-form-item label="可见性" prop="visibility">
-          <el-radio-group v-model="form.visibility">
-            <el-radio :label="1">公开</el-radio>
-            <el-radio :label="0">私有</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item v-if="form.visibility === 0" label="关联部门" prop="departmentIds">
-          <el-tree-select
-            v-model="form.departmentIds"
-            :data="departmentTreeOptions"
-            :props="{ label: 'name', value: 'id' }"
-            placeholder="可多选关联部门（选填）"
-            clearable
-            check-strictly
-            default-expand-all
-            multiple
-            style="width: 100%"
-          />
-        </el-form-item>
         <el-form-item label="标签" prop="tagIds" required>
           <el-select v-model="form.tagIds" multiple filterable placeholder="请至少选择一个标签（必填）" style="width: 100%" clearable>
             <el-option v-for="t in tagList" :key="t.id" :label="t.name" :value="t.id" />
@@ -233,7 +207,6 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import { QuestionFilled } from '@element-plus/icons-vue'
 import { getCoursePage, createCourse, updateCourse, deleteCourse, getCourseExam, setCourseExam, type Course } from '@/api/course'
-import { getDepartmentTree, type Department } from '@/api/department'
 import { getTagList, type Tag } from '@/api/tag'
 import {
   getChaptersByCourseId,
@@ -255,37 +228,16 @@ import { useTableMaxHeight } from '@/hooks/useTableHeight'
 
 const tableMaxHeight = useTableMaxHeight()
 
-function flattenDepartments(list: Department[]): Department[] {
-  const out: Department[] = []
-  function walk(items: Department[]) {
-    for (const d of items) {
-      out.push(d)
-      if (d.children?.length) walk(d.children)
-    }
-  }
-  walk(list)
-  return out
-}
-
 const loading = ref(false)
-const departmentTree = ref<Department[]>([])
 const currentCourse = ref<Course | null>(null)
 const examOptions = ref<Exam[]>([])
 const examOptionsLoading = ref(false)
 const selectedExamId = ref<number | null>(null)
 
-const departmentTreeOptions = computed(() => departmentTree.value || [])
 const tagList = ref<Tag[]>([])
 const tagNameMap = computed(() => {
   const map = new Map<number, string>()
   ;(tagList.value || []).forEach((t) => map.set(t.id, t.name))
-  return map
-})
-
-const departmentNameMap = computed(() => {
-  const flat = flattenDepartments(departmentTree.value || [])
-  const map = new Map<number, string>()
-  flat.forEach((d) => map.set(d.id, d.name))
   return map
 })
 const chapterDialogVisible = ref(false)
@@ -321,8 +273,6 @@ const form = reactive<Partial<Course>>({
   status: 1,
   sort: 0,
   isRequired: 0,
-  visibility: 1,
-  departmentIds: [],
   tagIds: []
 })
 
@@ -428,8 +378,6 @@ const handleAdd = () => {
     status: 1,
     sort: 0,
     isRequired: 0,
-    visibility: 1,
-    departmentIds: [],
     tagIds: []
   })
   selectedExamId.value = null
@@ -619,12 +567,7 @@ const loadTags = async () => {
   }
 }
 
-onMounted(async () => {
-  try {
-    departmentTree.value = await getDepartmentTree()
-  } catch {
-    departmentTree.value = []
-  }
+onMounted(() => {
   loadTags()
   loadData()
 })

@@ -438,26 +438,6 @@ def sync_staffgroup_to_user_department(src, tgt):
     print(f"  fa_staffgroup -> ly_user.department_id: {updated} updated")
 
 
-def sync_teamcourse_to_course_department(src, tgt):
-    """12. fa_teamcourse -> ly_course_department：team_id->department_id, course_id->course_id"""
-    with src.cursor() as c:
-        c.execute("SELECT team_id, course_id FROM fa_teamcourse")
-        rows = c.fetchall()
-    if not rows:
-        print("  fa_teamcourse -> ly_course_department: 0 rows, skip")
-        return
-    with tgt.cursor() as c:
-        n = 0
-        for r in rows:
-            c.execute(
-                "INSERT IGNORE INTO ly_course_department (course_id, department_id) VALUES (%s, %s)",
-                (r["course_id"], r["team_id"]),
-            )
-            if c.rowcount:
-                n += 1
-    print(f"  fa_teamcourse -> ly_course_department: {n} rows")
-
-
 def main():
     print(f"Sync FA ({SOURCE['host']}:{SOURCE['port']}/{SOURCE['database']}) -> Ly ({TARGET['host']}:{TARGET['port']}/{TARGET['database']})")
     src = get_conn(SOURCE)
@@ -471,7 +451,7 @@ def main():
         sync_videocategory_to_tag(src, tgt)
         sync_course(src, tgt)
         sync_course_tag(src, tgt)
-        sync_teamcourse_to_course_department(src, tgt)
+        # sync_teamcourse_to_course_department 已移除：课程不再关联部门
         sync_video(src, tgt)
         sync_question(src, tgt)
         sync_exam_to_paper(src, tgt)

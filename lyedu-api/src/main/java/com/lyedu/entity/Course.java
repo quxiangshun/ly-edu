@@ -46,14 +46,4 @@ public class Course extends BaseEntity {
      * 是否必修（0-选修，1-必修）
      */
     private Integer isRequired;
-
-    /**
-     * 可见性（1-公开，0-私有）
-     */
-    private Integer visibility;
-
-    /**
-     * 关联部门ID列表（私有时必填，多对多；不持久化到 ly_course，来自 ly_course_department）
-     */
-    private java.util.List<Long> departmentIds;
 }

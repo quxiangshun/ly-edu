@@ -9,10 +9,6 @@ export interface Course {
   status: number
   sort: number
   isRequired?: number
-  /** 可见性：1-公开，0-私有 */
-  visibility?: number
-  /** 关联部门ID列表（私有时必填，可多选） */
-  departmentIds?: number[]
   /** 标签ID列表 */
   tagIds?: number[]
 }
