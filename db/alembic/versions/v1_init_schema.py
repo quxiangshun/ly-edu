@@ -745,7 +745,7 @@ def upgrade() -> None:
     # ----- 种子数据（v1 + v8 + v9 + v11）：仅保留管理员，id=999999999 避免与同步用户 id 冲突 -----
     op.execute("""
         INSERT INTO ly_user (id, username, password, real_name, email, role, status)
-        VALUES (999999999, 'admin', '$2a$10$YORpsv2uYZQNNt5hxVNrw.KyeVMcn.fjWYyX3CWGXSwdpL6hRpVSy', '管理员', 'admin@lyedu.com', 'admin', 1)
+        VALUES (1, 'admin', '$2a$10$YORpsv2uYZQNNt5hxVNrw.KyeVMcn.fjWYyX3CWGXSwdpL6hRpVSy', '管理员', 'admin@lyedu.com', 'admin', 1)
         ON DUPLICATE KEY UPDATE password = VALUES(password), real_name = VALUES(real_name)
     """)
     op.execute("""

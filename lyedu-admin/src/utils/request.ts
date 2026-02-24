@@ -46,13 +46,15 @@ service.interceptors.response.use(
     
     // 如果返回的状态码不是 200，则视为错误
     if (res.code !== 200) {
-      ElMessage.error(res.message || '请求失败')
-      
-      // 401: 未授权，跳转到登录页
+      // 401: 未授权/登录过期，提示更明确并跳转登录页
       if (res.code === 401) {
         localStorage.removeItem('token')
+        localStorage.removeItem('user')
+        ElMessage.warning('登录已过期，请重新登录')
         const redirect = encodeURIComponent(location.pathname + location.search)
         window.location.href = redirect ? `/login?redirect=${redirect}` : '/login'
+      } else {
+        ElMessage.error(res.message || '请求失败')
       }
       
       return Promise.reject(new Error(res.message || '请求失败'))
@@ -62,6 +64,17 @@ service.interceptors.response.use(
   },
   (error) => {
     console.error('响应错误:', error)
+    // HTTP 401 或响应体 code=401：未授权，与成功分支保持一致地登出并跳转登录
+    const status = error.response?.status
+    const bodyCode = error.response?.data?.code
+    if (status === 401 || bodyCode === 401) {
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      ElMessage.warning('登录已过期，请重新登录')
+      const redirect = encodeURIComponent(location.pathname + location.search)
+      window.location.href = redirect ? `/login?redirect=${redirect}` : '/login'
+      return Promise.reject(error)
+    }
     const silentError = (error.config as any)?.silentError
     if (!silentError) {
       const msg = error.response?.data?.message || error.message || '网络错误'

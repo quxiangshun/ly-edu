@@ -18,7 +18,14 @@ export default defineConfig(({ mode }) => {
       proxy: {
         '/api': {
           target: apiTarget,
-          changeOrigin: true
+          changeOrigin: true,
+          configure: (proxy) => {
+            proxy.on('proxyReq', (proxyReq, req) => {
+              if (req.headers.authorization) {
+                proxyReq.setHeader('Authorization', req.headers.authorization)
+              }
+            })
+          }
         },
         '/uploads': {
           target: apiTarget,
