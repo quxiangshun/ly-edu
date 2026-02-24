@@ -59,9 +59,9 @@
             {{ maskMobile(row.mobile) }}
           </template>
         </el-table-column>
-        <el-table-column prop="departmentId" label="部门" width="160">
+        <el-table-column prop="departmentId" label="部门" min-width="200" show-overflow-tooltip>
           <template #default="{ row }">
-            {{ row.departmentId ? (departmentNameMap.get(row.departmentId) || row.departmentId) : '-' }}
+            {{ row.departmentId ? (departmentPathMap.get(row.departmentId) ?? departmentNameMap.get(row.departmentId) ?? row.departmentId) : '-' }}
           </template>
         </el-table-column>
         <el-table-column prop="tagIds" label="标签" width="160">
@@ -313,6 +313,26 @@ const departmentNameMap = computed(() => {
   const map = new Map<number, string>()
   flat.forEach((d) => map.set(d.id, d.name))
   return map
+})
+
+/** 部门祖籍路径：根部门 > 父部门 > 当前部门 */
+const departmentPathMap = computed(() => {
+  const flat = flattenDepartments(departmentTree.value || [])
+  const idToDept = new Map<number, Department>()
+  flat.forEach((d) => idToDept.set(d.id, d))
+  const pathMap = new Map<number, string>()
+  for (const d of flat) {
+    const path: string[] = []
+    let curr: Department | undefined = d
+    while (curr) {
+      path.unshift(curr.name)
+      const pid = curr.parentId ?? 0
+      if (!pid) break
+      curr = idToDept.get(pid)
+    }
+    pathMap.set(d.id, path.join(' / '))
+  }
+  return pathMap
 })
 
 /** 手机号脱敏：前3位 + **** + 后4位 */
