@@ -315,22 +315,29 @@ const departmentNameMap = computed(() => {
   return map
 })
 
-/** 部门祖籍路径：根部门 > 父部门 > 当前部门 */
+/** 部门祖籍路径：根部门 / 父部门 / 当前部门。优先用 path 属性（API 返回）优化 */
 const departmentPathMap = computed(() => {
   const flat = flattenDepartments(departmentTree.value || [])
-  const idToDept = new Map<number, Department>()
-  flat.forEach((d) => idToDept.set(d.id, d))
+  const nameMap = new Map<number, string>()
+  flat.forEach((d) => nameMap.set(d.id, d.name))
   const pathMap = new Map<number, string>()
   for (const d of flat) {
-    const path: string[] = []
-    let curr: Department | undefined = d
-    while (curr) {
-      path.unshift(curr.name)
-      const pid = curr.parentId ?? 0
-      if (!pid) break
-      curr = idToDept.get(pid)
+    if (d.path) {
+      const names = d.path.split('.').map((id) => nameMap.get(Number(id))).filter(Boolean)
+      pathMap.set(d.id, names.join(' / '))
+    } else {
+      const idToDept = new Map<number, Department>()
+      flat.forEach((x) => idToDept.set(x.id, x))
+      const path: string[] = []
+      let curr: Department | undefined = d
+      while (curr) {
+        path.unshift(curr.name)
+        const pid = curr.parentId ?? 0
+        if (!pid) break
+        curr = idToDept.get(pid)
+      }
+      pathMap.set(d.id, path.join(' / '))
     }
-    pathMap.set(d.id, path.join(' / '))
   }
   return pathMap
 })

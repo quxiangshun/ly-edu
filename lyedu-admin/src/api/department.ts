@@ -9,6 +9,10 @@ export interface Department {
   children?: Department[]
   /** 标签ID列表 */
   tagIds?: number[]
+  /** 祖籍路径：从根到自身的ID链，如 "1.2.3"（类 ltree） */
+  path?: string
+  /** 祖籍ID列表：从根到父级，不含自身，便于查询 */
+  ancestorIds?: number[]
 }
 
 export const getDepartmentTree = () => {
