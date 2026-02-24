@@ -315,14 +315,14 @@ onMounted(() => {
 
 // 统计卡片区域
 .stats-section {
-  margin-bottom: 0;
+  margin-bottom: 5px;
   padding: 24px 24px 0;
 }
 
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 24px;
+  gap: 12px;
 }
 
 .stat-card {
@@ -340,8 +340,8 @@ onMounted(() => {
   .stat-content {
     display: flex;
     align-items: center;
-    gap: 16px;
-    padding: 20px;
+    gap: 12px;
+    padding: 2px;
   }
 
   .stat-icon-wrapper {
