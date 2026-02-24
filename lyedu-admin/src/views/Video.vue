@@ -49,12 +49,36 @@
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="courseName" label="课程名称" min-width="120" show-overflow-tooltip />
         <el-table-column prop="chapterName" label="章节名称" min-width="120" show-overflow-tooltip />
-        <el-table-column prop="title" label="视频标题" />
-        <el-table-column prop="url" label="视频地址" min-width="200">
+        <el-table-column label="视频标题" min-width="200">
           <template #default="{ row }">
-            <el-link v-if="row.url" :href="row.url" target="_blank" type="primary">
-              {{ row.url }}
-            </el-link>
+            <div class="title-cell">
+              <el-tooltip :content="row.title" placement="top">
+                <span class="title-text">{{ row.title }}</span>
+              </el-tooltip>
+              <div class="copy-icons">
+                <el-tooltip content="点击复制标题" placement="top">
+                  <el-icon class="copy-icon" @click.stop="copyTitle(row.title)">
+                    <CopyDocument />
+                  </el-icon>
+                </el-tooltip>
+                <el-tooltip content="点击复制视频地址" placement="top">
+                  <el-icon class="copy-icon" @click.stop="copyVideoUrl(row.url)">
+                    <CopyDocument />
+                  </el-icon>
+                </el-tooltip>
+              </div>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="视频" width="200" align="center">
+          <template #default="{ row }">
+            <video
+              v-if="row.url"
+              :src="videoFullUrl(row.url)"
+              controls
+              preload="metadata"
+              class="video-preview"
+            />
             <span v-else>-</span>
           </template>
         </el-table-column>
@@ -175,7 +199,7 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
-import { Plus, QuestionFilled } from '@element-plus/icons-vue'
+import { CopyDocument, Plus, QuestionFilled } from '@element-plus/icons-vue'
 import ChunkUpload from '@/components/ChunkUpload.vue'
 import { useTableMaxHeight } from '@/hooks/useTableHeight'
 import { getVideoPage, createVideo, updateVideo, deleteVideo, type Video } from '@/api/video'
@@ -211,6 +235,36 @@ const pagination = reactive({
 })
 
 const { openPageHelp } = useHelp()
+
+function videoFullUrl(url: string) {
+  if (!url) return ''
+  return url.startsWith('http') ? url : (url.startsWith('/') ? window.location.origin + url : window.location.origin + '/' + url)
+}
+
+function copyTitle(title: string) {
+  if (!title) {
+    ElMessage.warning('暂无标题')
+    return
+  }
+  navigator.clipboard.writeText(title).then(() => {
+    ElMessage.success('已复制标题')
+  }).catch(() => {
+    ElMessage.error('复制失败')
+  })
+}
+
+function copyVideoUrl(url: string) {
+  if (!url) {
+    ElMessage.warning('暂无视频地址')
+    return
+  }
+  const fullUrl = videoFullUrl(url)
+  navigator.clipboard.writeText(fullUrl).then(() => {
+    ElMessage.success('已复制视频地址')
+  }).catch(() => {
+    ElMessage.error('复制失败')
+  })
+}
 
 const form = reactive<Partial<Video>>({
   courseId: undefined,
@@ -530,5 +584,40 @@ onMounted(() => {
   margin-top: 4px;
   font-size: 12px;
   color: var(--el-text-color-secondary);
+}
+
+.title-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  .title-text {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .copy-icons {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+  .copy-icon {
+    cursor: pointer;
+    color: var(--el-text-color-secondary);
+    &:hover {
+      color: var(--el-color-primary);
+    }
+  }
+}
+
+.video-preview {
+  width: 160px;
+  height: 90px;
+  object-fit: contain;
+  background: #000;
+  border-radius: 4px;
 }
 </style>
