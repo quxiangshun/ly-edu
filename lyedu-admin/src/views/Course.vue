@@ -189,7 +189,7 @@
             v-model="form.departmentIds"
             :data="departmentTreeOptions"
             :props="{ label: 'name', value: 'id' }"
-            placeholder="可多选关联部门"
+            placeholder="可多选关联部门（选填）"
             clearable
             check-strictly
             default-expand-all
@@ -197,8 +197,8 @@
             style="width: 100%"
           />
         </el-form-item>
-        <el-form-item label="标签" prop="tagIds">
-          <el-select v-model="form.tagIds" multiple filterable placeholder="选择标签" style="width: 100%" clearable>
+        <el-form-item label="标签" prop="tagIds" required>
+          <el-select v-model="form.tagIds" multiple filterable placeholder="请至少选择一个标签（必填）" style="width: 100%" clearable>
             <el-option v-for="t in tagList" :key="t.id" :label="t.name" :value="t.id" />
           </el-select>
         </el-form-item>
@@ -328,11 +328,11 @@ const form = reactive<Partial<Course>>({
 
 const rules: FormRules = {
   title: [{ required: true, message: '请输入课程名称', trigger: 'blur' }],
-  departmentIds: [
+  tagIds: [
     {
       validator: (_rule: unknown, value: unknown, callback: (err?: Error) => void) => {
-        if (form.visibility === 0 && (!Array.isArray(value) || value.length === 0)) {
-          callback(new Error('私有课程请至少选择一个关联部门'))
+        if (!Array.isArray(value) || value.length === 0) {
+          callback(new Error('请至少选择一个标签'))
         } else {
           callback()
         }

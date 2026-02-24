@@ -17,10 +17,11 @@ def list(courseId: int):
 
 @router.post("")
 def create(body: ChapterRequest):
-    if body.course_id is None:
+    course_id = body.get_course_id()
+    if course_id is None:
         return error_result(ResultCode.PARAM_ERROR)
     rid = chapter_service.save(
-        course_id=body.course_id,
+        course_id=course_id,
         title=body.title or "",
         sort=body.sort or 0,
     )

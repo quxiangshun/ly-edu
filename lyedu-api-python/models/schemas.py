@@ -22,8 +22,13 @@ class CourseRequest(BaseModel):
 
 class ChapterRequest(BaseModel):
     course_id: Optional[int] = None
+    courseId: Optional[int] = None  # 前端传 camelCase
     title: Optional[str] = None
     sort: Optional[int] = 0
+
+    def get_course_id(self) -> Optional[int]:
+        """兼容前端 courseId 与后端 course_id"""
+        return self.course_id if self.course_id is not None else self.courseId
 
 
 class VideoRequest(BaseModel):
