@@ -30,7 +30,15 @@
         <el-table-column prop="title" label="课程名称" />
         <el-table-column prop="cover" label="封面">
           <template #default="{ row }">
-            <el-image v-if="row.cover" :src="row.cover" style="width: 60px; height: 40px" fit="cover" />
+            <el-image
+              v-if="row.cover"
+              :src="coverFullUrl(row.cover)"
+              :preview-src-list="[coverFullUrl(row.cover)]"
+              :preview-teleported="true"
+              :z-index="3000"
+              style="width: 60px; height: 40px; cursor: pointer"
+              fit="cover"
+            />
             <span v-else>-</span>
           </template>
         </el-table-column>
@@ -142,6 +150,49 @@
       </template>
     </el-dialog>
 
+    <!-- 图片库选择/上传对话框 -->
+    <el-dialog v-model="imageSelectVisible" title="选择封面" width="600px" @close="imageSelectVisible = false">
+      <div class="image-select-toolbar">
+        <el-input v-model="imageKeyword" placeholder="搜索图片" clearable style="width: 180px" @keyup.enter="loadImageList" />
+        <el-button type="primary" @click="loadImageList">搜索</el-button>
+        <el-upload
+          :show-file-list="false"
+          accept=".jpg,.jpeg,.png,.gif,.webp"
+          :before-upload="beforeImageUpload"
+          :http-request="handleUploadCover"
+        >
+          <el-button type="success">上传图片</el-button>
+        </el-upload>
+      </div>
+      <div class="image-select-grid" v-loading="imageListLoading">
+        <div v-for="item in imageSelectList" :key="item.id" class="image-select-item">
+          <el-image
+            :src="imageItemUrl(item)"
+            :preview-src-list="[imageItemUrl(item)]"
+            :preview-teleported="true"
+            :z-index="3000"
+            class="select-thumb"
+            fit="cover"
+          />
+          <span class="select-name">{{ item.name }}</span>
+          <el-button size="small" type="primary" class="select-btn" @click="chooseCover(item)">选择</el-button>
+        </div>
+        <el-empty v-if="!imageListLoading && imageSelectList.length === 0" description="暂无图片，可上传" />
+      </div>
+      <el-pagination
+        v-model:current-page="imageSelectPage"
+        v-model:page-size="imageSelectSize"
+        :total="imageSelectTotal"
+        :page-sizes="[12, 24]"
+        layout="prev, pager, next"
+        @current-change="loadImageList"
+        style="margin-top: 12px; justify-content: center"
+      />
+      <template #footer>
+        <el-button @click="imageSelectVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
+
     <!-- 新增/编辑对话框 -->
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="600px">
       <el-form :model="form" :rules="rules" ref="formRef" label-width="100px">
@@ -149,12 +200,29 @@
           <el-input v-model="form.title" placeholder="请输入课程名称" />
         </el-form-item>
         <el-form-item label="课程封面" prop="cover">
-          <el-input v-model="form.cover" placeholder="请输入封面URL或从图片库选择" class="cover-input">
-            <template #append>
-              <el-button @click="openImageSelect">从图片库选择</el-button>
-            </template>
-          </el-input>
-          <el-image v-if="form.cover" :src="coverDisplayUrl" style="width: 120px; height: 80px; margin-top: 8px; border-radius: 4px" fit="cover" />
+          <div class="cover-field">
+            <el-input v-model="form.cover" placeholder="请输入封面URL、从图片库选择或上传" class="cover-input" />
+            <div class="cover-actions">
+              <el-button type="primary" @click="openImageSelect">从图片库选择</el-button>
+              <el-upload
+                :show-file-list="false"
+                accept=".jpg,.jpeg,.png,.gif,.webp"
+                :before-upload="beforeImageUpload"
+                :http-request="handleUploadCover"
+              >
+                <el-button type="success">上传图片</el-button>
+              </el-upload>
+            </div>
+          </div>
+          <el-image
+            v-if="form.cover"
+            :src="coverDisplayUrl"
+            :preview-src-list="[coverDisplayUrl]"
+            :preview-teleported="true"
+            :z-index="3000"
+            style="width: 120px; height: 80px; margin-top: 8px; border-radius: 4px; cursor: pointer"
+            fit="cover"
+          />
         </el-form-item>
         <el-form-item label="课程描述" prop="description">
           <el-input v-model="form.description" type="textarea" :rows="4" placeholder="请输入课程描述" />
@@ -221,7 +289,7 @@ import {
   deleteAttachment,
   type CourseAttachment
 } from '@/api/courseAttachment'
-import { getImagePage, type ImageItem, type ImagePageResult } from '@/api/image'
+import { getImagePage, uploadImage, type ImageItem, type ImagePageResult } from '@/api/image'
 import { getExamPage, type Exam } from '@/api/exam'
 import { useHelp } from '@/hooks/useHelp'
 import { useTableMaxHeight } from '@/hooks/useTableHeight'
@@ -306,6 +374,11 @@ const coverDisplayUrl = computed(() => {
   return u.startsWith('http') ? u : window.location.origin + u
 })
 
+function coverFullUrl(url: string) {
+  if (!url) return ''
+  return url.startsWith('http') ? url : window.location.origin + url
+}
+
 function imageItemUrl(item: ImageItem) {
   const u = item.url
   if (!u) return ''
@@ -339,6 +412,34 @@ async function loadImageList() {
 function chooseCover(item: ImageItem) {
   form.cover = item.url || ''
   imageSelectVisible.value = false
+}
+
+function beforeImageUpload(file: File) {
+  const ok = /\.(jpe?g|png|gif|webp)$/i.test(file.name)
+  if (!ok) {
+    ElMessage.error('仅支持 jpg/png/gif/webp')
+    return false
+  }
+  return true
+}
+
+async function handleUploadCover({ file }: { file: File }) {
+  try {
+    const res = await uploadImage(file)
+    const data = (res as unknown as { data?: ImageItem })?.data ?? res
+    const url = (data as ImageItem)?.url ?? (data as ImageItem)?.path ?? ''
+    if (url) {
+      form.cover = url
+      if (imageSelectVisible.value) {
+        loadImageList()
+      }
+      ElMessage.success('上传成功')
+    } else {
+      ElMessage.error('上传失败')
+    }
+  } catch (_e) {
+    ElMessage.error('上传失败')
+  }
 }
 
 const loadData = async () => {
@@ -608,6 +709,24 @@ onMounted(() => {
   margin-bottom: 20px;
 }
 
+.cover-field {
+  width: 100%;
+  .cover-input {
+    margin-bottom: 8px;
+  }
+  .cover-actions {
+    display: flex;
+    gap: 8px;
+  }
+}
+
+.image-select-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
 .image-select-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -620,7 +739,6 @@ onMounted(() => {
   border: 1px solid #ebeef5;
   border-radius: 8px;
   overflow: hidden;
-  cursor: pointer;
   transition: border-color 0.2s;
   &:hover {
     border-color: var(--el-color-primary);
@@ -639,6 +757,10 @@ onMounted(() => {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  .select-btn {
+    margin: 0 8px 8px;
+    width: calc(100% - 16px);
   }
 }
 </style>

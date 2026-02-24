@@ -34,7 +34,14 @@
 
       <div class="image-grid" v-loading="loading">
         <div v-for="item in imageList" :key="item.id" class="image-item">
-          <el-image :src="imageUrl(item)" fit="cover" class="thumb" />
+          <el-image
+            :src="imageUrl(item)"
+            :preview-src-list="[imageUrl(item)]"
+            :preview-teleported="true"
+            :z-index="3000"
+            fit="cover"
+            class="thumb"
+          />
           <div class="meta">{{ item.name }}</div>
           <div class="actions">
             <el-button type="primary" link size="small" @click="copyUrl(item)">复制链接</el-button>
