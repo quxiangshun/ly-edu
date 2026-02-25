@@ -1,7 +1,7 @@
 <template>
 	<scroll-view class="page" scroll-y="true" style="flex:1" @scrolltolower="loadList">
 		<view class="content">
-			<view v-for="v in videoList" :key="v.id" class="video-row" @click="playVideo(v.id)">
+			<view v-for="v in videoList" :key="v.id" class="video-row" @click="playVideo(v)">
 				<image class="video-cover" :src="coverUrl(v.cover)" mode="aspectFill"></image>
 				<view class="video-info">
 					<text class="video-title">{{ v.title }}</text>
@@ -69,8 +69,13 @@
 		}
 	}
 
-	function playVideo(id: number): void {
-		uni.navigateTo({ url: '/pages/video-player/video-player?id=' + id })
+	function playVideo(v: any): void {
+		const cid = v.courseId ?? v.course_id
+		if (cid != null) {
+			uni.navigateTo({ url: '/pages/course-detail/course-detail?id=' + cid + '&videoId=' + v.id })
+		} else {
+			uni.showToast({ title: '无法播放', icon: 'none' })
+		}
 	}
 </script>
 

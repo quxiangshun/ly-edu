@@ -1,36 +1,63 @@
 <template>
-	<scroll-view class="page" scroll-y="true" style="flex:1" :style="themeRootStyle">
-		<view v-if="loading" class="loading-wrap">
-			<text class="loading-text">加载中...</text>
-		</view>
-		<view v-else-if="detail != null" class="content">
-			<view class="cover-wrap" @click="playFirst">
+	<view class="page" :style="themeRootStyle">
+		<!-- 固定顶部：视频播放器 -->
+		<view class="video-fixed">
+			<view v-if="currentVideo == null" class="cover-wrap" @click="playFirst">
 				<image class="cover-img" :src="coverImageUrl" mode="aspectFill"></image>
 				<view class="cover-mask">
 					<text class="play-hint">点击选择视频播放</text>
 				</view>
 			</view>
+			<video
+				v-else
+				id="course-video"
+				class="video-el"
+				:src="currentVideoUrl"
+				:poster="currentVideoPoster"
+				:autoplay="shouldAutoplay"
+				controls
+				@play="onVideoPlay"
+				@timeupdate="onTimeUpdate"
+				@ended="onVideoEnded"
+			></video>
+		</view>
+
+		<!-- 可滚动区域：课程信息 + 吸顶tab + 内容（H5 不动态隐藏信息，避免滚动时高度变化导致跳动） -->
+		<scroll-view
+			class="scroll-area"
+			scroll-y="true"
+			:style="scrollAreaStyle"
+		>
 			<view class="info-section">
-				<text class="course-title">{{ detail.course.title }}</text>
+				<text class="course-title">{{ detail != null ? detail.course.title : '' }}</text>
 				<view class="meta-row">
-					<text v-if="(detail.course.isRequired ?? detail.course.is_required) === 1" class="tag required">必修</text>
-					<text v-else-if="(detail.course.isRequired ?? detail.course.is_required) === 0" class="tag elective">选修</text>
+					<text v-if="detail != null && (detail.course.isRequired ?? detail.course.is_required) === 1" class="tag required">必修</text>
+					<text v-else-if="detail != null && (detail.course.isRequired ?? detail.course.is_required) === 0" class="tag elective">选修</text>
 					<text v-if="videoCount > 0" class="meta-text">{{ videoCount }} 节视频</text>
 				</view>
-				<text class="course-desc">{{ detail.course.description != null ? detail.course.description : '暂无描述' }}</text>
-				<view v-if="detail.courseProgress != null" class="progress-row">
+				<text class="course-desc">{{ detail != null && detail.course.description != null ? detail.course.description : '暂无描述' }}</text>
+				<view v-if="detail != null && detail.courseProgress != null" class="progress-row">
 					<text class="progress-text">已学 {{ Math.round(detail.courseProgress) }}%</text>
 				</view>
 			</view>
-
-			<view class="section">
-				<text class="section-title">课程目录</text>
+			<view class="tab-row tab-sticky">
+				<view :class="['tab-item', activeTab === 'catalog' ? 'tab-item--active' : '']" @click="activeTab = 'catalog'">
+					<text class="tab-text">目录</text>
+				</view>
+				<view :class="['tab-item', activeTab === 'attachment' ? 'tab-item--active' : '']" @click="activeTab = 'attachment'">
+					<text class="tab-text">附件</text>
+				</view>
+				<view :class="['tab-item', activeTab === 'comment' ? 'tab-item--active' : '']" @click="activeTab = 'comment'">
+					<text class="tab-text">评论</text>
+				</view>
+			</view>
+			<view v-show="activeTab === 'catalog'" class="tab-panel">
 				<view v-for="(ch, chIdx) in chaptersWithVideos" :key="ch.id ?? chIdx" class="chapter-block">
 					<view class="chapter-header">
 						<text class="chapter-num">第{{ chIdx + 1 }}章</text>
 						<text class="chapter-title">{{ ch.title }}</text>
 					</view>
-					<view v-for="(v, vidx) in ch.hours" :key="v.id" class="video-row" @click="playVideo(v)">
+					<view v-for="(v, vidx) in ch.hours" :key="v.id" class="video-row" :class="currentVideo != null && currentVideo.id === v.id ? 'video-row--active' : ''" @click="playVideo(v)">
 						<image class="video-cover" :src="videoCoverUrl(v.cover)" mode="aspectFill"></image>
 						<view class="video-info">
 							<text class="video-title">{{ vidx + 1 }}. {{ v.title }}</text>
@@ -38,8 +65,8 @@
 						</view>
 					</view>
 				</view>
-				<view v-if="detail.videos != null && detail.videos.length > 0 && chaptersWithVideos.length === 0">
-					<view v-for="(v, idx) in detail.videos" :key="v.id" class="video-row" @click="playVideo(v)">
+				<view v-if="detail != null && detail.videos != null && detail.videos.length > 0 && chaptersWithVideos.length === 0">
+					<view v-for="(v, idx) in detail.videos" :key="v.id" class="video-row" :class="currentVideo != null && currentVideo.id === v.id ? 'video-row--active' : ''" @click="playVideo(v)">
 						<image class="video-cover" :src="videoCoverUrl(v.cover)" mode="aspectFill"></image>
 						<view class="video-info">
 							<text class="video-title">{{ idx + 1 }}. {{ v.title }}</text>
@@ -51,42 +78,87 @@
 					<text class="empty-text">暂无课时</text>
 				</view>
 			</view>
-
-			<view v-if="detail.attachments != null && detail.attachments.length > 0" class="section">
-				<text class="section-title">附件</text>
-				<view v-for="att in detail.attachments" :key="att.id" class="attach-row" @click="handleAttachment(att)">
-					<text class="attach-name">{{ att.name }}</text>
+			<view v-show="activeTab === 'attachment'" class="tab-panel">
+				<view v-if="detail != null && detail.attachments != null && detail.attachments.length > 0">
+					<view v-for="att in detail.attachments" :key="att.id" class="attach-row" @click="handleAttachment(att)">
+						<text class="attach-name">{{ att.name }}</text>
+					</view>
+				</view>
+				<view v-else class="empty-tip">
+					<text class="empty-text">暂无附件</text>
 				</view>
 			</view>
-
-			<view class="bottom-bar">
-				<button class="start-btn" @click="handleStartLearn">{{ detail.courseProgress != null && detail.courseProgress > 0 ? '继续学习' : '开始学习' }}</button>
+			<view v-show="activeTab === 'comment'" class="tab-panel">
+				<view v-if="commentLoading" class="comment-loading">
+					<text class="empty-text">加载中...</text>
+				</view>
+				<view v-else-if="comments.length > 0" class="comment-list">
+					<view v-for="c in comments" :key="c.id" class="comment-row">
+						<text class="comment-user">{{ c.userRealName ?? c.user_real_name ?? '用户' }}</text>
+						<text class="comment-content">{{ c.content }}</text>
+						<text class="comment-time">{{ formatCommentTime(c.createTime ?? c.create_time) }}</text>
+					</view>
+				</view>
+				<view v-else class="empty-tip">
+					<text class="empty-text">暂无评论</text>
+				</view>
 			</view>
+		</scroll-view>
+
+		<view v-if="loading" class="loading-overlay">
+			<text class="loading-text">加载中...</text>
 		</view>
-		<view v-else class="empty-wrap">
+		<view v-else-if="detail == null" class="empty-overlay">
 			<text class="empty-text">课程不存在</text>
 		</view>
-	</scroll-view>
+	</view>
 </template>
 
 <script setup lang="uts">
-	import { computed } from 'vue'
-	import { getCourseById } from '../../api/course'
+	import { computed, watch, nextTick } from 'vue'
+	import { getCourseById, getCourseComments, type CourseCommentDto } from '../../api/course'
+	import { recordPlay } from '../../api/video'
+	import { updateVideoProgress } from '../../api/learning'
 	import { assetUrl } from '../../config/api'
 	import { joinCourse } from '../../api/learning'
 	import { themePrimary } from '../../utils/theme'
 
 	const themeRootStyle = computed((): Record<string, string> => ({ '--brand-primary': themePrimary.value }))
 
+	const VIDEO_HEIGHT = 220
 	const courseId = ref(0)
+	const initVideoId = ref(0)
 	const loading = ref(true)
 	const detail = ref<any>(null)
+	const currentVideo = ref<any>(null)
+	const shouldAutoplay = ref(false)
+	const activeTab = ref<'catalog' | 'attachment' | 'comment'>('catalog')
+	const comments = ref<CourseCommentDto[]>([])
+	const commentLoading = ref(false)
+	const lastSaveAt = ref(0)
+	const SAVE_INTERVAL = 5000
+	let playedCurrent = false
+
+	const scrollAreaStyle = computed((): Record<string, string> => {
+		const sys = uni.getSystemInfoSync()
+		const h = (sys.windowHeight ?? sys.screenHeight ?? 600) - VIDEO_HEIGHT
+		return { height: h + 'px' }
+	})
 
 	onLoad((options: any) => {
 		if (options != null && options['id'] != null) {
 			courseId.value = parseInt(options['id'] as string)
 		}
+		if (options != null && options['videoId'] != null) {
+			initVideoId.value = parseInt(options['videoId'] as string)
+		}
 		loadDetail()
+	})
+
+	watch(activeTab, (tab) => {
+		if (tab === 'comment' && comments.value.length === 0 && !commentLoading.value) {
+			loadComments()
+		}
 	})
 
 	const videoCount = computed(() => {
@@ -119,12 +191,35 @@
 		return '/static/logo.png'
 	})
 
+	const currentVideoUrl = computed((): string => {
+		const v = currentVideo.value
+		if (v == null || v.url == null) return ''
+		const url = String(v.url).trim()
+		if (url.startsWith('http')) return url
+		const u = assetUrl(url)
+		return u.length > 0 ? u : ''
+	})
+
+	const currentVideoPoster = computed((): string => {
+		const v = currentVideo.value
+		if (v == null || v.cover == null) return ''
+		const u = assetUrl(v.cover)
+		return u.length > 0 ? u : ''
+	})
+
 	function videoCoverUrl(cover: string | null | undefined): string {
 		if (cover != null && cover.length > 0) {
 			const u = assetUrl(cover)
 			if (u.length > 0) return u
 		}
 		return '/static/logo.png'
+	}
+
+	function formatCommentTime(t: string | null | undefined): string {
+		if (t == null || t.length === 0) return ''
+		const s = String(t)
+		if (s.length >= 10) return s.substring(0, 10)
+		return s
 	}
 
 	function formatDuration(sec: number | null | undefined): string {
@@ -138,6 +233,19 @@
 		return (mm < 10 ? '0' : '') + mm + ':' + (ss < 10 ? '0' : '') + ss
 	}
 
+	async function loadComments(): Promise<void> {
+		if (courseId.value <= 0) return
+		commentLoading.value = true
+		try {
+			const list = await getCourseComments(courseId.value, null)
+			comments.value = list != null && Array.isArray(list) ? list : []
+		} catch (_e) {
+			comments.value = []
+		} finally {
+			commentLoading.value = false
+		}
+	}
+
 	async function loadDetail(): Promise<void> {
 		if (courseId.value <= 0) {
 			uni.navigateBack()
@@ -147,6 +255,14 @@
 		try {
 			const res = await getCourseById(courseId.value)
 			detail.value = res
+			if (initVideoId.value > 0) {
+				const v = findVideoById(res, initVideoId.value)
+				if (v != null) {
+					currentVideo.value = v
+					shouldAutoplay.value = true
+					playedCurrent = false
+				}
+			}
 		} catch (_e) {
 			uni.showToast({ title: '加载失败', icon: 'none' })
 			uni.navigateBack()
@@ -155,14 +271,84 @@
 		}
 	}
 
+	function findVideoById(d: any, id: number): any | null {
+		if (d == null) return null
+		const chs = d.chapters
+		if (chs != null) {
+			for (let i = 0; i < chs.length; i++) {
+				const hrs = chs[i].hours
+				if (hrs != null) {
+					for (let j = 0; j < hrs.length; j++) {
+						if (hrs[j].id === id) return hrs[j]
+					}
+				}
+			}
+		}
+		const vs = d.videos
+		if (vs != null) {
+			for (let i = 0; i < vs.length; i++) {
+				if (vs[i].id === id) return vs[i]
+			}
+		}
+		return null
+	}
+
 	function playFirst(): void {
 		const d = detail.value
 		const first = d?.chapters?.[0]?.hours?.[0] ?? d?.videos?.[0]
 		if (first != null) playVideo(first)
 	}
 
-	function playVideo(v: any): void {
-		uni.navigateTo({ url: '/pages/video-player/video-player?id=' + v.id })
+	async function playVideo(v: any): void {
+		if (uni.getStorageSync('token') == null) {
+			uni.showToast({ title: '请先登录', icon: 'none' })
+			uni.navigateTo({ url: '/pages/login/login?redirect=' + encodeURIComponent('/pages/course-detail/course-detail?id=' + courseId.value + '&videoId=' + v.id) })
+			return
+		}
+		try {
+			await joinCourse(courseId.value)
+		} catch (_e) {
+			uni.showToast({ title: '加入课程失败', icon: 'none' })
+			return
+		}
+		currentVideo.value = v
+		shouldAutoplay.value = true
+		playedCurrent = false
+		nextTick(() => {
+			const ctx = uni.createVideoContext('course-video')
+			if (ctx != null) {
+				ctx.play()
+			}
+		})
+	}
+
+	function onVideoPlay(): void {
+		if (!playedCurrent && currentVideo.value != null) {
+			playedCurrent = true
+			recordPlay(currentVideo.value.id).catch(() => {})
+		}
+	}
+
+	function onTimeUpdate(e: any): void {
+		const v = currentVideo.value
+		if (v == null) return
+		const cur = e?.detail?.currentTime ?? 0
+		const dur = e?.detail?.duration ?? v?.duration ?? 0
+		if (cur < 1 || dur <= 0) return
+		const now = Date.now()
+		if (now - lastSaveAt.value < SAVE_INTERVAL) return
+		lastSaveAt.value = now
+		updateVideoProgress(v.id, Math.floor(cur), Math.floor(dur)).catch(() => {})
+	}
+
+	function onVideoEnded(e: any): void {
+		const v = currentVideo.value
+		if (v == null) return
+		const cur = e?.detail?.currentTime ?? 0
+		const dur = e?.detail?.duration ?? v?.duration ?? 0
+		if (dur > 0) {
+			updateVideoProgress(v.id, Math.floor(cur), Math.floor(dur)).catch(() => {})
+		}
 	}
 
 	function handleAttachment(att: any): void {
@@ -185,46 +371,26 @@
 			}
 		})
 	}
-
-	async function handleStartLearn(): Promise<void> {
-		if (uni.getStorageSync('token') == null) {
-			uni.showToast({ title: '请先登录', icon: 'none' })
-			uni.navigateTo({ url: '/pages/login/login?redirect=' + encodeURIComponent('/pages/course-detail/course-detail?id=' + courseId.value) })
-			return
-		}
-		try {
-			await joinCourse(courseId.value)
-			uni.showToast({ title: '已加入课程' })
-			const d = detail.value
-			const first = d?.chapters?.[0]?.hours?.[0] ?? d?.videos?.[0]
-			if (first != null) {
-				uni.navigateTo({ url: '/pages/video-player/video-player?id=' + first.id })
-			}
-		} catch (_e) {
-			uni.showToast({ title: '加入课程失败', icon: 'none' })
-		}
-	}
 </script>
 
 <style>
 .page {
 	flex: 1;
-	padding-bottom: 80px;
-}
-.loading-wrap {
-	padding: 60px 0;
-	align-items: center;
-}
-.loading-text {
-	font-size: 14px;
-	color: #969799;
-}
-.content {
 	flex-direction: column;
+	position: relative;
+}
+.video-fixed {
+	position: fixed;
+	left: 0;
+	right: 0;
+	top: 0;
+	height: 220px;
+	z-index: 10;
+	background-color: #000000;
 }
 .cover-wrap {
 	width: 100%;
-	height: 200px;
+	height: 100%;
 	position: relative;
 	background-color: #e8f4ff;
 }
@@ -248,6 +414,15 @@
 .play-hint {
 	font-size: 14px;
 	color: rgba(255,255,255,0.9);
+}
+.video-el {
+	width: 100%;
+	height: 100%;
+	background-color: #000000;
+}
+.scroll-area {
+	margin-top: 220px;
+	flex: 1;
 }
 .info-section {
 	flex-direction: column;
@@ -295,17 +470,66 @@
 	font-size: 12px;
 	color: #969799;
 }
-.section {
-	flex-direction: column;
-	padding: 16px;
-	margin-top: 12px;
+.tab-row {
+	flex-direction: row;
+	border-bottom-width: 1px;
+	border-bottom-color: #ebedf0;
 	background-color: #ffffff;
 }
-.section-title {
-	font-size: 16px;
+.tab-sticky {
+	position: sticky;
+	top: 0;
+	z-index: 5;
+}
+.tab-item {
+	padding: 12px 20px;
+	margin-right: 8px;
+}
+.tab-item--active {
+	border-bottom-width: 2px;
+	border-bottom-color: var(--brand-primary);
+	border-bottom-style: solid;
+}
+.tab-item--active .tab-text {
+	color: var(--brand-primary);
 	font-weight: 600;
+}
+.tab-text {
+	font-size: 15px;
+	color: #646566;
+}
+.tab-panel {
+	flex-direction: column;
+	padding: 16px;
+	background-color: #ffffff;
+}
+.comment-loading {
+	padding: 24px 0;
+	align-items: center;
+}
+.comment-list {
+	flex-direction: column;
+}
+.comment-row {
+	flex-direction: column;
+	padding: 12px 0;
+	border-bottom-width: 1px;
+	border-bottom-color: #f0f0f0;
+}
+.comment-user {
+	font-size: 14px;
+	color: var(--brand-primary);
+	margin-bottom: 4px;
+}
+.comment-content {
+	font-size: 14px;
 	color: #323233;
-	margin-bottom: 12px;
+	line-height: 1.5;
+}
+.comment-time {
+	font-size: 12px;
+	color: #969799;
+	margin-top: 4px;
 }
 .chapter-block {
 	flex-direction: column;
@@ -334,6 +558,9 @@
 	padding: 12px 0;
 	border-bottom-width: 1px;
 	border-bottom-color: #f0f0f0;
+}
+.video-row--active {
+	background-color: #e8f4ff;
 }
 .video-cover {
 	width: 100px;
@@ -373,24 +600,26 @@
 	font-size: 14px;
 	color: #969799;
 }
-.bottom-bar {
+.loading-overlay {
 	position: fixed;
 	left: 0;
 	right: 0;
+	top: 220px;
 	bottom: 0;
-	padding: 12px 16px;
-	background-color: #ffffff;
-	border-top-width: 1px;
-	border-top-color: #ebedf0;
-}
-.start-btn {
-	background-color: var(--brand-primary);
-	color: #ffffff;
-	border-radius: 24px;
-	height: 44px;
-}
-.empty-wrap {
-	padding: 60px 0;
 	align-items: center;
+	justify-content: center;
+	background-color: rgba(255,255,255,0.9);
+	z-index: 20;
+}
+.empty-overlay {
+	position: fixed;
+	left: 0;
+	right: 0;
+	top: 220px;
+	bottom: 0;
+	align-items: center;
+	justify-content: center;
+	background-color: #ffffff;
+	z-index: 20;
 }
 </style>
