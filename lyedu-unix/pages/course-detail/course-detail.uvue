@@ -30,14 +30,20 @@
 						<text class="chapter-title">{{ ch.title }}</text>
 					</view>
 					<view v-for="(v, vidx) in ch.hours" :key="v.id" class="video-row" @click="playVideo(v)">
-						<text class="video-title">{{ vidx + 1 }}. {{ v.title }}</text>
-						<text class="video-meta">{{ formatDuration(v.duration) }}</text>
+						<image class="video-cover" :src="videoCoverUrl(v.cover)" mode="aspectFill"></image>
+						<view class="video-info">
+							<text class="video-title">{{ vidx + 1 }}. {{ v.title }}</text>
+							<text class="video-meta">{{ formatDuration(v.duration) }}</text>
+						</view>
 					</view>
 				</view>
 				<view v-if="detail.videos != null && detail.videos.length > 0 && chaptersWithVideos.length === 0">
 					<view v-for="(v, idx) in detail.videos" :key="v.id" class="video-row" @click="playVideo(v)">
-						<text class="video-title">{{ idx + 1 }}. {{ v.title }}</text>
-						<text class="video-meta">{{ formatDuration(v.duration) }}</text>
+						<image class="video-cover" :src="videoCoverUrl(v.cover)" mode="aspectFill"></image>
+						<view class="video-info">
+							<text class="video-title">{{ idx + 1 }}. {{ v.title }}</text>
+							<text class="video-meta">{{ formatDuration(v.duration) }}</text>
+						</view>
 					</view>
 				</view>
 				<view v-if="videoCount === 0" class="empty-tip">
@@ -114,6 +120,11 @@
 	function buildUrl(path: string): string {
 		if (path.startsWith('http')) return path
 		return '/api' + (path.startsWith('/') ? path : '/' + path)
+	}
+
+	function videoCoverUrl(cover: string | null | undefined): string {
+		if (cover != null && cover.length > 0) return buildUrl(cover)
+		return '/static/logo.png'
 	}
 
 	function formatDuration(sec: number | null | undefined): string {
@@ -302,11 +313,23 @@
 }
 .video-row {
 	flex-direction: row;
-	justify-content: space-between;
 	align-items: center;
 	padding: 12px 0;
 	border-bottom-width: 1px;
 	border-bottom-color: #f0f0f0;
+}
+.video-cover {
+	width: 100px;
+	height: 56px;
+	background-color: #f0f0f0;
+	border-radius: 4px;
+	margin-right: 12px;
+	flex-shrink: 0;
+}
+.video-info {
+	flex: 1;
+	flex-direction: column;
+	min-width: 0;
 }
 .video-title {
 	font-size: 15px;

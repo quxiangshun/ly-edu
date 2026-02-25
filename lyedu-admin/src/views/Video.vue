@@ -75,6 +75,7 @@
             <video
               v-if="row.url"
               :src="videoFullUrl(row.url)"
+              :poster="row.cover ? videoFullUrl(row.cover) : undefined"
               controls
               preload="metadata"
               class="video-preview"

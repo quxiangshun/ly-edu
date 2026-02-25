@@ -2,8 +2,11 @@
 	<scroll-view class="page" scroll-y="true" style="flex:1" @scrolltolower="loadList">
 		<view class="content">
 			<view v-for="v in videoList" :key="v.id" class="video-row" @click="playVideo(v.id)">
-				<text class="video-title">{{ v.title }}</text>
-				<text class="video-meta">{{ v.duration != null ? formatDuration(v.duration) : '' }} · {{ v.playCount ?? 0 }} 播放 · {{ v.likeCount ?? 0 }} 赞</text>
+				<image class="video-cover" :src="coverUrl(v.cover)" mode="aspectFill"></image>
+				<view class="video-info">
+					<text class="video-title">{{ v.title }}</text>
+					<text class="video-meta">{{ v.duration != null ? formatDuration(v.duration) : '' }} · {{ v.playCount ?? 0 }} 播放 · {{ v.likeCount ?? 0 }} 赞</text>
+				</view>
 			</view>
 			<view v-if="!loading && videoList.length === 0" class="empty-wrap">
 				<text class="empty-text">暂无点赞的视频</text>
@@ -30,6 +33,14 @@
 		hasMore.value = true
 		loadList()
 	})
+
+	function coverUrl(cover: string | null | undefined): string {
+		if (cover != null && cover.length > 0) {
+			if (cover.startsWith('http')) return cover
+			return '/api' + (cover.startsWith('/') ? cover : '/' + cover)
+		}
+		return '/static/logo.png'
+	}
 
 	function formatDuration(seconds: number): string {
 		const m = Math.floor(seconds / 60)
@@ -71,14 +82,30 @@
 	padding: 16px;
 }
 .video-row {
-	flex-direction: column;
+	flex-direction: row;
+	align-items: center;
 	padding: 14px 0;
 	border-bottom-width: 1px;
 	border-bottom-color: #ebedf0;
 }
+.video-cover {
+	width: 120px;
+	height: 68px;
+	background-color: #f0f0f0;
+	border-radius: 4px;
+	margin-right: 12px;
+	flex-shrink: 0;
+}
+.video-info {
+	flex: 1;
+	flex-direction: column;
+	min-width: 0;
+}
 .video-title {
 	font-size: 16px;
 	color: #323233;
+	lines: 2;
+	text-overflow: ellipsis;
 }
 .video-meta {
 	font-size: 12px;
