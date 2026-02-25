@@ -20,6 +20,7 @@
 
 <script setup lang="uts">
 	import { getLikedVideos } from '../../api/video'
+	import { assetUrl } from '../../config/api'
 
 	const loading = ref(false)
 	const videoList = ref<any[]>([])
@@ -36,8 +37,8 @@
 
 	function coverUrl(cover: string | null | undefined): string {
 		if (cover != null && cover.length > 0) {
-			if (cover.startsWith('http')) return cover
-			return '/api' + (cover.startsWith('/') ? cover : '/' + cover)
+			const u = assetUrl(cover)
+			if (u.length > 0) return u
 		}
 		return '/static/logo.png'
 	}

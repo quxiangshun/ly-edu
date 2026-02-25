@@ -4,3 +4,11 @@
  * - 生产或代理已配置：使用 /api（相对路径）
  */
 export const API_BASE_URL = 'http://localhost:9700/api'
+
+/** 构建上传文件/封面的完整 URL，供 image 等组件使用（uni-app 需完整 URL 才能正确加载） */
+export function assetUrl(path: string | null | undefined): string {
+	if (path == null || path.length === 0) return ''
+	if (path.startsWith('http://') || path.startsWith('https://')) return path
+	const p = path.startsWith('/') ? path : '/' + path
+	return API_BASE_URL.replace(/\/$/, '') + (p.startsWith('/') ? p : '/' + p)
+}

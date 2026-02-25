@@ -32,10 +32,10 @@ def list_tags():
 
 @router.get("/effective")
 def list_effective_tags(authorization: Optional[str] = Header(None, alias="Authorization")):
-    """获取当前用户的有效标签；管理员返回全部标签"""
+    """获取当前用户的有效标签；管理员返回全部标签。必须登录。"""
     user_id = parse_authorization(authorization)
     if not user_id:
-        return success([])
+        return error(401, "请先登录")
     user = user_service.get_by_id(user_id)
     if not user:
         return success([])

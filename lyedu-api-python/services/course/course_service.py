@@ -84,6 +84,19 @@ def _order_by_clause(sort: Optional[str]) -> str:
     return "sort ASC, id DESC"
 
 
+def _effective_tags_for_user(user_id: Optional[int]) -> List[int]:
+    """获取用户有效标签 ID 列表（用户直接关联 + 部门关联）"""
+    if user_id is None:
+        return []
+    try:
+        from services.learning import tag_service
+        if hasattr(tag_service, "_table_exists") and tag_service._table_exists():
+            return tag_service.get_effective_tag_ids_for_user(user_id)
+    except Exception:
+        pass
+    return []
+
+
 def page(
     page_num: int = 1,
     size: int = 10,
@@ -92,8 +105,10 @@ def page(
     tag_id: Optional[int] = None,
     status: Optional[int] = None,
     sort: Optional[str] = None,
+    user_id: Optional[int] = None,
 ) -> dict:
     """分页查询课程。status=1 时仅返回上架课程（PC/uni 学员端用）；不传则返回全部（管理端用）。
+    tag_id 为空且 user_id 有值时，按用户有效标签过滤（全部=该用户标签范围内的课程）。
     sort: default 综合排序, latest 最新发布, play 最多播放, like 最多点赞, comment 最多评论"""
     offset = (page_num - 1) * size
     where = ["deleted = 0"]
@@ -119,6 +134,20 @@ def page(
                 params.append(tag_id)
         except Exception:
             pass
+    else:
+        # 全部：仅显示该用户标签范围内的课程
+        effective_tags = _effective_tags_for_user(user_id)
+        if effective_tags:
+            try:
+                from services.learning import tag_service
+                if tag_service._table_exists():
+                    placeholders = ", ".join(["%s"] * len(effective_tags))
+                    where.append(
+                        f"EXISTS (SELECT 1 FROM ly_course_tag ct WHERE ct.course_id = ly_course.id AND ct.tag_id IN ({placeholders}))"
+                    )
+                    params.extend(effective_tags)
+            except Exception:
+                pass
     where_sql = " AND ".join(where)
     total_row = db.query_one(
         "SELECT COUNT(*) AS cnt FROM ly_course WHERE " + where_sql, tuple(params)

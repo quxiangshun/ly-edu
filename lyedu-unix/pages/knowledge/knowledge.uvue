@@ -18,6 +18,7 @@
 
 <script setup lang="uts">
 	import { getKnowledgePage, type Knowledge } from '../../api/knowledge'
+	import { assetUrl } from '../../config/api'
 
 	const loading = ref(false)
 	const knowledgeList = ref<Knowledge[]>([])
@@ -60,9 +61,10 @@
 			uni.showToast({ title: '文件地址无效', icon: 'none' })
 			return
 		}
-		let url = row.fileUrl
-		if (!url.startsWith('http://') && !url.startsWith('https://')) {
-			url = '/api' + (url.startsWith('/') ? url : '/' + url)
+		const url = assetUrl(row.fileUrl)
+		if (url.length === 0) {
+			uni.showToast({ title: '文件地址无效', icon: 'none' })
+			return
 		}
 		uni.showToast({ title: '正在打开' })
 		uni.downloadFile({

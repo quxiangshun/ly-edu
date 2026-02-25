@@ -124,6 +124,7 @@
 <script setup lang="uts">
 	import { computed, ref, nextTick } from 'vue'
 	import { getCoursePage, type Course } from '../../api/course'
+	import { assetUrl } from '../../config/api'
 	import { getEffectiveTags, type Tag } from '../../api/tag'
 	import { getThemeRootStyle } from '../../utils/theme'
 	import CustomTabBar from '../../components/custom-tab-bar.uvue'
@@ -313,8 +314,8 @@
 
 	function coverUrl(cover: string | null | undefined): string {
 		if (cover != null && cover.length > 0) {
-			if (cover.startsWith('http')) return cover
-			return '/api' + (cover.startsWith('/') ? cover : '/' + cover)
+			const u = assetUrl(cover)
+			if (u.length > 0) return u
 		}
 		return '/static/logo.png'
 	}

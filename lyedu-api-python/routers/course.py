@@ -46,9 +46,15 @@ def page(
     tagId: Optional[int] = None,
     status: Optional[int] = None,
     sort: Optional[str] = None,
+    authorization: Optional[str] = Header(None, alias="Authorization"),
 ):
     """status=1 时仅返回上架课程（PC/uni 学员端）；不传则返回全部（管理端）。
+    学员端（status=1）必须登录才能查看。
+    全部（tagId 为空）时按用户有效标签过滤，仅显示该用户标签范围内的课程。
     sort: default 综合排序, latest 最新发布, play 最多播放, like 最多点赞, comment 最多评论"""
+    user_id = _user_id(authorization)
+    if status == 1 and user_id is None:
+        return error(401, "请先登录")
     result = course_service.page(
         page_num=page,
         size=size,
@@ -57,6 +63,7 @@ def page(
         tag_id=tagId,
         status=status,
         sort=sort,
+        user_id=user_id,
     )
     for record in result.get("records") or []:
         record["tagIds"] = tag_service.list_tag_ids_by_course(record.get("id") or 0)
@@ -69,6 +76,8 @@ def recommended(
     authorization: Optional[str] = Header(None, alias="Authorization"),
 ):
     user_id = _user_id(authorization)
+    if user_id is None:
+        return error(401, "请先登录")
     return success(course_service.list_recommended(limit=limit, user_id=user_id))
 
 
@@ -124,6 +133,8 @@ def comment_delete(
 def get_by_id(id: int, authorization: Optional[str] = Header(None, alias="Authorization")):
     try:
         user_id = _user_id(authorization)
+        if user_id is None:
+            return error(401, "请先登录")
         course = course_service.get_detail_by_id(id, user_id=user_id)
         if not course:
             return error(404, "课程不存在")

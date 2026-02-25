@@ -26,8 +26,10 @@ def page(
     sort: Optional[str] = None,
     authorization: Optional[str] = Header(None, alias="Authorization"),
 ):
-    """分页列表。sort: default 综合排序, latest 最新发布, play 最多播放, like 最多点赞, comment 最多评论。"""
+    """分页列表。sort: default 综合排序, latest 最新发布, play 最多播放, like 最多点赞, comment 最多评论。必须登录才能查看。"""
     uid = _uid(authorization)
+    if uid is None:
+        return error_result(ResultCode.UNAUTHORIZED)
     return success(
         video_service.page(
             page_num=page,
@@ -44,6 +46,8 @@ def page(
 @router.get("/course/{courseId}")
 def list_by_course(courseId: int, authorization: Optional[str] = Header(None, alias="Authorization")):
     uid = _uid(authorization)
+    if uid is None:
+        return error_result(ResultCode.UNAUTHORIZED)
     return success(video_service.list_by_course_id(courseId, user_id=uid))
 
 
@@ -69,6 +73,8 @@ def list_liked(
 @router.get("/{id}")
 def get_by_id(id: int, authorization: Optional[str] = Header(None, alias="Authorization")):
     uid = _uid(authorization)
+    if uid is None:
+        return error_result(ResultCode.UNAUTHORIZED)
     video = video_service.get_by_id(id, user_id=uid)
     if not video:
         return error(404, "视频不存在")

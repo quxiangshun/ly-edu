@@ -31,6 +31,7 @@
 	import { computed, ref } from 'vue'
 	import { getCoursePage, type Course } from '../../api/course'
 	import { joinCourse } from '../../api/learning'
+	import { assetUrl } from '../../config/api'
 	import { getThemeRootStyle } from '../../utils/theme'
 
 	const themeRootStyle = computed(() => getThemeRootStyle())
@@ -44,8 +45,8 @@
 
 	function coverUrl(cover: string | null | undefined): string {
 		if (cover != null && cover.length > 0) {
-			if (cover.startsWith('http')) return cover
-			return '/api' + (cover.startsWith('/') ? cover : '/' + cover)
+			const u = assetUrl(cover)
+			if (u.length > 0) return u
 		}
 		return '/static/logo.png'
 	}

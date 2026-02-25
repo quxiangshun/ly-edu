@@ -4,16 +4,17 @@
 			<text class="loading-text">加载中...</text>
 		</view>
 		<view v-else-if="detail != null" class="content">
-			<view class="cover-wrap" :style="coverStyle">
-				<view class="cover-mask" @click="playFirst">
+			<view class="cover-wrap" @click="playFirst">
+				<image class="cover-img" :src="coverImageUrl" mode="aspectFill"></image>
+				<view class="cover-mask">
 					<text class="play-hint">点击选择视频播放</text>
 				</view>
 			</view>
 			<view class="info-section">
 				<text class="course-title">{{ detail.course.title }}</text>
 				<view class="meta-row">
-					<text v-if="detail.course.isRequired === 1" class="tag required">必修</text>
-					<text v-else-if="detail.course.isRequired === 0" class="tag elective">选修</text>
+					<text v-if="(detail.course.isRequired ?? detail.course.is_required) === 1" class="tag required">必修</text>
+					<text v-else-if="(detail.course.isRequired ?? detail.course.is_required) === 0" class="tag elective">选修</text>
 					<text v-if="videoCount > 0" class="meta-text">{{ videoCount }} 节视频</text>
 				</view>
 				<text class="course-desc">{{ detail.course.description != null ? detail.course.description : '暂无描述' }}</text>
@@ -71,6 +72,7 @@
 <script setup lang="uts">
 	import { computed } from 'vue'
 	import { getCourseById } from '../../api/course'
+	import { assetUrl } from '../../config/api'
 	import { joinCourse } from '../../api/learning'
 	import { themePrimary } from '../../utils/theme'
 
@@ -107,23 +109,21 @@
 		return result
 	})
 
-	const coverStyle = computed(() => {
+	const coverImageUrl = computed((): string => {
 		const d = detail.value
 		const cover = d?.course?.cover
 		if (cover != null && cover.length > 0) {
-			const u = buildUrl(cover)
-			return { backgroundImage: 'url(' + u + ')', backgroundSize: 'cover' }
+			const u = assetUrl(cover)
+			if (u.length > 0) return u
 		}
-		return { backgroundColor: '#e8f4ff' }
+		return '/static/logo.png'
 	})
 
-	function buildUrl(path: string): string {
-		if (path.startsWith('http')) return path
-		return '/api' + (path.startsWith('/') ? path : '/' + path)
-	}
-
 	function videoCoverUrl(cover: string | null | undefined): string {
-		if (cover != null && cover.length > 0) return buildUrl(cover)
+		if (cover != null && cover.length > 0) {
+			const u = assetUrl(cover)
+			if (u.length > 0) return u
+		}
 		return '/static/logo.png'
 	}
 
@@ -166,12 +166,16 @@
 	}
 
 	function handleAttachment(att: any): void {
-		const url = att.fileUrl
+		const url = att.fileUrl ?? att.file_url
 		if (url == null || url.length === 0) {
 			uni.showToast({ title: '附件地址无效', icon: 'none' })
 			return
 		}
-		const fullUrl = url.startsWith('http') ? url : '/api' + (url.startsWith('/') ? url : '/' + url)
+		const fullUrl = assetUrl(url)
+		if (fullUrl.length === 0) {
+			uni.showToast({ title: '附件地址无效', icon: 'none' })
+			return
+		}
 		uni.downloadFile({
 			url: fullUrl,
 			success: (res) => {
@@ -221,12 +225,25 @@
 .cover-wrap {
 	width: 100%;
 	height: 200px;
+	position: relative;
 	background-color: #e8f4ff;
 }
+.cover-img {
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 100%;
+	height: 100%;
+}
 .cover-mask {
-	flex: 1;
+	position: absolute;
+	left: 0;
+	top: 0;
+	right: 0;
+	bottom: 0;
 	align-items: center;
 	justify-content: center;
+	background-color: rgba(0, 0, 0, 0.2);
 }
 .play-hint {
 	font-size: 14px;

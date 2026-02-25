@@ -45,6 +45,7 @@
 	import { getVideoById, recordPlay, likeVideo, unlikeVideo } from '../../api/video'
 	import { getCourseById } from '../../api/course'
 	import { updateVideoProgress } from '../../api/learning'
+	import { assetUrl } from '../../config/api'
 	import { themePrimary } from '../../utils/theme'
 
 	const themeRootStyle = computed((): Record<string, string> => ({ '--brand-primary': themePrimary.value }))
@@ -71,20 +72,17 @@
 	const videoUrl = computed(() => {
 		const v = video.value
 		if (v == null || v.url == null) return ''
-		let url = String(v.url).trim()
+		const url = String(v.url).trim()
 		if (url.startsWith('http')) return url
-		const base = '/api'
-		if (url.startsWith('/uploads/')) return base + url
-		if (url.startsWith('/')) return base + url
-		return base + '/uploads/' + url.replace(/^\/+/, '')
+		const u = assetUrl(url)
+		return u.length > 0 ? u : ''
 	})
 
 	const posterUrl = computed(() => {
 		const v = video.value
 		if (v == null || v.cover == null) return ''
-		let url = String(v.cover).trim()
-		if (url.startsWith('http')) return url
-		return '/api' + (url.startsWith('/') ? url : '/' + url)
+		const u = assetUrl(v.cover)
+		return u.length > 0 ? u : ''
 	})
 
 	function formatDuration(sec: number | null | undefined): string {
