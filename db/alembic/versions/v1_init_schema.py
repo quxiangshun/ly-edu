@@ -5,6 +5,8 @@ Revision ID: v1
 Revises:
 Create Date: 2025-01-28
 
+包含：v1 完整建表、v2 移除 visibility/ly_course_department、v3 部门 path、
+v4 课程 play_count/like_count/comment_count、v5 课程附件改为知识库关联。
 """
 from typing import Sequence, Union
 
@@ -30,9 +32,20 @@ def _column_exists(conn, table: str, column: str) -> bool:
     return r.scalar() is not None
 
 
+def _table_exists(conn, table: str) -> bool:
+    """检查表是否存在"""
+    r = conn.execute(
+        text(
+            "SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :t LIMIT 1"
+        ),
+        {"t": table},
+    )
+    return r.scalar() is not None
+
+
 def upgrade() -> None:
-    # ----- 用户表（含 feishu_open_id、union_id、entry_date、total_points）-----
     conn = op.get_bind()
+    # ----- 用户表 -----
     op.execute("""
         CREATE TABLE IF NOT EXISTS ly_user (
             id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
@@ -62,8 +75,6 @@ def upgrade() -> None:
             KEY idx_department_id (department_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户表'
     """)
-    # 如果表已存在但缺少字段，则添加（兼容旧表结构）
-    # 若有 open_id 旧列，统一改为 feishu_open_id
     if _column_exists(conn, "ly_user", "open_id"):
         try:
             op.execute("ALTER TABLE ly_user DROP KEY uk_open_id")
@@ -87,11 +98,13 @@ def upgrade() -> None:
         op.execute("ALTER TABLE ly_user ADD COLUMN last_login_time DATETIME DEFAULT NULL COMMENT '最后登录时间（同步自 fa_staff）' AFTER union_id")
     if not _column_exists(conn, "ly_user", "study_time_long"):
         op.execute("ALTER TABLE ly_user ADD COLUMN study_time_long INT DEFAULT 0 COMMENT '学习时长（分钟）（同步自 fa_staff）' AFTER total_points")
+    # ----- 部门表（含 path）-----
     op.execute("""
         CREATE TABLE IF NOT EXISTS ly_department (
             id BIGINT NOT NULL AUTO_INCREMENT,
             name VARCHAR(100) NOT NULL,
             parent_id BIGINT DEFAULT 0,
+            path VARCHAR(500) DEFAULT '' COMMENT '祖籍路径：从根到自身的ID链，如1.2.3，类ltree',
             sort INT DEFAULT 0,
             status TINYINT DEFAULT 1,
             feishu_department_id VARCHAR(64) DEFAULT NULL COMMENT '飞书部门ID，用于通讯录同步',
@@ -104,11 +117,14 @@ def upgrade() -> None:
             deleted TINYINT DEFAULT 0,
             PRIMARY KEY (id),
             KEY idx_parent_id (parent_id),
+            KEY idx_department_path (path(100)),
             UNIQUE KEY uk_feishu_department_id (feishu_department_id),
             KEY idx_old (old_source, old_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='部门表'
     """)
-    # 兼容已存在表缺少 v3/v6 字段
+    if not _column_exists(conn, "ly_department", "path"):
+        op.execute("ALTER TABLE ly_department ADD COLUMN path VARCHAR(500) DEFAULT '' COMMENT '祖籍路径：从根到自身的ID链，如1.2.3，类ltree' AFTER parent_id")
+        op.execute("CREATE INDEX idx_department_path ON ly_department(path(100))")
     if not _column_exists(conn, "ly_department", "feishu_department_id"):
         op.execute("ALTER TABLE ly_department ADD COLUMN feishu_department_id VARCHAR(64) DEFAULT NULL COMMENT '飞书部门ID，用于通讯录同步' AFTER status")
         op.execute("ALTER TABLE ly_department ADD UNIQUE KEY uk_feishu_department_id (feishu_department_id)")
@@ -121,6 +137,7 @@ def upgrade() -> None:
     if not _column_exists(conn, "ly_department", "old_source"):
         op.execute("ALTER TABLE ly_department ADD COLUMN old_source VARCHAR(10) DEFAULT NULL COMMENT '来源：team|group' AFTER old_id")
         op.execute("ALTER TABLE ly_department ADD KEY idx_old (old_source, old_id)")
+    # ----- 登录日志 -----
     op.execute("""
         CREATE TABLE IF NOT EXISTS ly_login_log (
             id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
@@ -137,6 +154,7 @@ def upgrade() -> None:
             KEY idx_create_time (create_time)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='登录监控日志'
     """)
+    # ----- 标签 -----
     op.execute("""
         CREATE TABLE IF NOT EXISTS ly_tag (
             id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
@@ -180,6 +198,7 @@ def upgrade() -> None:
             KEY idx_tag_id (tag_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='课程-标签关联'
     """)
+    # ----- 课程分类、课程表（含 play_count/like_count/comment_count）-----
     op.execute("""
         CREATE TABLE IF NOT EXISTS ly_course_category (
             id BIGINT NOT NULL AUTO_INCREMENT,
@@ -204,6 +223,9 @@ def upgrade() -> None:
             status TINYINT DEFAULT 1,
             sort INT DEFAULT 0,
             is_required TINYINT DEFAULT 0 COMMENT '是否必修',
+            play_count INT NOT NULL DEFAULT 0 COMMENT '视频播放总和',
+            like_count INT NOT NULL DEFAULT 0 COMMENT '视频点赞总和',
+            comment_count INT NOT NULL DEFAULT 0 COMMENT '课程评论数',
             create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
             update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             deleted TINYINT DEFAULT 0,
@@ -211,6 +233,17 @@ def upgrade() -> None:
             KEY idx_category_id (category_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='课程表'
     """)
+    if not _column_exists(conn, "ly_course", "play_count"):
+        op.execute("ALTER TABLE ly_course ADD COLUMN play_count INT NOT NULL DEFAULT 0 COMMENT '视频播放总和' AFTER is_required")
+    if not _column_exists(conn, "ly_course", "like_count"):
+        op.execute("ALTER TABLE ly_course ADD COLUMN like_count INT NOT NULL DEFAULT 0 COMMENT '视频点赞总和' AFTER play_count")
+    if not _column_exists(conn, "ly_course", "comment_count"):
+        op.execute("ALTER TABLE ly_course ADD COLUMN comment_count INT NOT NULL DEFAULT 0 COMMENT '课程评论数' AFTER like_count")
+    # v2：移除课程可见性与部门关联（兼容旧库）
+    op.execute("DROP TABLE IF EXISTS ly_course_department")
+    if _column_exists(conn, "ly_course", "visibility"):
+        op.execute("ALTER TABLE ly_course DROP COLUMN visibility")
+    # ----- 课程章节 -----
     op.execute("""
         CREATE TABLE IF NOT EXISTS ly_course_chapter (
             id BIGINT NOT NULL AUTO_INCREMENT,
@@ -224,23 +257,69 @@ def upgrade() -> None:
             KEY idx_course_id (course_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='课程章节表'
     """)
-    op.execute("""
-        CREATE TABLE IF NOT EXISTS ly_course_attachment (
+    # ----- 课程-知识库关联（v5 最终形态，替代 ly_course_attachment）-----
+    # 若存在旧表 ly_course_attachment，执行 v5 迁移逻辑
+    if _table_exists(conn, "ly_course_attachment") and not _table_exists(conn, "ly_course_knowledge"):
+        if _column_exists(conn, "ly_course_attachment", "knowledge_id"):
+            op.execute("RENAME TABLE ly_course_attachment TO ly_course_knowledge")
+        else:
+            op.execute("""
+                ALTER TABLE ly_course_attachment
+                ADD COLUMN knowledge_id BIGINT DEFAULT NULL COMMENT '知识库ID（关联 ly_knowledge）' AFTER course_id
+            """)
+            op.execute("""
+                UPDATE ly_course_attachment ca
+                INNER JOIN ly_knowledge k ON k.file_url = ca.file_url AND k.deleted = 0
+                SET ca.knowledge_id = k.id
+                WHERE ca.deleted = 0 AND ca.knowledge_id IS NULL
+            """)
+            op.execute("""
+                INSERT INTO ly_knowledge (title, file_name, file_url, file_size, file_type, sort, visibility)
+                SELECT COALESCE(ca.name, '未命名'), ca.name, ca.file_url, NULL, ca.type, 0, 1
+                FROM ly_course_attachment ca
+                WHERE ca.deleted = 0 AND ca.knowledge_id IS NULL
+                  AND ca.file_url IS NOT NULL AND ca.file_url != ''
+                  AND NOT EXISTS (SELECT 1 FROM ly_knowledge k WHERE k.file_url = ca.file_url AND k.deleted = 0)
+            """)
+            op.execute("""
+                UPDATE ly_course_attachment ca
+                INNER JOIN ly_knowledge k ON k.file_url = ca.file_url AND k.deleted = 0
+                SET ca.knowledge_id = k.id
+                WHERE ca.deleted = 0 AND ca.knowledge_id IS NULL
+            """)
+            op.execute("DELETE FROM ly_course_attachment WHERE deleted = 0 AND knowledge_id IS NULL")
+            op.execute("""
+                DELETE ca1 FROM ly_course_attachment ca1
+                INNER JOIN ly_course_attachment ca2
+                  ON ca1.course_id = ca2.course_id AND ca1.knowledge_id = ca2.knowledge_id AND ca1.id > ca2.id
+                WHERE ca1.deleted = 0
+            """)
+            op.execute("ALTER TABLE ly_course_attachment DROP COLUMN name")
+            op.execute("ALTER TABLE ly_course_attachment DROP COLUMN type")
+            op.execute("ALTER TABLE ly_course_attachment DROP COLUMN file_url")
+            op.execute("ALTER TABLE ly_course_attachment MODIFY COLUMN knowledge_id BIGINT NOT NULL")
+            op.execute("""
+                ALTER TABLE ly_course_attachment
+                ADD UNIQUE KEY uk_course_knowledge (course_id, knowledge_id)
+            """)
+            op.execute("RENAME TABLE ly_course_attachment TO ly_course_knowledge")
+    else:
+        op.execute("""
+        CREATE TABLE IF NOT EXISTS ly_course_knowledge (
             id BIGINT NOT NULL AUTO_INCREMENT,
             course_id BIGINT NOT NULL,
-            name VARCHAR(200) NOT NULL,
-            type VARCHAR(50) DEFAULT NULL,
-            file_url VARCHAR(500) NOT NULL,
+            knowledge_id BIGINT NOT NULL COMMENT '知识库ID（关联 ly_knowledge）',
             sort INT DEFAULT 0,
             create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
             update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             deleted TINYINT DEFAULT 0,
             PRIMARY KEY (id),
-            KEY idx_course_id (course_id)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='课程附件表'
+            UNIQUE KEY uk_course_knowledge (course_id, knowledge_id),
+            KEY idx_course_id (course_id),
+            KEY idx_knowledge_id (knowledge_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='课程-知识库关联表'
     """)
-    # ----- 视频表（含 v12 cover、v13 play_count/like_count）-----
-    conn = op.get_bind()
+    # ----- 视频表 -----
     op.execute("""
         CREATE TABLE IF NOT EXISTS ly_video (
             id BIGINT NOT NULL AUTO_INCREMENT,
@@ -262,7 +341,6 @@ def upgrade() -> None:
             KEY idx_chapter_id (chapter_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='视频表'
     """)
-    # 如果表已存在但缺少字段，则添加（兼容旧表结构）
     if not _column_exists(conn, "ly_video", "description"):
         op.execute("ALTER TABLE ly_video ADD COLUMN description TEXT DEFAULT NULL COMMENT '视频介绍（同步自 fa_video）' AFTER title")
     if not _column_exists(conn, "ly_video", "cover"):
@@ -271,6 +349,7 @@ def upgrade() -> None:
         op.execute("ALTER TABLE ly_video ADD COLUMN play_count INT NOT NULL DEFAULT 0 COMMENT '播放次数' AFTER sort")
     if not _column_exists(conn, "ly_video", "like_count"):
         op.execute("ALTER TABLE ly_video ADD COLUMN like_count INT NOT NULL DEFAULT 0 COMMENT '点赞数' AFTER play_count")
+    # ----- 用户课程、学习进度 -----
     op.execute("""
         CREATE TABLE IF NOT EXISTS ly_user_course (
             id BIGINT NOT NULL AUTO_INCREMENT,
@@ -303,6 +382,7 @@ def upgrade() -> None:
             KEY idx_video_id (video_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户视频学习进度表'
     """)
+    # ----- 文件上传、分片 -----
     op.execute("""
         CREATE TABLE IF NOT EXISTS ly_file_upload (
             id BIGINT NOT NULL AUTO_INCREMENT,
@@ -322,18 +402,14 @@ def upgrade() -> None:
             KEY idx_status (status)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='文件上传进度表'
     """)
-    # 如果表已存在但缺少字段，则添加（兼容旧表结构）
-    # 检查是否有旧的 file_path 字段需要重命名或删除
     if _column_exists(conn, "ly_file_upload", "file_path"):
-        # 如果存在 file_path 但没有 upload_path，重命名
         if not _column_exists(conn, "ly_file_upload", "upload_path"):
             try:
                 op.execute("ALTER TABLE ly_file_upload MODIFY COLUMN file_path VARCHAR(500) DEFAULT NULL")
-            except:
+            except Exception:
                 pass
             op.execute("ALTER TABLE ly_file_upload CHANGE COLUMN file_path upload_path VARCHAR(500) DEFAULT NULL")
         else:
-            # 如果两个字段都存在，删除旧的 file_path
             op.execute("ALTER TABLE ly_file_upload DROP COLUMN file_path")
     if not _column_exists(conn, "ly_file_upload", "file_type"):
         op.execute("ALTER TABLE ly_file_upload ADD COLUMN file_type VARCHAR(50) DEFAULT NULL AFTER file_size")
@@ -360,20 +436,17 @@ def upgrade() -> None:
             KEY idx_file_id (file_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='文件分片上传记录表'
     """)
-    # 如果表已存在但缺少字段，则添加（兼容旧表结构）
-    # 检查是否有旧的 file_path 字段需要重命名（先修改为允许 NULL，再重命名，最后改回 NOT NULL）
     if _column_exists(conn, "ly_file_chunk", "file_path") and not _column_exists(conn, "ly_file_chunk", "chunk_path"):
-        # 先修改为允许 NULL 并设置默认值，避免重命名时 NOT NULL 约束问题
         try:
             op.execute("ALTER TABLE ly_file_chunk MODIFY COLUMN file_path VARCHAR(500) DEFAULT ''")
-        except:
+        except Exception:
             pass
         op.execute("ALTER TABLE ly_file_chunk CHANGE COLUMN file_path chunk_path VARCHAR(500) NOT NULL DEFAULT ''")
     elif not _column_exists(conn, "ly_file_chunk", "chunk_path"):
         op.execute("ALTER TABLE ly_file_chunk ADD COLUMN chunk_path VARCHAR(500) NOT NULL DEFAULT '' AFTER chunk_size")
     if not _column_exists(conn, "ly_file_chunk", "chunk_size"):
         op.execute("ALTER TABLE ly_file_chunk ADD COLUMN chunk_size BIGINT NOT NULL DEFAULT 0 AFTER chunk_index")
-    # ----- v3 课程评论 -----
+    # ----- 课程评论 -----
     op.execute("""
         CREATE TABLE IF NOT EXISTS ly_course_comment (
             id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
@@ -393,7 +466,7 @@ def upgrade() -> None:
             KEY idx_parent_id (parent_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='课程评论表'
     """)
-    # ----- v4 知识库 -----
+    # ----- 知识库 -----
     op.execute("""
         CREATE TABLE IF NOT EXISTS ly_knowledge (
             id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
@@ -413,7 +486,6 @@ def upgrade() -> None:
             KEY idx_sort (sort)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='知识库表'
     """)
-    # 如果表已存在但缺少字段，则添加（兼容旧表结构）
     if not _column_exists(conn, "ly_knowledge", "file_type"):
         op.execute("ALTER TABLE ly_knowledge ADD COLUMN file_type VARCHAR(50) DEFAULT NULL COMMENT '文件类型/扩展名' AFTER file_size")
     op.execute("""
@@ -427,7 +499,7 @@ def upgrade() -> None:
             KEY idx_department_id (department_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='知识库-部门关联表'
     """)
-    # ----- v5 考试 -----
+    # ----- 考试 -----
     op.execute("""
         CREATE TABLE IF NOT EXISTS ly_question (
             id BIGINT NOT NULL AUTO_INCREMENT,
@@ -520,7 +592,7 @@ def upgrade() -> None:
             KEY idx_exam_user (exam_id, user_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='考试记录表'
     """)
-    # ----- v6 证书 -----
+    # ----- 证书 -----
     op.execute("""
         CREATE TABLE IF NOT EXISTS ly_certificate_template (
             id BIGINT NOT NULL AUTO_INCREMENT,
@@ -569,7 +641,7 @@ def upgrade() -> None:
             KEY idx_template_id (template_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户已获证书表'
     """)
-    # ----- v7 任务 -----
+    # ----- 任务 -----
     op.execute("""
         CREATE TABLE IF NOT EXISTS ly_task (
             id BIGINT NOT NULL AUTO_INCREMENT,
@@ -619,7 +691,7 @@ def upgrade() -> None:
             KEY idx_task_id (task_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户任务进度表'
     """)
-    # ----- v8 系统配置 -----
+    # ----- 系统配置 -----
     op.execute("""
         CREATE TABLE IF NOT EXISTS ly_config (
             id BIGINT NOT NULL AUTO_INCREMENT,
@@ -634,7 +706,7 @@ def upgrade() -> None:
             KEY idx_category (category)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='系统配置表'
     """)
-    # ----- v9 积分 -----
+    # ----- 积分 -----
     op.execute("""
         CREATE TABLE IF NOT EXISTS ly_point_rule (
             id BIGINT NOT NULL AUTO_INCREMENT,
@@ -665,7 +737,7 @@ def upgrade() -> None:
             KEY idx_create_time (create_time)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='积分流水表'
     """)
-    # ----- v10 图片库 -----
+    # ----- 图片库 -----
     op.execute("""
         CREATE TABLE IF NOT EXISTS ly_image (
             id BIGINT NOT NULL AUTO_INCREMENT,
@@ -677,7 +749,7 @@ def upgrade() -> None:
             KEY idx_create_time (create_time)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='图片库'
     """)
-    # ----- v12 文件哈希 + 已在 ly_video 中含 cover -----
+    # ----- 文件哈希 -----
     op.execute("""
         CREATE TABLE IF NOT EXISTS ly_file_hash (
             id BIGINT NOT NULL AUTO_INCREMENT,
@@ -690,7 +762,7 @@ def upgrade() -> None:
             KEY idx_content_hash (content_hash)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='文件内容哈希表，用于视频去重'
     """)
-    # ----- v13 视频点赞 -----
+    # ----- 视频点赞 -----
     op.execute("""
         CREATE TABLE IF NOT EXISTS ly_video_like (
             id BIGINT NOT NULL AUTO_INCREMENT,
@@ -702,7 +774,7 @@ def upgrade() -> None:
             KEY idx_video_id (video_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='视频点赞'
     """)
-    # ----- v14 课程-视频（不含 ly_department_video，v15 已弃用）-----
+    # ----- 课程-视频关联 -----
     op.execute("""
         CREATE TABLE IF NOT EXISTS ly_course_video (
             id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
@@ -717,7 +789,7 @@ def upgrade() -> None:
             KEY idx_video_id (video_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='课程-视频关联（多对多）'
     """)
-    # ----- v16 课程-考试 -----
+    # ----- 课程-考试关联 -----
     op.execute("""
         CREATE TABLE IF NOT EXISTS ly_course_exam (
             id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
@@ -729,8 +801,41 @@ def upgrade() -> None:
             KEY idx_exam_id (exam_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='课程-考试关联（多课程可共用同一考试）'
     """)
+    # ----- 回填部门 path -----
+    rows = conn.execute(text("SELECT id, parent_id FROM ly_department WHERE deleted = 0")).fetchall()
+    if rows:
+        id_to_parent = {r[0]: (r[1] or 0) for r in rows}
+        id_to_path = {}
 
-    # ----- 种子数据（v1 + v8 + v9 + v11）：仅保留管理员，id=999999999 避免与同步用户 id 冲突 -----
+        def get_path(dept_id: int) -> str:
+            if dept_id in id_to_path:
+                return id_to_path[dept_id]
+            pid = id_to_parent.get(dept_id, 0)
+            if not pid:
+                id_to_path[dept_id] = str(dept_id)
+                return str(dept_id)
+            parent_path = get_path(pid)
+            path = f"{parent_path}.{dept_id}" if parent_path else str(dept_id)
+            id_to_path[dept_id] = path
+            return path
+
+        for dept_id in id_to_parent:
+            get_path(dept_id)
+        for dept_id, path in id_to_path.items():
+            conn.execute(text("UPDATE ly_department SET path = :p WHERE id = :id AND deleted = 0"), {"p": path or "", "id": dept_id})
+    # ----- 回填课程 play_count/like_count/comment_count -----
+    op.execute("""
+        UPDATE ly_course c SET
+            c.play_count = COALESCE((SELECT SUM(v.play_count) FROM ly_video v WHERE v.course_id = c.id AND v.deleted = 0), 0),
+            c.like_count = COALESCE((SELECT SUM(v.like_count) FROM ly_video v WHERE v.course_id = c.id AND v.deleted = 0), 0)
+        WHERE c.deleted = 0
+    """)
+    op.execute("""
+        UPDATE ly_course c SET
+            c.comment_count = COALESCE((SELECT COUNT(*) FROM ly_course_comment cc WHERE cc.course_id = c.id AND cc.deleted = 0 AND (cc.status IS NULL OR cc.status = 1)), 0)
+        WHERE c.deleted = 0
+    """)
+    # ----- 种子数据 -----
     op.execute("""
         INSERT INTO ly_user (id, username, password, real_name, email, role, status)
         VALUES (1, 'admin', '$2a$10$YORpsv2uYZQNNt5hxVNrw.KyeVMcn.fjWYyX3CWGXSwdpL6hRpVSy', '管理员', 'admin@lyedu.com', 'admin', 1)
@@ -758,6 +863,7 @@ def upgrade() -> None:
         INSERT IGNORE INTO ly_course_video (course_id, video_id, chapter_id, sort)
         SELECT course_id, id, chapter_id, sort FROM ly_video WHERE deleted = 0
     """)
+
 
 def downgrade() -> None:
     op.execute("DELETE FROM ly_user WHERE username = 'admin'")
@@ -792,9 +898,8 @@ def downgrade() -> None:
     op.execute("DROP TABLE IF EXISTS ly_user_video_progress")
     op.execute("DROP TABLE IF EXISTS ly_user_course")
     op.execute("DROP TABLE IF EXISTS ly_video")
-    op.execute("DROP TABLE IF EXISTS ly_course_attachment")
+    op.execute("DROP TABLE IF EXISTS ly_course_knowledge")
     op.execute("DROP TABLE IF EXISTS ly_course_chapter")
-    op.execute("DROP TABLE IF EXISTS ly_course_department")
     op.execute("DROP TABLE IF EXISTS ly_course_tag")
     op.execute("DROP TABLE IF EXISTS ly_department_tag")
     op.execute("DROP TABLE IF EXISTS ly_user_tag")
