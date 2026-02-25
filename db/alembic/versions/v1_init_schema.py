@@ -4,9 +4,6 @@
 Revision ID: v1
 Revises:
 Create Date: 2025-01-28
-
-包含：v1 完整建表、v2 移除 visibility/ly_course_department、v3 部门 path、
-v4 课程 play_count/like_count/comment_count、v5 课程附件改为知识库关联。
 """
 from typing import Sequence, Union
 
