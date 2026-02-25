@@ -28,7 +28,7 @@ export const getResourceStats = () => {
 }
 
 function getBaseUrl(): string {
-  return (import.meta as any).env?.VITE_API_BASE ?? '/api'
+  return import.meta.env.VITE_API_BASE || '/api'
 }
 
 /** 下载 CSV（带 token，blob 方式） */

@@ -10,9 +10,12 @@ interface ApiResponse<T = any> {
   timestamp: number
 }
 
+// API 基础路径：生产环境从 .env.production 读取，开发环境使用代理 /api
+const apiBase = import.meta.env.VITE_API_BASE || '/api'
+
 // 创建 axios 实例
 const service: AxiosInstance = axios.create({
-  baseURL: '/api',
+  baseURL: apiBase,
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json;charset=UTF-8'
