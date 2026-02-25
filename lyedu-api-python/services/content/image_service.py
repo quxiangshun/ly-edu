@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """图片库服务：按内容哈希去重，不论文件名只保留一份"""
+from datetime import datetime
 from typing import Any, List, Optional
 
 import pymysql
@@ -11,11 +12,18 @@ from util.upload_util import get_chunk_hash
 ALLOWED_EXT = {"jpg", "jpeg", "png", "gif", "webp"}
 SELECT_BY_HASH = "SELECT relative_path FROM ly_file_hash WHERE content_hash = %s LIMIT 1"
 INSERT_FILE_HASH = "INSERT INTO ly_file_hash (content_hash, relative_path, file_size) VALUES (%s, %s, %s)"
+UPDATE_FILE_HASH_PATH = "UPDATE ly_file_hash SET relative_path = %s WHERE content_hash = %s"
 
 
 def _ext(name: str) -> str:
     i = name.rfind(".")
     return name[i + 1 :].lower() if i > 0 else "jpg"
+
+
+def _ym_path(prefix: str) -> str:
+    """生成 年/月 路径，如 images/2025/02"""
+    now = datetime.now()
+    return f"{prefix}/{now.year}/{now.month:02d}"
 
 
 def _row_to_image(row: dict) -> dict:
@@ -53,12 +61,19 @@ def upload(file) -> Optional[dict]:
         return None
     file_size = len(content)
     content_hash = get_chunk_hash(content).lower()
-    storage_rel = f"images/by_hash/{content_hash}.{ext}"
+    storage_rel = f"{_ym_path('images')}/{content_hash}.{ext}"
     full_path = UPLOAD_PATH / storage_rel
     try:
         existing = db.query_one(SELECT_BY_HASH, (content_hash,))
         if existing:
-            storage_rel = existing["relative_path"]
+            old_path = existing["relative_path"]
+            old_full = UPLOAD_PATH / old_path
+            if old_full.is_file():
+                storage_rel = old_path
+            else:
+                full_path.parent.mkdir(parents=True, exist_ok=True)
+                full_path.write_bytes(content)
+                db.execute(UPDATE_FILE_HASH_PATH, (storage_rel, content_hash))
         else:
             full_path.parent.mkdir(parents=True, exist_ok=True)
             full_path.write_bytes(content)
@@ -101,7 +116,7 @@ def page(page_num: int = 1, size: int = 20, keyword: Optional[str] = None) -> di
 
 
 def delete_by_id(image_id: int) -> None:
-    """删除图片库记录；物理文件不删除（by_hash 可能被多条记录引用，资源只保留一份）"""
+    """删除图片库记录；物理文件不删除（可能被多条记录引用，资源只保留一份）"""
     if not image_id:
         return
     try:

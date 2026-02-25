@@ -164,19 +164,30 @@
           <el-input v-model="form.url" placeholder="视频上传成功后自动填充，或手动输入视频URL" />
         </el-form-item>
         <el-form-item label="视频封面" prop="cover">
-          <div class="cover-upload">
-            <el-upload
-              class="cover-uploader"
-              :show-file-list="false"
-              accept="image/*"
-              :http-request="handleCoverUpload"
-            >
-              <img v-if="form.cover" :src="coverPreviewUrl" class="cover-preview" />
-              <el-icon v-else class="cover-uploader-icon"><Plus /></el-icon>
-            </el-upload>
-            <el-button v-if="form.cover" type="primary" link @click="form.cover = ''">清除封面</el-button>
+          <div class="cover-field">
+            <el-input v-model="form.cover" placeholder="请输入封面URL、从图片库选择或上传" class="cover-input" />
+            <div class="cover-actions">
+              <el-button type="primary" @click="openImageSelect">从图片库选择</el-button>
+              <el-upload
+                :show-file-list="false"
+                accept=".jpg,.jpeg,.png,.gif,.webp"
+                :before-upload="beforeImageUpload"
+                :http-request="handleUploadCover"
+              >
+                <el-button type="success">上传图片</el-button>
+              </el-upload>
+            </div>
           </div>
-          <div class="cover-tip">选填，支持 jpg/png/gif 等图片</div>
+          <el-image
+            v-if="form.cover"
+            :src="coverPreviewUrl"
+            :preview-src-list="[coverPreviewUrl]"
+            :preview-teleported="true"
+            :z-index="3000"
+            style="width: 120px; height: 80px; margin-top: 8px; border-radius: 4px; cursor: pointer"
+            fit="cover"
+          />
+          <div class="cover-tip">选填，支持 jpg/png/gif/webp</div>
         </el-form-item>
         <el-form-item label="时长（秒）" prop="duration">
           <el-input-number v-model="form.duration" :min="0" :disabled="durationAutoFilled" placeholder="选择视频后自动获取，或手动输入" />
@@ -192,6 +203,49 @@
         <el-button type="primary" @click="handleSubmit">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 图片库选择/上传对话框 -->
+    <el-dialog v-model="imageSelectVisible" title="选择封面" width="600px" @close="imageSelectVisible = false">
+      <div class="image-select-toolbar">
+        <el-input v-model="imageKeyword" placeholder="搜索图片" clearable style="width: 180px" @keyup.enter="loadImageList" />
+        <el-button type="primary" @click="loadImageList">搜索</el-button>
+        <el-upload
+          :show-file-list="false"
+          accept=".jpg,.jpeg,.png,.gif,.webp"
+          :before-upload="beforeImageUpload"
+          :http-request="handleUploadCover"
+        >
+          <el-button type="success">上传图片</el-button>
+        </el-upload>
+      </div>
+      <div class="image-select-grid" v-loading="imageListLoading">
+        <div v-for="item in imageSelectList" :key="item.id" class="image-select-item">
+          <el-image
+            :src="imageItemUrl(item)"
+            :preview-src-list="[imageItemUrl(item)]"
+            :preview-teleported="true"
+            :z-index="3000"
+            class="select-thumb"
+            fit="cover"
+          />
+          <span class="select-name">{{ item.name }}</span>
+          <el-button size="small" type="primary" class="select-btn" @click="chooseCover(item)">选择</el-button>
+        </div>
+        <el-empty v-if="!imageListLoading && imageSelectList.length === 0" description="暂无图片，可上传" />
+      </div>
+      <el-pagination
+        v-model:current-page="imageSelectPage"
+        v-model:page-size="imageSelectSize"
+        :total="imageSelectTotal"
+        :page-sizes="[12, 24]"
+        layout="prev, pager, next"
+        @current-change="loadImageList"
+        style="margin-top: 12px; justify-content: center"
+      />
+      <template #footer>
+        <el-button @click="imageSelectVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -199,13 +253,13 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
-import { CopyDocument, Plus, QuestionFilled } from '@element-plus/icons-vue'
+import { CopyDocument, QuestionFilled } from '@element-plus/icons-vue'
 import ChunkUpload from '@/components/ChunkUpload.vue'
 import { useTableMaxHeight } from '@/hooks/useTableHeight'
 import { getVideoPage, createVideo, updateVideo, deleteVideo, type Video } from '@/api/video'
 import { getCoursePage, getCourseById, type Course } from '@/api/course'
 import { getChaptersByCourseId } from '@/api/chapter'
-import { uploadImage } from '@/api/image'
+import { getImagePage, uploadImage, type ImageItem, type ImagePageResult } from '@/api/image'
 import { useHelp } from '@/hooks/useHelp'
 
 const tableMaxHeight = useTableMaxHeight()
@@ -222,6 +276,13 @@ const chapterLoading = ref(false)
 const videoEl = ref<HTMLVideoElement | null>(null)
 const durationAutoFilled = ref(false)
 const uploadKey = ref(0)
+const imageSelectVisible = ref(false)
+const imageKeyword = ref('')
+const imageSelectList = ref<ImageItem[]>([])
+const imageListLoading = ref(false)
+const imageSelectPage = ref(1)
+const imageSelectSize = ref(12)
+const imageSelectTotal = ref(0)
 
 const searchForm = reactive<{ courseId?: number; keyword: string }>({
   courseId: undefined,
@@ -279,8 +340,72 @@ const form = reactive<Partial<Video>>({
 const coverPreviewUrl = computed(() => {
   const c = form.cover
   if (!c) return ''
-  return c.startsWith('http') ? c : (c.startsWith('/') ? '/api' : '/api/') + c
+  return c.startsWith('http') ? c : (c.startsWith('/') ? window.location.origin + c : window.location.origin + '/' + c)
 })
+
+function imageItemUrl(item: ImageItem) {
+  const u = item.url
+  if (!u) return ''
+  return u.startsWith('http') ? u : window.location.origin + u
+}
+
+function openImageSelect() {
+  imageSelectVisible.value = true
+  imageSelectPage.value = 1
+  loadImageList()
+}
+
+async function loadImageList() {
+  imageListLoading.value = true
+  try {
+    const res = await getImagePage({
+      page: imageSelectPage.value,
+      size: imageSelectSize.value,
+      keyword: imageKeyword.value || undefined
+    })
+    const data = (res as unknown as { data?: ImagePageResult })?.data ?? res
+    imageSelectList.value = data?.records ?? []
+    imageSelectTotal.value = data?.total ?? 0
+  } catch (_e) {
+    imageSelectList.value = []
+  } finally {
+    imageListLoading.value = false
+  }
+}
+
+function chooseCover(item: ImageItem) {
+  form.cover = item.url || ''
+  imageSelectVisible.value = false
+}
+
+function beforeImageUpload(file: File) {
+  const ok = /\.(jpe?g|png|gif|webp)$/i.test(file.name)
+  if (!ok) {
+    ElMessage.error('仅支持 jpg/png/gif/webp')
+    return false
+  }
+  return true
+}
+
+async function handleUploadCover({ file }: { file: File }) {
+  try {
+    const res = await uploadImage(file)
+    const data = (res as unknown as { data?: ImageItem })?.data ?? res
+    const d = data as ImageItem
+    const url = d?.url ?? d?.path ?? ''
+    if (url) {
+      form.cover = url
+      if (imageSelectVisible.value) {
+        loadImageList()
+      }
+      ElMessage.success('上传成功')
+    } else {
+      ElMessage.error('上传失败')
+    }
+  } catch (_e) {
+    ElMessage.error('上传失败')
+  }
+}
 
 const rules: FormRules = {
   courseId: [{ required: true, message: '请选择课程', trigger: 'change' }],
@@ -452,15 +577,6 @@ const onVideoFileSelect = (file: File) => {
   video.src = url
 }
 
-const handleCoverUpload = async (options: { file: File }) => {
-  try {
-    const res = await uploadImage(options.file)
-    form.cover = (res as { url?: string }).url || ''
-    ElMessage.success('封面上传成功')
-  } catch (e: any) {
-    ElMessage.error(e?.response?.data?.message || '封面上传失败')
-  }
-}
 
 const handleUploadSuccess = (url: string) => {
   form.url = url
@@ -547,39 +663,64 @@ onMounted(() => {
   color: var(--el-color-success);
 }
 
-.cover-upload {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.cover-uploader {
-  border: 1px dashed var(--el-border-color);
-  border-radius: 6px;
-  cursor: pointer;
-  overflow: hidden;
-}
-.cover-uploader :deep(.el-upload) {
-  display: block;
-}
-.cover-uploader-icon {
-  font-size: 28px;
-  color: var(--el-text-color-placeholder);
-  width: 120px;
-  height: 90px;
-  line-height: 90px;
-  text-align: center;
-}
-.cover-preview {
-  width: 120px;
-  height: 90px;
-  object-fit: cover;
-  display: block;
+.cover-field {
+  width: 100%;
+  .cover-input {
+    margin-bottom: 8px;
+  }
+  .cover-actions {
+    display: flex;
+    gap: 8px;
+  }
 }
 .cover-tip {
   margin-top: 6px;
   font-size: 12px;
   color: var(--el-text-color-secondary);
 }
+
+.image-select-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.image-select-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  max-height: 360px;
+  overflow-y: auto;
+}
+.image-select-item {
+  border: 1px solid #ebeef5;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: border-color 0.2s;
+  &:hover {
+    border-color: var(--el-color-primary);
+  }
+  .select-thumb {
+    width: 100%;
+    height: 80px;
+    display: block;
+    background: #f5f7fa;
+  }
+  .select-name {
+    display: block;
+    padding: 6px 8px;
+    font-size: 12px;
+    color: #606266;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .select-btn {
+    margin: 0 8px 8px;
+    width: calc(100% - 16px);
+  }
+}
+
 .form-tip {
   margin-top: 4px;
   font-size: 12px;

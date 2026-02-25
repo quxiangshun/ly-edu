@@ -30,11 +30,30 @@
 
       <el-table :data="knowledgeList" v-loading="loading" border stripe :max-height="tableMaxHeight">
         <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="title" label="标题" min-width="160" show-overflow-tooltip />
+        <el-table-column label="标题" min-width="200">
+          <template #default="{ row }">
+            <div class="title-cell">
+              <el-tooltip :content="row.title" placement="top">
+                <span class="title-text">{{ row.title }}</span>
+              </el-tooltip>
+              <div class="copy-icons">
+                <el-tooltip content="点击复制标题" placement="top">
+                  <el-icon class="copy-icon" @click.stop="copyTitle(row.title)">
+                    <CopyDocument />
+                  </el-icon>
+                </el-tooltip>
+                <el-tooltip content="点击复制文件地址" placement="top">
+                  <el-icon class="copy-icon" @click.stop="copyFileUrl(row.fileUrl)">
+                    <CopyDocument />
+                  </el-icon>
+                </el-tooltip>
+              </div>
+            </div>
+          </template>
+        </el-table-column>
         <el-table-column prop="category" label="分类" width="120">
           <template #default="{ row }">{{ row.category || '-' }}</template>
         </el-table-column>
-        <el-table-column prop="fileUrl" label="文件地址" min-width="200" show-overflow-tooltip />
         <el-table-column prop="visibility" label="可见性" width="90">
           <template #default="{ row }">
             <el-tag :type="row.visibility === 1 ? 'success' : 'warning'">
@@ -71,8 +90,21 @@
         <el-form-item label="分类" prop="category">
           <el-input v-model="form.category" placeholder="如：制度文档、技术文档（可选）" />
         </el-form-item>
-        <el-form-item label="文件地址" prop="fileUrl">
-          <el-input v-model="form.fileUrl" placeholder="文件 URL 或上传后地址" />
+        <el-form-item label="文件" prop="fileUrl">
+          <div class="file-field">
+            <el-input v-model="form.fileUrl" placeholder="输入文件地址或上传" class="file-input" />
+            <div class="file-actions">
+              <el-upload
+                :show-file-list="false"
+                accept=".pdf,.doc,.docx,.txt,.xls,.xlsx,.ppt,.pptx,.md,.csv,.zip"
+                :before-upload="beforeFileUpload"
+                :http-request="handleFileUpload"
+              >
+                <el-button type="primary">上传文件</el-button>
+              </el-upload>
+            </div>
+          </div>
+          <div class="file-tip">支持 pdf、doc、docx、txt、xls、xlsx、ppt、pptx、md、csv、zip，同内容只保留一份</div>
         </el-form-item>
         <el-form-item label="文件名" prop="fileName">
           <el-input v-model="form.fileName" placeholder="下载时显示名称（可选）" />
@@ -118,13 +150,14 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
-import { QuestionFilled } from '@element-plus/icons-vue'
+import { CopyDocument, QuestionFilled } from '@element-plus/icons-vue'
 import {
   getKnowledgePage,
   getKnowledgeByIdAdmin,
   createKnowledge,
   updateKnowledge,
   deleteKnowledge,
+  uploadKnowledgeFile,
   type Knowledge
 } from '@/api/knowledge'
 import { getDepartmentTree, type Department } from '@/api/department'
@@ -174,6 +207,36 @@ const pagination = reactive({
 
 const { openPageHelp } = useHelp()
 
+function fileFullUrl(url: string) {
+  if (!url) return ''
+  return url.startsWith('http') ? url : (url.startsWith('/') ? window.location.origin + url : window.location.origin + '/' + url)
+}
+
+function copyTitle(title: string) {
+  if (!title) {
+    ElMessage.warning('暂无标题')
+    return
+  }
+  navigator.clipboard.writeText(title).then(() => {
+    ElMessage.success('已复制标题')
+  }).catch(() => {
+    ElMessage.error('复制失败')
+  })
+}
+
+function copyFileUrl(url: string) {
+  if (!url) {
+    ElMessage.warning('暂无文件地址')
+    return
+  }
+  const fullUrl = fileFullUrl(url)
+  navigator.clipboard.writeText(fullUrl).then(() => {
+    ElMessage.success('已复制文件地址')
+  }).catch(() => {
+    ElMessage.error('复制失败')
+  })
+}
+
 const form = reactive({
   title: '',
   category: '',
@@ -188,7 +251,38 @@ const form = reactive({
 
 const rules: FormRules = {
   title: [{ required: true, message: '请输入标题', trigger: 'blur' }],
-  fileUrl: [{ required: true, message: '请输入文件地址', trigger: 'blur' }]
+  fileUrl: [{ required: true, message: '请上传文件或输入文件地址', trigger: 'blur' }]
+}
+
+const ALLOWED_EXT = /\.(pdf|doc|docx|txt|xls|xlsx|ppt|pptx|md|csv|zip)$/i
+
+function beforeFileUpload(file: File) {
+  const ok = ALLOWED_EXT.test(file.name)
+  if (!ok) {
+    ElMessage.error('仅支持 pdf、doc、docx、txt、xls、xlsx、ppt、pptx、md、csv、zip')
+    return false
+  }
+  return true
+}
+
+async function handleFileUpload({ file }: { file: File }) {
+  try {
+    const res = await uploadKnowledgeFile(file)
+    const data = (res as unknown as { data?: { url?: string; fileName?: string; fileSize?: number; fileType?: string } })?.data ?? res
+    const d = data as { url?: string; fileName?: string; fileSize?: number; fileType?: string }
+    const url = d?.url ?? ''
+    if (url) {
+      form.fileUrl = url
+      form.fileName = d?.fileName ?? file.name
+      form.fileSize = d?.fileSize ?? file.size
+      form.fileType = d?.fileType ?? ''
+      ElMessage.success('上传成功')
+    } else {
+      ElMessage.error('上传失败')
+    }
+  } catch (_e) {
+    ElMessage.error('上传失败')
+  }
 }
 
 async function loadList() {
@@ -353,8 +447,55 @@ onMounted(() => {
       }
     }
   }
+  .title-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .title-text {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .copy-icons {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      flex-shrink: 0;
+
+      .copy-icon {
+        font-size: 14px;
+        cursor: pointer;
+        color: #909399;
+
+        &:hover {
+          color: var(--el-color-primary);
+        }
+      }
+    }
+  }
   .search-form {
     margin-bottom: 16px;
+  }
+  .file-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .file-input {
+    width: 100%;
+  }
+  .file-actions {
+    display: flex;
+    gap: 8px;
+  }
+  .file-tip {
+    font-size: 12px;
+    color: var(--el-text-color-secondary);
+    margin-top: 4px;
   }
 }
 </style>

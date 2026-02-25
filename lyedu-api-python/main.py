@@ -97,6 +97,7 @@ API_PREFIX = '/api'
 # 上传文件访问：使用 FileResponse 支持 Range 分片加载（视频拖拽、分段请求）
 Path(config.UPLOAD_PATH).mkdir(parents=True, exist_ok=True)
 UPLOAD_PATH_RESOLVED = config.UPLOAD_PATH.resolve()
+print(f"[LyEdu] UPLOAD_PATH = {UPLOAD_PATH_RESOLVED}")
 
 
 @app.get(API_PREFIX + "/uploads/{path:path}")

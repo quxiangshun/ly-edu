@@ -2,6 +2,7 @@
 """分片上传服务：视频按内容哈希去重只保留一份，支持秒传/断点续传、分片哈希校验"""
 import shutil
 import uuid
+from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
@@ -37,12 +38,18 @@ def _generate_file_id(file_name: str, file_size: int) -> str:
     return uuid.uuid4().hex
 
 
-def _video_storage_name(file_name: str) -> str:
-    """存储文件名：固定为 video + 原扩展名，不含原文件名"""
+def _video_ext(file_name: str) -> str:
+    """获取视频扩展名"""
     ext = (Path(file_name).suffix if file_name else "") or ".mp4"
     if not ext.startswith("."):
         ext = "." + ext
-    return "video" + ext
+    return ext
+
+
+def _ym_path(prefix: str) -> str:
+    """生成 年/月 路径，如 videos/2026/04"""
+    now = datetime.now()
+    return f"{prefix}/{now.year}/{now.month:02d}"
 
 
 def init_upload(
@@ -54,9 +61,9 @@ def init_upload(
 ) -> dict:
     file_id = (file_id or "").strip() or _generate_file_id(file_name, file_size)
     total_chunks = (file_size + chunk_size - 1) // chunk_size
-    storage_name = _video_storage_name(file_name)
-    relative_path = f"videos/{file_id}/{storage_name}"
-    chunk_dir = UPLOAD_PATH / "videos" / file_id / "chunks"
+    ext = _video_ext(file_name)
+    relative_path = f"{_ym_path('videos')}/{file_id}{ext}"
+    chunk_dir = UPLOAD_PATH / "videos" / "__chunks__" / file_id
     chunk_dir.mkdir(parents=True, exist_ok=True)
     db.execute(
         INSERT_UPLOAD,
@@ -118,7 +125,7 @@ def upload_chunk(
     uploaded = get_uploaded_chunks(file_id)
     if chunk_index in uploaded:
         return True
-    chunk_dir = UPLOAD_PATH / "videos" / file_id / "chunks"
+    chunk_dir = UPLOAD_PATH / "videos" / "__chunks__" / file_id
     chunk_dir.mkdir(parents=True, exist_ok=True)
     chunk_path = chunk_dir / f"{chunk_index}.chunk"
     chunk_path.write_bytes(chunk_data)
@@ -139,7 +146,7 @@ def merge_chunks(file_id: str) -> str:
     relative_path = prog["uploadPath"]
     merged_file = UPLOAD_PATH / relative_path
     merged_file.parent.mkdir(parents=True, exist_ok=True)
-    chunk_dir = UPLOAD_PATH / "videos" / file_id / "chunks"
+    chunk_dir = UPLOAD_PATH / "videos" / "__chunks__" / file_id
     with open(merged_file, "wb") as out:
         for i in range(total):
             chunk_file = chunk_dir / f"{i}.chunk"
@@ -153,9 +160,9 @@ def merge_chunks(file_id: str) -> str:
     existing = db.query_one(SELECT_BY_HASH, (content_hash,))
     if existing:
         merged_file.unlink(missing_ok=True)
-        parent = merged_file.parent
-        if parent.exists() and not any(parent.iterdir()):
-            shutil.rmtree(parent, ignore_errors=True)
+        for parent in [merged_file.parent, merged_file.parent.parent]:
+            if parent.exists() and not any(parent.iterdir()):
+                shutil.rmtree(parent, ignore_errors=True)
         db.execute(UPDATE_UPLOAD_PATH, (existing["relative_path"], file_id))
         return existing["relative_path"]
     db.execute(INSERT_FILE_HASH, (content_hash, relative_path, file_size))
@@ -172,7 +179,7 @@ def cancel_upload(file_id: str) -> None:
                 full.unlink()
             except OSError:
                 pass
-    chunk_dir = UPLOAD_PATH / "videos" / file_id
+    chunk_dir = UPLOAD_PATH / "videos" / "__chunks__" / file_id
     if chunk_dir.exists():
         shutil.rmtree(chunk_dir, ignore_errors=True)
     db.execute(DELETE_CHUNKS, (file_id,))

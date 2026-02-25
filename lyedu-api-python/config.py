@@ -85,7 +85,14 @@ FA_TARGET_USER = os.getenv("FA_TARGET_USER") or MYSQL_USER
 FA_TARGET_PASSWORD = os.getenv("FA_TARGET_PASSWORD") or MYSQL_PASSWORD
 FA_TARGET_DATABASE = os.getenv("FA_TARGET_DATABASE") or MYSQL_DATABASE
 
-UPLOAD_PATH = Path(os.getenv("UPLOAD_PATH", "./uploads"))
+# 默认使用 config 所在目录下的 uploads，确保无论从何处启动都能正确写入 lyedu-api-python/uploads
+_raw = (os.getenv("UPLOAD_PATH") or "").strip()
+if not _raw or _raw in ("./uploads", ".\\uploads", "uploads"):
+    UPLOAD_PATH = (_CONFIG_DIR / "uploads").resolve()
+else:
+    p = Path(_raw)
+    UPLOAD_PATH = p.resolve() if p.is_absolute() else (_CONFIG_DIR / p).resolve()
+UPLOAD_PATH.mkdir(parents=True, exist_ok=True)
 
 # 分片上传与内容去重（与豆包方案一致）
 CHUNK_SIZE = int(os.getenv("UPLOAD_CHUNK_SIZE", str(5 * 1024 * 1024)))  # 5MB

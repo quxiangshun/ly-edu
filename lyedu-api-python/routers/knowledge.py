@@ -2,11 +2,11 @@
 """知识库路由，与 Java KnowledgeController 对应"""
 from typing import List, Optional
 
-from fastapi import APIRouter, Header
+from fastapi import APIRouter, File, Header, UploadFile
 from pydantic import BaseModel
 
 from common.result import error, error_result, success
-from services.content import knowledge_service
+from services.content import file_service, knowledge_service
 from util.jwt_util import parse_authorization
 
 router = APIRouter(prefix="/knowledge", tags=["knowledge"])
@@ -60,6 +60,15 @@ def get_by_id(
     if not k:
         return error_result((404, "资源不存在"))
     return success(k)
+
+
+@router.post("/upload")
+def upload_file(file: UploadFile = File(...)):
+    """上传知识库文件，按内容哈希去重，同内容只保留一份"""
+    result = file_service.upload(file)
+    if not result:
+        return error(400, "上传失败或文件类型不支持（支持 pdf/doc/docx/txt/xls/xlsx/ppt/pptx/md/csv/zip）")
+    return success(result)
 
 
 @router.post("")

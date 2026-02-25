@@ -37,6 +37,22 @@ export const getKnowledgeByIdAdmin = (id: number) => {
   return request.get<Knowledge>(`/knowledge/admin/${id}`)
 }
 
+export interface KnowledgeFileUploadResult {
+  url: string
+  path: string
+  fileName: string
+  fileSize: number
+  fileType: string
+}
+
+export const uploadKnowledgeFile = (file: File) => {
+  const form = new FormData()
+  form.append('file', file)
+  return request.post<KnowledgeFileUploadResult>('/knowledge/upload', form, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
+}
+
 export const createKnowledge = (data: {
   title: string
   category?: string

@@ -82,8 +82,7 @@ const { openPageHelp } = useHelp()
 function imageUrl(item: ImageItem) {
   const url = item.url
   if (!url) return ''
-  if (url.startsWith('http')) return url
-  return window.location.origin + url
+  return url.startsWith('http') ? url : window.location.origin + url
 }
 
 async function loadList() {
