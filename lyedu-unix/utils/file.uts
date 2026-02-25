@@ -54,7 +54,7 @@ export function buildDownloadFileName(
 
 /**
  * 获取下载时的 filePath（使用数据库标题），用于 downloadFile 的 filePath 参数。
- * 在 Web 等不支持 uni.env 的平台返回 null，此时使用默认临时路径。
+ * 在 Web 等不支持 uni.env 的平台返回 null，此时使用 H5 专用下载逻辑。
  */
 export function getDownloadFilePath(
 	title: string | null | undefined,
@@ -67,3 +67,31 @@ export function getDownloadFilePath(
 	const fileName = buildDownloadFileName(title, fileType, fileUrl)
 	return uni.env.USER_DATA_PATH + '/' + fileName
 }
+
+// #ifdef H5
+/**
+ * H5 端：使用 fetch + blob + a.download 实现自定义文件名下载
+ */
+export function downloadFileH5(url: string, fileName: string, onComplete: () => void): void {
+	const win = globalThis as any
+	if (win.fetch == null) {
+		onComplete()
+		return
+	}
+	win.fetch(url)
+		.then((res: any) => res.blob())
+		.then((blob: any) => {
+			const link = win.document.createElement('a')
+			link.href = win.URL.createObjectURL(blob)
+			link.download = fileName
+			win.document.body.appendChild(link)
+			link.click()
+			win.document.body.removeChild(link)
+			win.URL.revokeObjectURL(link.href)
+			onComplete()
+		})
+		.catch(() => {
+			onComplete()
+		})
+}
+// #endif

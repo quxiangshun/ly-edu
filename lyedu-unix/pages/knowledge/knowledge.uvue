@@ -19,7 +19,10 @@
 <script setup lang="uts">
 	import { getKnowledgePage, type Knowledge } from '../../api/knowledge'
 	import { assetUrl } from '../../config/api'
-	import { getDownloadFilePath } from '../../utils/file'
+	import { getDownloadFilePath, buildDownloadFileName } from '../../utils/file'
+	// #ifdef H5
+	import { downloadFileH5 } from '../../utils/file'
+	// #endif
 
 	const loading = ref(false)
 	const knowledgeList = ref<Knowledge[]>([])
@@ -68,6 +71,13 @@
 			return
 		}
 		uni.showToast({ title: '正在打开' })
+		const fileName = buildDownloadFileName(row.title, row.fileType, row.fileUrl)
+		// #ifdef H5
+		downloadFileH5(url, fileName, () => {
+			uni.showToast({ title: '下载完成', icon: 'success' })
+		})
+		// #endif
+		// #ifndef H5
 		const customPath = getDownloadFilePath(row.title, row.fileType, row.fileUrl)
 		if (customPath != null) {
 			uni.downloadFile({
@@ -91,6 +101,7 @@
 				}
 			})
 		}
+		// #endif
 	}
 </script>
 

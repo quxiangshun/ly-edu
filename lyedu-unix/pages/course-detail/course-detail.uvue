@@ -123,7 +123,10 @@
 	import { assetUrl } from '../../config/api'
 	import { joinCourse } from '../../api/learning'
 	import { themePrimary } from '../../utils/theme'
-	import { getDownloadFilePath } from '../../utils/file'
+	import { getDownloadFilePath, buildDownloadFileName } from '../../utils/file'
+	// #ifdef H5
+	import { downloadFileH5 } from '../../utils/file'
+	// #endif
 
 	const themeRootStyle = computed((): Record<string, string> => ({ '--brand-primary': themePrimary.value }))
 
@@ -366,6 +369,13 @@
 		}
 		const name = att.name ?? att.title ?? '附件'
 		const fileType = att.type ?? att.fileType ?? att.file_type
+		const fileName = buildDownloadFileName(name, fileType, url)
+		// #ifdef H5
+		downloadFileH5(fullUrl, fileName, () => {
+			uni.showToast({ title: '下载完成', icon: 'success' })
+		})
+		// #endif
+		// #ifndef H5
 		const customPath = getDownloadFilePath(name, fileType, url)
 		if (customPath != null) {
 			uni.downloadFile({
@@ -389,6 +399,7 @@
 				}
 			})
 		}
+		// #endif
 	}
 </script>
 
