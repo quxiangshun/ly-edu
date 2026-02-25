@@ -1,12 +1,13 @@
 <template>
-	<scroll-view class="page" scroll-y="true" style="flex:1" :style="themeRootStyle">
+	<view class="page" :style="themeRootStyle">
+		<view class="logo-block logo-fixed">
+			<image class="login-logo" :src="logoSrc" mode="aspectFit"></image>
+			<text class="login-title">{{ siteTitle }}</text>
+			<text class="login-subtitle">企业培训平台</text>
+		</view>
+		<view class="logo-spacer"></view>
+		<scroll-view class="page-body" scroll-y="true" style="flex:1">
 		<view class="content">
-			<view class="logo-block">
-				<image class="login-logo" :src="logoSrc" mode="aspectFit"></image>
-				<text class="login-title">{{ siteTitle }}</text>
-				<text class="login-subtitle">企业培训平台</text>
-			</view>
-
 			<!-- 飞书/钉钉/企微 App 内：授权登录按钮 -->
 			<view v-if="showAuthButton" class="auth-block">
 				<button class="auth-btn" :loading="loading" @click="handleThirdPartyAuth">{{ authLabel }}授权登录</button>
@@ -22,28 +23,29 @@
 				<text v-if="h5CanToggle" class="switch-link" @click="h5LoginMode = 'password'">账号密码登录</text>
 			</view>
 
-			<!-- 微信小程序：手机号登录 -->
-			<view v-else-if="showWechatPhone" class="wechat-block">
+			<!-- 微信小程序：手机号登录（失败 1 次后自动切换为账号密码） -->
+			<view v-show="showWechatPhone && !showPasswordForm" class="wechat-block">
 				<text class="wechat-hint">请授权手机号以登录</text>
 				<button open-type="getPhoneNumber" class="auth-btn" :loading="loading" @getphonenumber="handleWechatPhone">获取手机号登录</button>
 			</view>
 
 			<!-- 账号密码登录 -->
-			<view v-if="showPasswordForm && (!h5CanToggle || h5LoginMode === 'password')" class="form-block">
+			<view v-show="showPasswordForm && (!h5CanToggle || h5LoginMode === 'password')" class="form-block">
 				<text v-if="h5CanToggle" class="switch-link switch-link-top" @click="h5LoginMode = 'qrcode'">{{ authLabel }}扫码登录</text>
 				<view class="field-row">
-					<text class="field-label">用户名</text>
-					<input class="field-input" v-model="username" placeholder="请输入用户名" />
+					<text class="field-label">手机号</text>
+					<input class="field-input" v-model="username" placeholder="请输入手机号" adjust-position="false" />
 				</view>
 				<view class="field-row">
 					<text class="field-label">密码</text>
-					<input class="field-input" :type="showPassword ? 'text' : 'password'" v-model="password" placeholder="请输入密码" />
+					<input class="field-input" :type="showPassword ? 'text' : 'password'" v-model="password" placeholder="请输入密码" adjust-position="false" />
 					<image class="eye-btn" :src="showPassword ? '/static/icons/iconify/ri--eye-close-line.svg' : '/static/icons/iconify/ri--eye-line.svg'" mode="aspectFit" @click="showPassword = !showPassword"></image>
 				</view>
 				<button class="submit-btn" :loading="loading" @click="handleLogin">登录</button>
 			</view>
 		</view>
-	</scroll-view>
+		</scroll-view>
+	</view>
 </template>
 
 <script setup lang="uts">
@@ -98,11 +100,13 @@
 		return isWechatMp()
 	})
 
+	const wechatPhoneFailCount = ref(0)
 	const showPasswordForm = computed((): boolean => {
 		if (platformInfo.value == null) return true
 		const p = platformInfo.value.platform
 		if (p === 'local') return true
 		if (p === 'wechat_mp' && !isWechatMp()) return true
+		if (isWechatMp() && wechatPhoneFailCount.value >= 1) return true
 		if ((p === 'feishu' || p === 'dingtalk' || p === 'wecom') && runPlatform.value === 'h5') return true
 		return false
 	})
@@ -138,6 +142,9 @@
 
 	onLoad((options: any) => {
 		runPlatform.value = getRunPlatform()
+		if (options != null && options['mode'] === 'password' && isWechatMp()) {
+			wechatPhoneFailCount.value = 1
+		}
 		loadBranding()
 		loadPlatformInfo()
 		if (options != null && options['code'] != null && (options['code'] as string).length > 0) {
@@ -285,12 +292,20 @@
 		const detail = e != null ? e.detail : null
 		if (detail == null) {
 			if (e.errMsg != null && (e.errMsg as string).indexOf('cancel') >= 0) return
+			wechatPhoneFailCount.value++
 			uni.showToast({ title: '需授权手机号才能登录', icon: 'none' })
+			if (wechatPhoneFailCount.value >= 1) {
+				uni.showToast({ title: '请使用账号密码登录', icon: 'none', duration: 2000 })
+			}
 			return
 		}
 		const phoneCode = (detail.code != null ? detail.code : '') as string
 		if (phoneCode.length === 0) {
+			wechatPhoneFailCount.value++
 			uni.showToast({ title: '获取手机号失败', icon: 'none' })
+			if (wechatPhoneFailCount.value >= 1) {
+				uni.showToast({ title: '请使用账号密码登录', icon: 'none', duration: 2000 })
+			}
 			return
 		}
 		loading.value = true
@@ -308,12 +323,19 @@
 				if (res.userInfo != null) setUser(res.userInfo)
 				onLoginSuccess()
 			}
-		} catch (_e) {}
+		} catch (_e) {
+			wechatPhoneFailCount.value++
+			uni.showToast({ title: '获取手机号失败', icon: 'none' })
+			if (wechatPhoneFailCount.value >= 1) {
+				uni.showToast({ title: '请使用账号密码登录', icon: 'none', duration: 2000 })
+			}
+		}
 		finally {
 			loading.value = false
 		}
 	}
 
+	// 微信小程序：手机号登录、账号密码登录均需 openid 存 union_id，进入页面即获取 code
 	onShow(() => {
 		if (isWechatMp()) {
 			uni.login({
@@ -329,7 +351,7 @@
 		const u = username.value.trim()
 		const p = password.value.trim()
 		if (u.length === 0) {
-			uni.showToast({ title: '请输入用户名', icon: 'none' })
+			uni.showToast({ title: '请输入手机号', icon: 'none' })
 			return
 		}
 		if (p.length === 0) {
@@ -338,7 +360,16 @@
 		}
 		loading.value = true
 		try {
-			const res = await login(u, p)
+			let wxCode = ''
+			if (isWechatMp() && wxLoginCode.value.length > 0) {
+				wxCode = wxLoginCode.value
+			} else if (isWechatMp()) {
+				const loginRes = await new Promise<any>((resolve) => {
+					uni.login({ provider: 'weixin', success: (r) => resolve(r), fail: () => resolve(null) })
+				})
+				wxCode = (loginRes != null && loginRes.code != null) ? (loginRes.code as string) : ''
+			}
+			const res = await login(u, p, wxCode)
 			if (res != null && res.token != null) {
 				setToken(res.token)
 				if (res.userInfo != null) setUser(res.userInfo)
@@ -352,12 +383,15 @@
 </script>
 
 <style>
-.page { flex: 1; }
-.content { flex-direction: column; padding: 40px 24px; }
-.logo-block { flex-direction: column; align-items: center; margin-bottom: 32px; }
-.login-logo { width: 72px; height: 72px; margin-bottom: 12px; }
-.login-title { font-size: 28px; color: var(--brand-primary); font-weight: 600; }
-.login-subtitle { font-size: 16px; color: #969799; margin-top: 8px; }
+.page { flex: 1; flex-direction: column; }
+.logo-block { flex-direction: column; align-items: center; padding: 40px 24px 32px; flex-shrink: 0; }
+.logo-fixed { position: fixed; top: 0; left: 0; right: 0; z-index: 10; background: var(--brand-gradient-immersive); }
+.logo-spacer { height: 220px; flex-shrink: 0; }
+.page-body { flex: 1; }
+.content { flex-direction: column; padding: 0 24px 40px; min-height: 320px; }
+.login-logo { width: 72px; height: 72px; margin-bottom: 12px; flex-shrink: 0; }
+.login-title { font-size: 28px; color: var(--brand-primary); font-weight: 600; flex-shrink: 0; }
+.login-subtitle { font-size: 16px; color: #969799; margin-top: 8px; flex-shrink: 0; white-space: nowrap; }
 .auth-block, .qrcode-block, .wechat-block { flex-direction: column; align-items: center; margin-bottom: 24px; }
 .auth-btn { background-color: var(--brand-primary); color: #ffffff; border-radius: 24px; height: 44px; line-height: 44px; font-size: 16px; width: 100%; }
 .qrcode-hint, .wechat-hint { font-size: 14px; color: #646566; margin-bottom: 16px; }

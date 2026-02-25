@@ -321,10 +321,22 @@ def list_liked_by_user(
 def record_play(video_id: int) -> None:
     try:
         db.execute("UPDATE ly_video SET play_count = play_count + 1 WHERE id = %s AND deleted = 0", (video_id,))
+        _sync_course_play_like(video_id)
     except Exception as e:
         if not _is_play_count_error(e):
             raise
         # V13 未执行时无 play_count 列，忽略
+
+
+def _sync_course_play_like(video_id: int) -> None:
+    """视频播放/点赞变化后同步课程汇总"""
+    try:
+        row = db.query_one("SELECT course_id FROM ly_video WHERE id = %s AND deleted = 0", (video_id,))
+        if row and row.get("course_id"):
+            from services.course import course_service
+            course_service.sync_play_like_from_videos(int(row["course_id"]))
+    except Exception:
+        pass
 
 
 def _is_play_count_error(e: Exception) -> bool:
@@ -340,6 +352,7 @@ def like(video_id: int, user_id: int) -> bool:
     try:
         db.execute("INSERT INTO ly_video_like (user_id, video_id) VALUES (%s, %s)", (user_id, video_id))
         db.execute("UPDATE ly_video SET like_count = like_count + 1 WHERE id = %s AND deleted = 0", (video_id,))
+        _sync_course_play_like(video_id)
         return True
     except Exception:
         return False  # 唯一键冲突表示已点赞
@@ -350,6 +363,7 @@ def unlike(video_id: int, user_id: int) -> int:
     n = db.execute("DELETE FROM ly_video_like WHERE user_id = %s AND video_id = %s", (user_id, video_id))
     if n > 0:
         db.execute("UPDATE ly_video SET like_count = GREATEST(0, like_count - 1) WHERE id = %s AND deleted = 0", (video_id,))
+        _sync_course_play_like(video_id)
     return n
 
 

@@ -11,6 +11,12 @@ export interface Course {
   isRequired?: number
   /** 标签ID列表 */
   tagIds?: number[]
+  /** 视频播放总和（v4 迁移后） */
+  playCount?: number
+  /** 视频点赞总和（v4 迁移后） */
+  likeCount?: number
+  /** 课程评论数（v4 迁移后） */
+  commentCount?: number
 }
 
 export interface PageResult<T> {

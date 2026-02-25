@@ -54,6 +54,15 @@
             </el-tag>
           </template>
         </el-table-column>
+        <el-table-column prop="playCount" label="播放总数" width="100" align="center">
+          <template #default="{ row }">{{ row.playCount ?? '-' }}</template>
+        </el-table-column>
+        <el-table-column prop="likeCount" label="点赞总数" width="100" align="center">
+          <template #default="{ row }">{{ row.likeCount ?? '-' }}</template>
+        </el-table-column>
+        <el-table-column prop="commentCount" label="评论总数" width="100" align="center">
+          <template #default="{ row }">{{ row.commentCount ?? '-' }}</template>
+        </el-table-column>
         <el-table-column prop="sort" label="排序" width="100" />
         <el-table-column label="操作" width="280" fixed="right">
           <template #default="{ row }">

@@ -45,8 +45,10 @@ def page(
     categoryId: Optional[int] = None,
     tagId: Optional[int] = None,
     status: Optional[int] = None,
+    sort: Optional[str] = None,
 ):
-    """status=1 时仅返回上架课程（PC/uni 学员端）；不传则返回全部（管理端）"""
+    """status=1 时仅返回上架课程（PC/uni 学员端）；不传则返回全部（管理端）。
+    sort: default 综合排序, latest 最新发布, play 最多播放, like 最多点赞, comment 最多评论"""
     result = course_service.page(
         page_num=page,
         size=size,
@@ -54,6 +56,7 @@ def page(
         category_id=categoryId,
         tag_id=tagId,
         status=status,
+        sort=sort,
     )
     for record in result.get("records") or []:
         record["tagIds"] = tag_service.list_tag_ids_by_course(record.get("id") or 0)

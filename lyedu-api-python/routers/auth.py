@@ -26,6 +26,7 @@ _PLATFORM_LABELS: dict[str, str] = {
 class LoginRequest(BaseModel):
     username: str = ""
     password: str = ""
+    code: str = ""  # 微信小程序 wx.login 的 code，用于绑定 union_id
 
 
 class FeishuCallbackRequest(BaseModel):
@@ -137,6 +138,15 @@ def login(body: LoginRequest, request: Request):
     uid = user.get("id")
     uid = int(uid) if uid is not None else 0
     uname = _ensure_str(user.get("username"))
+    wx_code = (body.code or "").strip()
+    if wx_code and _check_union_id():
+        session_data = wechat_api.code2session(wx_code)
+        if session_data:
+            union_id_to_bind = (session_data.get("unionid") or "").strip()
+            if not union_id_to_bind:
+                union_id_to_bind = (session_data.get("openid") or "").strip()
+            if union_id_to_bind:
+                user_service.update(uid, union_id=union_id_to_bind)
     token = generate_token(uid, uname)
     if hasattr(token, "decode"):
         token = token.decode("utf-8")
@@ -343,14 +353,6 @@ def wechat_mp_phone_login(body: WechatMpPhoneRequest, request: Request):
     if not mobile:
         return error(400, "未能解析到手机号")
 
-    user = user_service.find_by_mobile(mobile)
-    if not user:
-        login_log_service.add_login_log(
-            user_id=None, username=None, ip=ip, user_agent=ua,
-            channel="wechat_mp", success=False, message="USER_NOT_FOUND",
-        )
-        return error(400, "用户不存在")
-
     union_id_to_bind = None
     if code:
         session_data = wechat_api.code2session(code)
@@ -359,8 +361,30 @@ def wechat_mp_phone_login(body: WechatMpPhoneRequest, request: Request):
             if not union_id_to_bind:
                 union_id_to_bind = (session_data.get("openid") or "").strip()
 
-    if union_id_to_bind and _check_union_id():
-        user_service.update(user["id"], union_id=union_id_to_bind)
+    user = user_service.find_by_mobile(mobile)
+    if not user:
+        nickname = "LyEdu_" + mobile
+        user_service.save(
+            username=mobile,
+            password=None,
+            real_name=nickname,
+            nickname=nickname,
+            mobile=mobile,
+            union_id=union_id_to_bind,
+            role="student",
+            status=1,
+            set_password=False,
+        )
+        user = user_service.find_by_mobile(mobile)
+        if not user:
+            login_log_service.add_login_log(
+                user_id=None, username=None, ip=ip, user_agent=ua,
+                channel="wechat_mp", success=False, message="USER_CREATE_FAILED",
+            )
+            return error(500, "用户创建失败")
+    else:
+        if union_id_to_bind and _check_union_id():
+            user_service.update(user["id"], union_id=union_id_to_bind)
 
     if user.get("status") == 0:
         login_log_service.add_login_log(

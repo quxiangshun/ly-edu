@@ -27,9 +27,10 @@ function toLogin(redirect: string | null = null): void {
 	const redirectPath = redirect != null && redirect.length > 0 ? redirect : route
 	uni.removeStorageSync('token')
 	uni.removeStorageSync('user')
-	uni.navigateTo({
-		url: '/pages/login/login' + (redirectPath.length > 0 ? '?redirect=' + encodeURIComponent(redirectPath) : '')
-	})
+	const base = '/pages/login/login'
+	const params: string[] = ['mode=password']
+	if (redirectPath.length > 0) params.push('redirect=' + encodeURIComponent(redirectPath))
+	uni.navigateTo({ url: base + '?' + params.join('&') })
 }
 
 function buildUrl(baseUrl: string, data: Record<string, any> | null): string {

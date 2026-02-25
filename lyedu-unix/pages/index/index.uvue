@@ -45,6 +45,34 @@
 					</view>
 				</scroll-view>
 				<!-- #endif -->
+				<!-- #ifdef H5 -->
+				<view class="sort-scroll sort-scroll-h5">
+					<view class="sort-row" :style="sortRowStyle">
+						<view
+							v-for="(item, idx) in sortTabs"
+							:key="item.value"
+							:class="['sort-item', activeSortIndex === idx ? 'sort-item--active' : '']"
+							@click="handleSortChange(idx)"
+						>
+							<text class="sort-text">{{ item.label }}</text>
+						</view>
+					</view>
+				</view>
+				<!-- #endif -->
+				<!-- #ifndef H5 -->
+				<scroll-view class="sort-scroll" scroll-x="true" show-scrollbar="false" scroll-with-animation>
+					<view class="sort-row" :style="sortRowStyle">
+						<view
+							v-for="(item, idx) in sortTabs"
+							:key="item.value"
+							:class="['sort-item', activeSortIndex === idx ? 'sort-item--active' : '']"
+							@click="handleSortChange(idx)"
+						>
+							<text class="sort-text">{{ item.label }}</text>
+						</view>
+					</view>
+				</scroll-view>
+				<!-- #endif -->
 			</view>
 		</view>
 
@@ -64,6 +92,10 @@
 									<view class="course-meta-item">
 										<image class="meta-icon" src="/static/icons/iconify/ri--thumb-up-line.svg" mode="aspectFit"></image>
 										<text class="course-meta-text">{{ safeNumber(c.likeCount) }}</text>
+									</view>
+									<view class="course-meta-item">
+										<image class="meta-icon" src="/static/icons/iconify/ri--chat-3-line.svg" mode="aspectFit"></image>
+										<text class="course-meta-text">{{ safeNumber(c.commentCount) }}</text>
 									</view>
 								</view>
 							</view>
@@ -100,8 +132,18 @@
 		id: number | null;
 		label: string;
 	}
+	type SortTab = { value: string; label: string }
+
+	const sortTabs: SortTab[] = [
+		{ value: 'default', label: '综合排序' },
+		{ value: 'latest', label: '最新发布' },
+		{ value: 'play', label: '最多播放' },
+		{ value: 'like', label: '最多点赞' },
+		{ value: 'comment', label: '最多评论' }
+	]
 
 	const categoryTabs = ref<CategoryTab[]>([{ id: null, label: '全部' }])
+	const activeSortIndex = ref(0)
 
 	const activeCategoryIndex = ref(0)
 	const keyword = ref('')
@@ -169,6 +211,12 @@
 		const minWidth = count * 76 + 24
 		return { width: minWidth + 'px' }
 	})
+	// 排序行宽度：5 个选项横向滚动
+	const sortRowStyle = computed((): Record<string, string> => {
+		const count = sortTabs.length
+		const minWidth = count * 72 + 24
+		return { width: minWidth + 'px' }
+	})
 
 	const selectedTagId = computed((): number | null => {
 		const tabs = categoryTabs.value
@@ -181,6 +229,13 @@
 	function handleCategoryChange(index: number): void {
 		if (index === activeCategoryIndex.value) return
 		activeCategoryIndex.value = index
+		scrollBodyToTop()
+		loadCourses(false)
+	}
+
+	function handleSortChange(index: number): void {
+		if (index === activeSortIndex.value) return
+		activeSortIndex.value = index
 		scrollBodyToTop()
 		loadCourses(false)
 	}
@@ -228,6 +283,8 @@
 			if (manualKeyword.length > 0) params.keyword = manualKeyword
 			const tagId = selectedTagId.value
 			if (tagId != null) params.tagId = tagId
+			const sortVal = sortTabs[activeSortIndex.value]
+			if (sortVal != null && sortVal.value !== 'default') params.sort = sortVal.value
 			const res = await getCoursePage(params)
 			const list = res != null && Array.isArray(res.records) ? res.records : []
 			if (append && list.length > 0) {
@@ -383,6 +440,53 @@
 	height: 2px;
 	border-radius: 1px;
 	background-color: var(--brand-primary);
+}
+.sort-scroll {
+	background-color: transparent;
+	margin-bottom: 6px;
+	width: 100%;
+	height: 36px;
+}
+.sort-scroll-h5 {
+	display: flex;
+	flex-direction: row;
+	overflow-x: auto;
+	overflow-y: hidden;
+	scrollbar-width: none;
+	-ms-overflow-style: none;
+}
+.sort-scroll-h5::-webkit-scrollbar {
+	display: none;
+}
+.sort-scroll-h5 .sort-row {
+	flex-shrink: 0;
+}
+.sort-row {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: nowrap;
+	flex-shrink: 0;
+	height: 36px;
+	align-items: center;
+}
+.sort-item {
+	padding: 4px 10px;
+	border-radius: 14px;
+	margin-right: 8px;
+	white-space: nowrap;
+	flex-shrink: 0;
+	background-color: rgba(255, 255, 255, 0.6);
+}
+.sort-item--active {
+	background-color: var(--brand-primary);
+}
+.sort-item--active .sort-text {
+	color: #ffffff;
+	font-weight: 500;
+}
+.sort-text {
+	font-size: 12px;
+	color: #646566;
 }
 .course-section {
 	margin-bottom: 16px;

@@ -81,8 +81,8 @@ export type CourseCommentDto = {
 	createTime?: string
 }
 
-/** 学员端课程列表：仅返回上架课程 */
-export function getCoursePage(params: { page: number; size: number; keyword?: string; categoryId?: number; tagId?: number }): Promise<PageResult<Course>> {
+/** 学员端课程列表：仅返回上架课程。sort: default 综合排序, latest 最新发布, play 最多播放, like 最多点赞, comment 最多评论 */
+export function getCoursePage(params: { page: number; size: number; keyword?: string; categoryId?: number; tagId?: number; sort?: string }): Promise<PageResult<Course>> {
 	const p = params as Record<string, any>
 	p['status'] = 1
 	return get<PageResult<Course>>('/course/page', p)

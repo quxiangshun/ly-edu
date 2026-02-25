@@ -79,7 +79,7 @@
 					logout()
 					isLoggedInRef.value = false
 					uni.showToast({ title: '已退出登录' })
-					uni.reLaunch({ url: '/pages/login/login' })
+					uni.reLaunch({ url: '/pages/login/login?mode=password' })
 				}
 			}
 		})

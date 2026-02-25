@@ -59,6 +59,7 @@ def add(
         "VALUES (%s, %s, %s, %s, %s, 1)",
         (course_id, chapter_id, user_id, parent_id, content),
     )
+    _sync_course_comment_count(course_id)
     row = db.query_one(
         "SELECT id, course_id, chapter_id, user_id, parent_id, content, status, create_time "
         "FROM ly_course_comment WHERE course_id = %s AND user_id = %s ORDER BY id DESC LIMIT 1",
@@ -78,19 +79,40 @@ def add(
     }
 
 
+def _sync_course_comment_count(course_id: int) -> None:
+    """同步课程评论数到 ly_course.comment_count"""
+    try:
+        from services.course import course_service
+        course_service.sync_comment_count(course_id)
+    except Exception:
+        pass
+
+
 def delete(comment_id: int) -> int:
     """删除评论（假删除，管理员使用）"""
-    return db.execute("UPDATE ly_course_comment SET deleted = 1 WHERE id = %s", (comment_id,))
+    row = db.query_one("SELECT course_id FROM ly_course_comment WHERE id = %s", (comment_id,))
+    n = db.execute("UPDATE ly_course_comment SET deleted = 1 WHERE id = %s", (comment_id,))
+    if n > 0 and row and row.get("course_id"):
+        _sync_course_comment_count(int(row["course_id"]))
+    return n
 
 
 def delete_by_user(comment_id: int, user_id: int) -> int:
     """用户删除自己的评论（假删除，只能删除自己的）"""
-    return db.execute("UPDATE ly_course_comment SET deleted = 1 WHERE id = %s AND user_id = %s", (comment_id, user_id))
+    row = db.query_one("SELECT course_id FROM ly_course_comment WHERE id = %s AND user_id = %s", (comment_id, user_id))
+    n = db.execute("UPDATE ly_course_comment SET deleted = 1 WHERE id = %s AND user_id = %s", (comment_id, user_id))
+    if n > 0 and row and row.get("course_id"):
+        _sync_course_comment_count(int(row["course_id"]))
+    return n
 
 
 def update_status(comment_id: int, status: int) -> int:
     """更新评论状态（0-隐藏，1-显示）"""
-    return db.execute("UPDATE ly_course_comment SET status = %s WHERE id = %s", (status, comment_id))
+    row = db.query_one("SELECT course_id FROM ly_course_comment WHERE id = %s", (comment_id,))
+    n = db.execute("UPDATE ly_course_comment SET status = %s WHERE id = %s", (status, comment_id))
+    if n > 0 and row and row.get("course_id"):
+        _sync_course_comment_count(int(row["course_id"]))
+    return n
 
 
 def get_by_id(comment_id: int) -> Optional[dict]:

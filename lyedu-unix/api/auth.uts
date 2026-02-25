@@ -40,6 +40,8 @@ export function getThirdPartyQrcode(platform: string): Promise<{ goto: string }>
 	return get<{ goto: string }>('/auth/' + platform + '/qrcode')
 }
 
-export function login(username: string, password: string): Promise<LoginRes> {
-	return post<LoginRes>('/auth/login', { username: username, password: password })
+export function login(username: string, password: string, code?: string): Promise<LoginRes> {
+	const data: Record<string, string> = { username: username, password: password }
+	if (code != null && code.length > 0) data['code'] = code
+	return post<LoginRes>('/auth/login', data)
 }
