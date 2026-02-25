@@ -16,10 +16,21 @@
 
       <el-form :inline="true" :model="searchForm" class="search-form">
         <el-form-item label="关键词">
-          <el-input v-model="searchForm.keyword" placeholder="评论内容/用户名" clearable />
+          <el-input v-model="searchForm.keyword" placeholder="评论内容/用户名模糊搜索" clearable style="width: 200px" />
         </el-form-item>
-        <el-form-item label="课程ID">
-          <el-input-number v-model="searchForm.courseId" :min="1" placeholder="课程ID" clearable />
+        <el-form-item label="课程">
+          <el-select
+            v-model="searchForm.courseId"
+            placeholder="选择课程"
+            filterable
+            remote
+            :remote-method="searchCourses"
+            :loading="courseSearchLoading"
+            clearable
+            style="width: 220px"
+          >
+            <el-option v-for="c in courseOptions" :key="c.id" :label="c.title" :value="c.id" />
+          </el-select>
         </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="searchForm.status" placeholder="全部" clearable style="width: 120px">
@@ -36,9 +47,9 @@
       <el-table :data="commentList" v-loading="loading" border :max-height="tableMaxHeight">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="courseTitle" label="课程" min-width="150" show-overflow-tooltip />
-        <el-table-column prop="userRealName" label="用户" width="120">
+        <el-table-column prop="username" label="用户" width="120">
           <template #default="{ row }">
-            {{ row.userRealName || row.username || '未知用户' }}
+            {{ row.username || '未知用户' }}
           </template>
         </el-table-column>
         <el-table-column prop="content" label="评论内容" min-width="200" show-overflow-tooltip />
@@ -110,17 +121,22 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { QuestionFilled } from '@element-plus/icons-vue'
 import { getCommentPage, deleteComment, updateCommentStatus, type CourseComment } from '@/api/courseComment'
+import { getCoursePage, getCourseById, type Course } from '@/api/course'
 import { useHelp } from '@/hooks/useHelp'
 import { useTableMaxHeight } from '@/hooks/useTableHeight'
 
+const route = useRoute()
 const tableMaxHeight = useTableMaxHeight()
 const { openPageHelp } = useHelp()
 
 const loading = ref(false)
 const commentList = ref<CourseComment[]>([])
+const courseOptions = ref<Course[]>([])
+const courseSearchLoading = ref(false)
 
 const searchForm = reactive({
   keyword: '',
@@ -137,6 +153,22 @@ const pagination = reactive({
 function formatTime(time?: string): string {
   if (!time) return '-'
   return new Date(time).toLocaleString('zh-CN')
+}
+
+async function searchCourses(query: string) {
+  if (!query || query.trim().length === 0) {
+    courseOptions.value = []
+    return
+  }
+  courseSearchLoading.value = true
+  try {
+    const res = await getCoursePage({ page: 1, size: 30, keyword: query.trim() })
+    courseOptions.value = res.records || []
+  } catch {
+    courseOptions.value = []
+  } finally {
+    courseSearchLoading.value = false
+  }
 }
 
 async function loadComments() {
@@ -220,7 +252,23 @@ async function handleDelete(row: CourseComment) {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  const courseId = route.query.courseId
+  if (courseId) {
+    const id = parseInt(String(courseId), 10)
+    if (!isNaN(id)) {
+      searchForm.courseId = id
+      try {
+        const detail = await getCourseById(id) as any
+        const c = detail?.course ?? detail
+        if (c?.id != null && c?.title != null) {
+          courseOptions.value = [{ id: c.id, title: c.title } as Course]
+        }
+      } catch {
+        courseOptions.value = []
+      }
+    }
+  }
   loadComments()
 })
 </script>

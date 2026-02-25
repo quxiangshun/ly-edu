@@ -74,7 +74,7 @@ export type CourseCommentDto = {
 	courseId: number
 	chapterId?: number
 	userId: number
-	userRealName?: string
+	username?: string
 	parentId?: number
 	content: string
 	status: number

@@ -69,6 +69,7 @@
             <el-button type="primary" link @click="handleEdit(row)">编辑</el-button>
             <el-button type="primary" link @click="handleChapters(row)">章节</el-button>
             <el-button type="primary" link @click="handleAttachments(row)">附件</el-button>
+            <el-button type="primary" link @click="handleComments(row)">评论</el-button>
             <el-button type="danger" link @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
@@ -138,6 +139,41 @@
         <el-button @click="attachmentDialogVisible = false">关闭</el-button>
       </template>
     </el-dialog>
+
+    <!-- 评论弹窗（视频号对话形式） -->
+    <el-dialog
+      v-model="commentDialogVisible"
+      :title="`评论 - ${commentDialogCourse?.title || ''}`"
+      width="520px"
+      class="comment-dialog"
+      destroy-on-close
+    >
+      <div class="comment-dialog-body" v-loading="commentDialogLoading">
+        <div v-if="commentTree.length > 0" class="comment-conversation">
+          <div v-for="node in commentTree" :key="node.id" class="comment-thread">
+            <div class="comment-bubble comment-bubble--parent">
+              <span class="comment-bubble-user">{{ node.username || '用户' }}</span>
+              <span class="comment-bubble-time">{{ formatCommentTime(node.createTime) }}</span>
+              <p class="comment-bubble-content">{{ node.content }}</p>
+              <el-tag v-if="node.deleted === 1" type="danger" size="small">已删除</el-tag>
+            </div>
+            <div v-if="node.replies?.length" class="comment-replies-flat">
+              <div v-for="r in node.replies" :key="r.id" class="comment-bubble comment-bubble--reply">
+                <span class="comment-bubble-user">{{ r.username || '用户' }}{{ r.parentAuthorName ? ' 回复 ' + r.parentAuthorName : '' }}</span>
+                <span class="comment-bubble-time">{{ formatCommentTime(r.createTime) }}</span>
+                <p class="comment-bubble-content">{{ r.content }}</p>
+                <el-tag v-if="r.deleted === 1" type="danger" size="small">已删除</el-tag>
+              </div>
+            </div>
+          </div>
+        </div>
+        <el-empty v-else description="暂无评论" />
+      </div>
+      <template #footer>
+        <el-button @click="commentDialogVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
+
     <!-- 知识库文件选择对话框（多选，选择+上传均在此完成） -->
     <el-dialog v-model="knowledgeSelectForAttachmentVisible" title="选择文件（可多选）" width="640px" @close="onKnowledgeSelectDialogClose">
       <div class="knowledge-select-toolbar">
@@ -329,6 +365,7 @@ import {
 import { getImagePage, uploadImage, type ImageItem, type ImagePageResult } from '@/api/image'
 import { getKnowledgePage, type Knowledge } from '@/api/knowledge'
 import { getExamPage, type Exam } from '@/api/exam'
+import { getCommentPage, type CourseComment } from '@/api/courseComment'
 import { useHelp } from '@/hooks/useHelp'
 import { useTableMaxHeight } from '@/hooks/useTableHeight'
 
@@ -362,6 +399,10 @@ const knowledgeSelectSize = ref(10)
 const knowledgeSelectTotal = ref(0)
 const knowledgeSelectedIds = ref<number[]>([])
 const courseList = ref<Course[]>([])
+const commentDialogVisible = ref(false)
+const commentDialogCourse = ref<Course | null>(null)
+const commentDialogList = ref<CourseComment[]>([])
+const commentDialogLoading = ref(false)
 const formRef = ref<FormInstance>()
 const dialogVisible = ref(false)
 const dialogTitle = ref('新增课程')
@@ -639,6 +680,63 @@ const handleAttachments = async (row: Course) => {
   } catch (e) {
     ElMessage.error('加载附件失败')
     attachmentList.value = []
+  }
+}
+
+/** 扁平结构：一级评论 + 所有回复同级展示，回复的回复显示「B 回复 C」 */
+function buildFlatThreads(list: CourseComment[]): Array<CourseComment & { replies?: Array<CourseComment & { parentAuthorName?: string }> }> {
+  const idMap = new Map<number, CourseComment>()
+  list.forEach((c) => idMap.set(c.id, c))
+  const roots = list.filter((c) => c.parentId == null || c.parentId === 0)
+  const children = list.filter((c) => c.parentId != null && c.parentId !== 0)
+  function getRootId(cid: number): number {
+    const c = idMap.get(cid)
+    if (!c) return cid
+    if (c.parentId == null || c.parentId === 0) return c.id
+    return getRootId(c.parentId)
+  }
+  const byRoot = new Map<number, Array<CourseComment & { parentAuthorName?: string }>>()
+  children.forEach((r) => {
+    const rootId = getRootId(r.parentId!)
+    const parent = idMap.get(r.parentId!)
+    const parentName = parent ? (parent.username || '用户') : '用户'
+    const arr = byRoot.get(rootId) ?? []
+    arr.push({ ...r, parentAuthorName: parentName })
+    byRoot.set(rootId, arr)
+  })
+  byRoot.forEach((arr) => {
+    arr.sort((a, b) => {
+      const ta = (a.createTime ?? '').toString()
+      const tb = (b.createTime ?? '').toString()
+      return ta.localeCompare(tb)
+    })
+  })
+  return roots.map((r) => ({
+    ...r,
+    replies: byRoot.get(r.id) ?? []
+  }))
+}
+const commentTree = computed(() => {
+  const list = commentDialogList.value
+  if (!list || list.length === 0) return []
+  return buildFlatThreads(list)
+})
+function formatCommentTime(time?: string): string {
+  if (!time) return '-'
+  return new Date(time).toLocaleString('zh-CN')
+}
+const handleComments = async (row: Course) => {
+  commentDialogCourse.value = row
+  commentDialogVisible.value = true
+  commentDialogLoading.value = true
+  commentDialogList.value = []
+  try {
+    const res = await getCommentPage({ page: 1, size: 500, courseId: row.id })
+    commentDialogList.value = res.records || []
+  } catch (e) {
+    ElMessage.error('加载评论失败')
+  } finally {
+    commentDialogLoading.value = false
   }
 }
 
@@ -949,5 +1047,60 @@ onMounted(() => {
     margin: 0 8px 8px;
     width: calc(100% - 16px);
   }
+}
+
+/* 评论弹窗 - 视频号对话形式 */
+.comment-dialog-body {
+  max-height: 480px;
+  overflow-y: auto;
+}
+.comment-conversation {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.comment-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.comment-bubble {
+  padding: 10px 14px;
+  background: #f5f7fa;
+  border-radius: 12px;
+  max-width: 100%;
+}
+.comment-bubble--parent {
+  background: #ecf5ff;
+  border-left: 3px solid var(--el-color-primary);
+}
+.comment-bubble--reply {
+  margin-left: 24px;
+  background: #f5f7fa;
+  border-radius: 8px;
+}
+.comment-bubble-user {
+  font-size: 13px;
+  color: var(--el-color-primary);
+  font-weight: 500;
+  margin-right: 8px;
+}
+.comment-bubble-time {
+  font-size: 12px;
+  color: #909399;
+}
+.comment-bubble-content {
+  margin: 6px 0 0;
+  font-size: 14px;
+  color: #303133;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.comment-replies-flat {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-left: 24px;
 }
 </style>

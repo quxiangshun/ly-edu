@@ -6,7 +6,6 @@ export interface CourseComment {
   courseTitle?: string
   chapterId?: number
   userId: number
-  userRealName?: string
   username?: string
   parentId?: number
   content: string

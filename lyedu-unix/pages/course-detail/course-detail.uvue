@@ -89,15 +89,44 @@
 					<text class="empty-text">暂无附件</text>
 				</view>
 			</view>
-			<view v-show="activeTab === 'comment'" class="tab-panel">
+			<view v-show="activeTab === 'comment'" class="tab-panel comment-tab-panel">
 				<view v-if="commentLoading" class="comment-loading">
 					<text class="empty-text">加载中...</text>
 				</view>
-				<view v-else-if="comments.length > 0" class="comment-list">
-					<view v-for="c in comments" :key="c.id" class="comment-row">
-						<text class="comment-user">{{ c.userRealName ?? c.user_real_name ?? '用户' }}</text>
-						<text class="comment-content">{{ c.content }}</text>
-						<text class="comment-time">{{ formatCommentTime(c.createTime ?? c.create_time) }}</text>
+				<view v-else-if="commentTree.length > 0" class="comment-conversation">
+					<view v-for="node in commentTree" :key="node.id" class="comment-thread">
+						<view class="comment-bubble comment-bubble--parent">
+							<view class="comment-bubble-header">
+								<text class="comment-bubble-user">{{ node.username ?? '用户' }}</text>
+								<text class="comment-bubble-time">{{ formatCommentTime(node.createTime ?? node.create_time) }}</text>
+								<view class="comment-bubble-actions">
+									<view class="comment-reply-wrap" @click="replyComment(node)">
+										<text class="comment-reply-text">回复</text>
+									</view>
+									<view v-if="isOwnComment(node)" class="comment-delete-wrap" @click="deleteComment(node)">
+										<text class="comment-delete-text">删除</text>
+									</view>
+								</view>
+							</view>
+							<text class="comment-bubble-content">{{ node.content }}</text>
+						</view>
+						<view v-if="node.replies != null && node.replies.length > 0" class="comment-replies-flat">
+							<view v-for="r in node.replies" :key="r.id" class="comment-bubble comment-bubble--reply">
+								<view class="comment-bubble-header">
+									<text class="comment-bubble-user">{{ r.username ?? '用户' }}{{ r.parentAuthorName != null ? ' 回复 ' + r.parentAuthorName : '' }}</text>
+									<text class="comment-bubble-time">{{ formatCommentTime(r.createTime ?? r.create_time) }}</text>
+									<view class="comment-bubble-actions">
+										<view class="comment-reply-wrap" @click="replyComment(r)">
+											<text class="comment-reply-text">回复</text>
+										</view>
+										<view v-if="isOwnComment(r)" class="comment-delete-wrap" @click="deleteComment(r)">
+											<text class="comment-delete-text">删除</text>
+										</view>
+									</view>
+								</view>
+								<text class="comment-bubble-content">{{ r.content }}</text>
+							</view>
+						</view>
 					</view>
 				</view>
 				<view v-else class="empty-tip">
@@ -105,6 +134,26 @@
 				</view>
 			</view>
 		</scroll-view>
+
+		<view v-if="activeTab === 'comment'" class="comment-bar-fixed">
+			<view v-if="replyTo != null" class="comment-bar-cancel" @click="replyTo = null">
+				<text class="comment-bar-cancel-text">取消回复</text>
+			</view>
+			<view class="comment-bar-inner">
+				<textarea
+					id="comment-input"
+					class="comment-bar-input"
+					v-model="commentContent"
+					:placeholder="commentPlaceholder"
+					:maxlength="500"
+					:auto-height="true"
+					:focus="commentInputFocused"
+				/>
+				<view class="comment-bar-send" :class="commentSubmitting ? 'comment-bar-send--disabled' : ''" @click="submitComment">
+					<text class="comment-bar-send-text">回复</text>
+				</view>
+			</view>
+		</view>
 
 		<view v-if="loading" class="loading-overlay">
 			<text class="loading-text">加载中...</text>
@@ -117,12 +166,13 @@
 
 <script setup lang="uts">
 	import { computed, watch, nextTick } from 'vue'
-	import { getCourseById, getCourseComments, type CourseCommentDto } from '../../api/course'
+	import { getCourseById, getCourseComments, addCourseComment, deleteCourseComment, type CourseCommentDto } from '../../api/course'
 	import { recordPlay } from '../../api/video'
 	import { updateVideoProgress } from '../../api/learning'
 	import { assetUrl } from '../../config/api'
 	import { joinCourse } from '../../api/learning'
 	import { themePrimary } from '../../utils/theme'
+	import { getUser } from '../../utils/auth'
 	import { getDownloadFilePath, buildDownloadFileName } from '../../utils/file'
 	// #ifdef H5
 	import { downloadFileH5 } from '../../utils/file'
@@ -140,6 +190,61 @@
 	const activeTab = ref<'catalog' | 'attachment' | 'comment'>('catalog')
 	const comments = ref<CourseCommentDto[]>([])
 	const commentLoading = ref(false)
+	/** 扁平结构：一级评论 + 所有回复同级展示。回复的回复显示「B 回复 C」 */
+	function buildFlatThreads(list: CourseCommentDto[]): any[] {
+		const idMap = new Map<number, CourseCommentDto>()
+		for (let i = 0; i < list.length; i++) {
+			idMap.set(list[i].id, list[i])
+		}
+		const roots = list.filter((c) => c.parentId == null || c.parentId === 0)
+		const children = list.filter((c) => c.parentId != null && c.parentId !== 0)
+		function getRootId(cid: number): number {
+			const c = idMap.get(cid)
+			if (c == null) return cid
+			if (c.parentId == null || c.parentId === 0) return c.id
+			return getRootId(c.parentId)
+		}
+		const byRoot = new Map<number, any[]>()
+		for (let i = 0; i < children.length; i++) {
+			const r = children[i]
+			const rootId = getRootId(r.parentId)
+			const parent = idMap.get(r.parentId)
+			const parentName = parent != null ? (parent.username ?? '用户') : '用户'
+			const arr = byRoot.get(rootId) ?? []
+			arr.push({ ...r, parentAuthorName: parentName })
+			byRoot.set(rootId, arr)
+		}
+		for (const [id, arr] of byRoot) {
+			arr.sort((a, b) => {
+				const ta = (a.createTime ?? a.create_time ?? '').toString()
+				const tb = (b.createTime ?? b.create_time ?? '').toString()
+				return ta.localeCompare(tb)
+			})
+		}
+		return roots.map((r) => ({
+			...r,
+			replies: (byRoot.get(r.id) ?? [])
+		}))
+	}
+	const commentTree = computed((): any[] => {
+		const list = comments.value
+		if (list == null || list.length === 0) return []
+		return buildFlatThreads(list)
+	})
+	const commentPlaceholder = computed((): string => {
+		const me = getUser()
+		const meName = me != null ? ((me['username'] ?? '我') as string) : '我'
+		const rt = replyTo.value
+		if (rt != null) {
+			const targetName = rt.username ?? '用户'
+			return meName + ' 回复 ' + targetName + ': '
+		}
+		return meName + ' 发表评论: '
+	})
+	const commentInputFocused = ref(false)
+	const commentContent = ref('')
+	const commentSubmitting = ref(false)
+	const replyTo = ref<CourseCommentDto | null>(null)
 	const lastSaveAt = ref(0)
 	const SAVE_INTERVAL = 5000
 	let playedCurrent = false
@@ -222,9 +327,15 @@
 
 	function formatCommentTime(t: string | null | undefined): string {
 		if (t == null || t.length === 0) return ''
-		const s = String(t)
-		if (s.length >= 10) return s.substring(0, 10)
-		return s
+		const s = String(t).replace('T', ' ').trim()
+		const ms = Date.parse(s)
+		if (isNaN(ms)) return s.length >= 10 ? s.substring(0, 10) : s
+		const diff = Math.floor((Date.now() - ms) / 1000)
+		if (diff < 60) return '刚刚'
+		if (diff < 3600) return Math.floor(diff / 60).toString() + '分钟前'
+		if (diff < 86400) return Math.floor(diff / 3600).toString() + '小时前'
+		if (diff < 2592000) return Math.floor(diff / 86400).toString() + '天前'
+		return s.length >= 10 ? s.substring(0, 10) : s
 	}
 
 	function formatDuration(sec: number | null | undefined): string {
@@ -249,6 +360,67 @@
 		} finally {
 			commentLoading.value = false
 		}
+	}
+
+	function replyComment(c: CourseCommentDto): void {
+		replyTo.value = c
+		commentInputFocused.value = true
+		setTimeout(() => {
+			commentInputFocused.value = false
+		}, 100)
+	}
+
+	async function submitComment(): Promise<void> {
+		const content = (commentContent.value ?? '').trim()
+		if (content.length === 0) {
+			uni.showToast({ title: '请输入评论内容', icon: 'none' })
+			return
+		}
+		if (commentSubmitting.value) return
+		commentSubmitting.value = true
+		const rt = replyTo.value
+		try {
+			await addCourseComment(courseId.value, {
+				content: content,
+				parentId: rt != null ? rt.id : null
+			})
+			uni.showToast({ title: rt != null ? '回复成功' : '评论成功', icon: 'success' })
+			commentContent.value = ''
+			replyTo.value = null
+			await loadComments()
+		} catch (e: any) {
+			const msg = e?.message ?? e?.errMsg ?? '发表失败'
+			uni.showToast({ title: String(msg), icon: 'none' })
+		} finally {
+			commentSubmitting.value = false
+		}
+	}
+
+	function isOwnComment(c: CourseCommentDto): boolean {
+		const u = getUser()
+		if (u == null) return false
+		const uid = u['id'] ?? u['userId']
+		const cUid = c.userId ?? (c as any)['user_id']
+		return uid != null && cUid != null && Number(uid) === Number(cUid)
+	}
+
+	async function deleteComment(c: CourseCommentDto): Promise<void> {
+		if (!isOwnComment(c)) return
+		uni.showModal({
+			title: '提示',
+			content: '确定要删除这条评论吗？',
+			success: async (res) => {
+				if (res.confirm) {
+					try {
+						await deleteCourseComment(c.id)
+						uni.showToast({ title: '已删除', icon: 'success' })
+						await loadComments()
+					} catch (_e) {
+						uni.showToast({ title: '删除失败', icon: 'none' })
+					}
+				}
+			}
+		})
 	}
 
 	async function loadDetail(): Promise<void> {
@@ -533,33 +705,133 @@
 	padding: 16px;
 	background-color: #ffffff;
 }
+.comment-tab-panel {
+	padding-bottom: 80px;
+}
+.comment-bar-fixed {
+	position: fixed;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background-color: #ffffff;
+	border-top-width: 1px;
+	border-top-color: #ebedf0;
+	padding-bottom: env(safe-area-inset-bottom);
+	z-index: 100;
+}
+.comment-bar-cancel {
+	padding: 6px 16px 0;
+}
+.comment-bar-cancel-text {
+	font-size: 12px;
+	color: #969799;
+}
+.comment-bar-inner {
+	flex-direction: row;
+	align-items: flex-end;
+	padding: 10px 16px 10px 16px;
+}
+.comment-bar-input {
+	flex: 1;
+	min-height: 36px;
+	max-height: 120px;
+	padding: 8px 12px;
+	font-size: 15px;
+	background-color: #f5f6f8;
+	border-radius: 8px;
+	margin-right: 12px;
+	box-sizing: border-box;
+}
+.comment-bar-send {
+	padding: 8px 16px;
+	background-color: var(--brand-primary);
+	border-radius: 8px;
+	flex-shrink: 0;
+}
+.comment-bar-send-text {
+	font-size: 15px;
+	color: #ffffff;
+}
+.comment-bar-send--disabled {
+	opacity: 0.6;
+}
 .comment-loading {
 	padding: 24px 0;
 	align-items: center;
 }
-.comment-list {
+.comment-conversation {
 	flex-direction: column;
+	gap: 16px;
 }
-.comment-row {
+.comment-thread {
 	flex-direction: column;
-	padding: 12px 0;
-	border-bottom-width: 1px;
-	border-bottom-color: #f0f0f0;
+	gap: 8px;
 }
-.comment-user {
+.comment-bubble {
+	flex-direction: column;
+	padding: 10px 14px;
+	background-color: #f5f7fa;
+	border-radius: 12px;
+}
+.comment-bubble--parent {
+	background-color: #ecf5ff;
+	border-left-width: 3px;
+	border-left-color: var(--brand-primary);
+	border-left-style: solid;
+}
+.comment-replies-flat {
+	flex-direction: column;
+	gap: 8px;
+	margin-left: 24px;
+}
+.comment-bubble--reply {
+	background-color: #f5f7fa;
+	border-radius: 8px;
+}
+.comment-bubble-header {
+	flex-direction: row;
+	align-items: center;
+	flex-wrap: wrap;
+}
+.comment-bubble-user {
 	font-size: 14px;
 	color: var(--brand-primary);
-	margin-bottom: 4px;
+	font-weight: 500;
+	margin-right: 8px;
 }
-.comment-content {
+.comment-bubble-time {
+	font-size: 12px;
+	color: #909399;
+	flex: 1;
+}
+.comment-bubble-actions {
+	flex-direction: row;
+	align-items: center;
+}
+.comment-reply-wrap {
+	padding: 2px 8px;
+	margin-right: 4px;
+}
+.comment-reply-text {
+	font-size: 12px;
+	color: var(--brand-primary);
+}
+.comment-delete-wrap {
+	padding: 2px 8px;
+}
+.comment-delete-text {
+	font-size: 12px;
+	color: #969799;
+}
+.comment-bubble-content {
 	font-size: 14px;
 	color: #323233;
 	line-height: 1.5;
+	margin-top: 6px;
 }
-.comment-time {
-	font-size: 12px;
-	color: #969799;
-	margin-top: 4px;
+.comment-replies {
+	flex-direction: column;
+	gap: 6px;
 }
 .chapter-block {
 	flex-direction: column;

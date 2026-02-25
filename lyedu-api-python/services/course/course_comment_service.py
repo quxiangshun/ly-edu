@@ -9,7 +9,7 @@ def list_by_course(course_id: int, chapter_id: Optional[int] = None) -> List[dic
     if chapter_id is not None:
         rows = db.query_all(
             "SELECT c.id, c.course_id, c.chapter_id, c.user_id, c.parent_id, c.content, c.status, c.create_time, "
-            "u.real_name AS user_real_name FROM ly_course_comment c "
+            "u.username FROM ly_course_comment c "
             "LEFT JOIN ly_user u ON c.user_id = u.id AND u.deleted = 0 "
             "WHERE c.course_id = %s AND c.deleted = 0 AND (c.status IS NULL OR c.status = 1) "
             "AND (c.chapter_id IS NULL OR c.chapter_id = %s) ORDER BY c.id ASC",
@@ -18,7 +18,7 @@ def list_by_course(course_id: int, chapter_id: Optional[int] = None) -> List[dic
     else:
         rows = db.query_all(
             "SELECT c.id, c.course_id, c.chapter_id, c.user_id, c.parent_id, c.content, c.status, c.create_time, "
-            "u.real_name AS user_real_name FROM ly_course_comment c "
+            "u.username FROM ly_course_comment c "
             "LEFT JOIN ly_user u ON c.user_id = u.id AND u.deleted = 0 "
             "WHERE c.course_id = %s AND c.deleted = 0 AND (c.status IS NULL OR c.status = 1) "
             "ORDER BY c.id ASC",
@@ -33,7 +33,7 @@ def _row_to_dto(r: dict) -> dict:
         "courseId": r["course_id"],
         "chapterId": r.get("chapter_id"),
         "userId": r["user_id"],
-        "userRealName": r.get("user_real_name"),
+        "username": r.get("username"),
         "parentId": r.get("parent_id"),
         "content": r.get("content") or "",
         "status": r.get("status") or 1,
@@ -119,7 +119,7 @@ def get_by_id(comment_id: int) -> Optional[dict]:
     """获取评论详情（包含已删除和隐藏的，管理员使用）"""
     row = db.query_one(
         "SELECT c.id, c.course_id, c.chapter_id, c.user_id, c.parent_id, c.content, c.status, c.deleted, c.create_time, "
-        "u.real_name AS user_real_name, u.username FROM ly_course_comment c "
+        "u.username FROM ly_course_comment c "
         "LEFT JOIN ly_user u ON c.user_id = u.id "
         "WHERE c.id = %s",
         (comment_id,),
@@ -131,7 +131,6 @@ def get_by_id(comment_id: int) -> Optional[dict]:
         "courseId": row["course_id"],
         "chapterId": row.get("chapter_id"),
         "userId": row["user_id"],
-        "userRealName": row.get("user_real_name"),
         "username": row.get("username"),
         "parentId": row.get("parent_id"),
         "content": row.get("content") or "",
@@ -165,7 +164,7 @@ def page(
     offset = (page_num - 1) * size
     rows = db.query_all(
         f"SELECT c.id, c.course_id, c.chapter_id, c.user_id, c.parent_id, c.content, c.status, c.deleted, c.create_time, "
-        f"u.real_name AS user_real_name, u.username, co.title AS course_title "
+        f"u.username, co.title AS course_title "
         f"FROM ly_course_comment c "
         f"LEFT JOIN ly_user u ON c.user_id = u.id "
         f"LEFT JOIN ly_course co ON c.course_id = co.id "
@@ -193,7 +192,6 @@ def _row_to_admin_dto(r: dict) -> dict:
         "courseTitle": r.get("course_title"),
         "chapterId": r.get("chapter_id"),
         "userId": r["user_id"],
-        "userRealName": r.get("user_real_name"),
         "username": r.get("username"),
         "parentId": r.get("parent_id"),
         "content": r.get("content") or "",
