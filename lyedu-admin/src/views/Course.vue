@@ -121,7 +121,7 @@
 
     <!-- 附件管理对话框 -->
     <el-dialog v-model="attachmentDialogVisible" :title="`附件管理 - ${currentCourse?.title || ''}`" width="720px">
-      <el-button type="primary" size="small" @click="handleAddAttachment" style="margin-bottom: 12px">新增附件</el-button>
+      <el-button type="primary" size="small" @click="openKnowledgeSelectForAttachment" style="margin-bottom: 12px">从知识库选择</el-button>
       <el-table :data="attachmentList" border stripe size="small" max-height="360">
         <el-table-column prop="id" label="ID" width="70" />
         <el-table-column prop="name" label="附件名称" />
@@ -138,24 +138,50 @@
         <el-button @click="attachmentDialogVisible = false">关闭</el-button>
       </template>
     </el-dialog>
-    <el-dialog v-model="attachmentFormVisible" title="新增附件" width="440px">
-      <el-form :model="attachmentForm" label-width="90px">
-        <el-form-item label="附件名称">
-          <el-input v-model="attachmentForm.name" placeholder="附件名称" />
-        </el-form-item>
-        <el-form-item label="类型/扩展名">
-          <el-input v-model="attachmentForm.type" placeholder="如 txt、pdf（可选）" />
-        </el-form-item>
-        <el-form-item label="文件地址">
-          <el-input v-model="attachmentForm.fileUrl" placeholder="文件 URL" />
-        </el-form-item>
-        <el-form-item label="排序">
-          <el-input-number v-model="attachmentForm.sort" :min="0" />
-        </el-form-item>
-      </el-form>
+    <!-- 知识库文件选择对话框（多选，选择+上传均在此完成） -->
+    <el-dialog v-model="knowledgeSelectForAttachmentVisible" title="选择文件（可多选）" width="640px" @close="onKnowledgeSelectDialogClose">
+      <div class="knowledge-select-toolbar">
+        <el-input v-model="knowledgeSelectKeyword" placeholder="搜索知识库" clearable style="width: 180px" @keyup.enter="loadKnowledgeForAttachment" />
+        <el-button type="primary" @click="loadKnowledgeForAttachment">搜索</el-button>
+        <el-upload
+          :show-file-list="false"
+          accept=".pdf,.doc,.docx,.txt,.xls,.xlsx,.ppt,.pptx,.md,.csv,.zip"
+          :before-upload="beforeAttachmentUpload"
+          :http-request="handleUploadAttachmentInDialog"
+        >
+          <el-button type="success">上传文件</el-button>
+        </el-upload>
+      </div>
+      <div class="knowledge-select-list" v-loading="knowledgeSelectLoading">
+        <div
+          v-for="item in knowledgeSelectList"
+          :key="item.id"
+          class="knowledge-select-item"
+          :class="{ 'is-selected': knowledgeSelectedIds.includes(item.id) }"
+          @click="toggleKnowledgeSelect(item.id)"
+        >
+          <el-checkbox :model-value="knowledgeSelectedIds.includes(item.id)" @click.stop />
+          <span class="knowledge-title">{{ item.title }}</span>
+          <span class="knowledge-meta">{{ item.fileType || '-' }} · {{ item.fileSize ? (item.fileSize / 1024).toFixed(1) + ' KB' : '-' }}</span>
+        </div>
+        <el-empty v-if="!knowledgeSelectLoading && knowledgeSelectList.length === 0" description="暂无知识库文件，可先上传" />
+      </div>
+      <el-pagination
+        v-model:current-page="knowledgeSelectPage"
+        v-model:page-size="knowledgeSelectSize"
+        :total="knowledgeSelectTotal"
+        :page-sizes="[10, 20]"
+        layout="prev, pager, next"
+        @current-change="loadKnowledgeForAttachment"
+        @size-change="loadKnowledgeForAttachment"
+        style="margin-top: 12px; justify-content: center"
+      />
       <template #footer>
-        <el-button @click="attachmentFormVisible = false">取消</el-button>
-        <el-button type="primary" @click="submitAttachment">确定</el-button>
+        <div class="knowledge-select-footer">
+          <span class="knowledge-select-footer-hint" v-if="knowledgeSelectedIds.length > 0">已选 {{ knowledgeSelectedIds.length }} 项</span>
+          <el-button @click="knowledgeSelectForAttachmentVisible = false">关闭</el-button>
+          <el-button type="primary" :disabled="knowledgeSelectedIds.length === 0" @click="confirmKnowledgeMultiSelect">确认选择</el-button>
+        </div>
       </template>
     </el-dialog>
 
@@ -296,9 +322,12 @@ import {
   getAttachmentsByCourseId,
   createAttachment,
   deleteAttachment,
+  uploadAttachment,
+  type AttachmentUploadResult,
   type CourseAttachment
 } from '@/api/courseAttachment'
 import { getImagePage, uploadImage, type ImageItem, type ImagePageResult } from '@/api/image'
+import { getKnowledgePage, type Knowledge } from '@/api/knowledge'
 import { getExamPage, type Exam } from '@/api/exam'
 import { useHelp } from '@/hooks/useHelp'
 import { useTableMaxHeight } from '@/hooks/useTableHeight'
@@ -324,8 +353,14 @@ const chapterFormId = ref<number | null>(null)
 const chapterForm = reactive({ title: '', sort: 0 })
 const attachmentDialogVisible = ref(false)
 const attachmentList = ref<CourseAttachment[]>([])
-const attachmentFormVisible = ref(false)
-const attachmentForm = reactive({ name: '', type: '', fileUrl: '', sort: 0 })
+const knowledgeSelectForAttachmentVisible = ref(false)
+const knowledgeSelectKeyword = ref('')
+const knowledgeSelectList = ref<Knowledge[]>([])
+const knowledgeSelectLoading = ref(false)
+const knowledgeSelectPage = ref(1)
+const knowledgeSelectSize = ref(10)
+const knowledgeSelectTotal = ref(0)
+const knowledgeSelectedIds = ref<number[]>([])
 const courseList = ref<Course[]>([])
 const formRef = ref<FormInstance>()
 const dialogVisible = ref(false)
@@ -586,25 +621,131 @@ const submitChapter = async () => {
   }
 }
 
+function extractAttachmentList(res: unknown): CourseAttachment[] {
+  if (Array.isArray(res)) return res
+  const obj = res as Record<string, unknown>
+  if (obj?.records && Array.isArray(obj.records)) return obj.records as CourseAttachment[]
+  if (obj?.data && Array.isArray(obj.data)) return obj.data as CourseAttachment[]
+  if (obj?.list && Array.isArray(obj.list)) return obj.list as CourseAttachment[]
+  return []
+}
+
 const handleAttachments = async (row: Course) => {
   currentCourse.value = row
   attachmentDialogVisible.value = true
   try {
-    const list = await getAttachmentsByCourseId(row.id)
-    attachmentList.value = Array.isArray(list) ? list : []
+    const res = await getAttachmentsByCourseId(row.id)
+    attachmentList.value = extractAttachmentList(res)
   } catch (e) {
     ElMessage.error('加载附件失败')
     attachmentList.value = []
   }
 }
 
-const handleAddAttachment = () => {
-  attachmentForm.name = ''
-  attachmentForm.type = ''
-  attachmentForm.fileUrl = ''
-  attachmentForm.sort = attachmentList.value.length
-  attachmentFormVisible.value = true
+const ALLOWED_ATTACHMENT_EXT = ['.pdf', '.doc', '.docx', '.txt', '.xls', '.xlsx', '.ppt', '.pptx', '.md', '.csv', '.zip']
+const beforeAttachmentUpload = (file: File) => {
+  const ext = '.' + (file.name.split('.').pop() || '').toLowerCase()
+  if (!ALLOWED_ATTACHMENT_EXT.includes(ext)) {
+    ElMessage.error('仅支持 pdf、doc、docx、txt、xls、xlsx、ppt、pptx、md、csv、zip 格式')
+    return false
+  }
+  if (file.size > 50 * 1024 * 1024) {
+    ElMessage.error('文件大小不能超过 50MB')
+    return false
+  }
+  return true
 }
+
+const handleUploadAttachmentInDialog = async (options: { file: File }) => {
+  const { file } = options
+  try {
+    const res = await uploadAttachment(file)
+    const knowledgeId = (res as AttachmentUploadResult)?.knowledgeId
+    const knowledgeSaved = (res as AttachmentUploadResult)?.knowledgeSaved !== false
+    if (knowledgeId && knowledgeSaved) {
+      if (!knowledgeSelectedIds.value.includes(knowledgeId)) {
+        knowledgeSelectedIds.value = [...knowledgeSelectedIds.value, knowledgeId]
+      }
+      if (knowledgeSelectForAttachmentVisible.value) {
+        knowledgeSelectPage.value = 1
+        knowledgeSelectKeyword.value = ''
+        await loadKnowledgeForAttachment()
+      }
+      ElMessage.success('上传成功，已加入已选列表')
+    } else if (knowledgeSaved) {
+      ElMessage.success('上传成功')
+    } else {
+      ElMessage.warning('上传成功，文件已保存，但知识库表未初始化，请执行数据库迁移后再选择')
+    }
+  } catch (_e) {
+    ElMessage.error('上传失败')
+  }
+}
+
+function openKnowledgeSelectForAttachment() {
+  knowledgeSelectedIds.value = []
+  knowledgeSelectForAttachmentVisible.value = true
+  knowledgeSelectPage.value = 1
+  loadKnowledgeForAttachment()
+}
+
+function onKnowledgeSelectDialogClose() {
+  knowledgeSelectedIds.value = []
+}
+
+function toggleKnowledgeSelect(id: number) {
+  const idx = knowledgeSelectedIds.value.indexOf(id)
+  if (idx >= 0) {
+    knowledgeSelectedIds.value = knowledgeSelectedIds.value.filter((x) => x !== id)
+  } else {
+    knowledgeSelectedIds.value = [...knowledgeSelectedIds.value, id]
+  }
+}
+
+async function confirmKnowledgeMultiSelect() {
+  if (!currentCourse.value || knowledgeSelectedIds.value.length === 0) return
+  const existingIds = new Set((attachmentList.value || []).map((a) => a.knowledgeId))
+  const toAdd = knowledgeSelectedIds.value.filter((id) => !existingIds.has(id))
+  if (toAdd.length === 0) {
+    ElMessage.warning('所选文件已关联本课程')
+    return
+  }
+  const baseSort = attachmentList.value.length
+  try {
+    for (let i = 0; i < toAdd.length; i++) {
+      await createAttachment({
+        courseId: currentCourse.value.id,
+        knowledgeId: toAdd[i],
+        sort: baseSort + i
+      })
+    }
+    ElMessage.success(`已添加 ${toAdd.length} 个文件`)
+    knowledgeSelectForAttachmentVisible.value = false
+    const res = await getAttachmentsByCourseId(currentCourse.value.id)
+    attachmentList.value = extractAttachmentList(res)
+  } catch (e) {
+    ElMessage.error('添加失败')
+  }
+}
+
+const loadKnowledgeForAttachment = async () => {
+  knowledgeSelectLoading.value = true
+  try {
+    const res = await getKnowledgePage({
+      page: knowledgeSelectPage.value,
+      size: knowledgeSelectSize.value,
+      keyword: knowledgeSelectKeyword.value || undefined
+    })
+    knowledgeSelectList.value = res?.records || []
+    knowledgeSelectTotal.value = res?.total || 0
+  } catch {
+    knowledgeSelectList.value = []
+    knowledgeSelectTotal.value = 0
+  } finally {
+    knowledgeSelectLoading.value = false
+  }
+}
+
 
 const handleDeleteAttachment = async (row: CourseAttachment) => {
   try {
@@ -612,33 +753,10 @@ const handleDeleteAttachment = async (row: CourseAttachment) => {
     await deleteAttachment(row.id)
     ElMessage.success('删除成功')
     if (currentCourse.value) {
-      const list = await getAttachmentsByCourseId(currentCourse.value.id)
-      attachmentList.value = Array.isArray(list) ? list : []
+      const res = await getAttachmentsByCourseId(currentCourse.value.id)
+      attachmentList.value = extractAttachmentList(res)
     }
   } catch (e) {}
-}
-
-const submitAttachment = async () => {
-  if (!currentCourse.value) return
-  if (!attachmentForm.name?.trim() || !attachmentForm.fileUrl?.trim()) {
-    ElMessage.warning('请填写附件名称和文件地址')
-    return
-  }
-  try {
-    await createAttachment({
-      courseId: currentCourse.value.id,
-      name: attachmentForm.name.trim(),
-      type: attachmentForm.type?.trim() || undefined,
-      fileUrl: attachmentForm.fileUrl.trim(),
-      sort: attachmentForm.sort
-    })
-    ElMessage.success('新增成功')
-    attachmentFormVisible.value = false
-    const list = await getAttachmentsByCourseId(currentCourse.value.id)
-    attachmentList.value = Array.isArray(list) ? list : []
-  } catch (e) {
-    ElMessage.error('新增失败')
-  }
 }
 
 const handleSubmit = async () => {
@@ -716,6 +834,66 @@ onMounted(() => {
 
 .search-form {
   margin-bottom: 20px;
+}
+
+.attachment-file-field {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  .file-input {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.knowledge-select-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.knowledge-select-list {
+  min-height: 200px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.knowledge-select-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  border-bottom: 1px solid #ebeef5;
+  gap: 12px;
+  cursor: pointer;
+  &:hover {
+    background: #f5f7fa;
+  }
+  &.is-selected {
+    background: #ecf5ff;
+  }
+  .knowledge-title {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .knowledge-meta {
+    font-size: 12px;
+    color: #909399;
+    flex-shrink: 0;
+  }
+}
+
+.knowledge-select-footer {
+  display: flex;
+  align-items: center;
+}
+.knowledge-select-footer-hint {
+  margin-right: 12px;
+  font-size: 13px;
+  color: #606266;
 }
 
 .cover-field {

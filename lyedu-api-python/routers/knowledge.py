@@ -1,15 +1,40 @@
 # -*- coding: utf-8 -*-
 """知识库路由，与 Java KnowledgeController 对应"""
+import logging
 from typing import List, Optional
 
+import pymysql
 from fastapi import APIRouter, File, Header, UploadFile
 from pydantic import BaseModel
 
+import db
 from common.result import error, error_result, success
 from services.content import file_service, knowledge_service
 from util.jwt_util import parse_authorization
 
 router = APIRouter(prefix="/knowledge", tags=["knowledge"])
+log = logging.getLogger(__name__)
+
+# 知识库表建表 SQL（与 v1_init_schema 一致，用于表不存在时自动创建）
+_CREATE_LY_KNOWLEDGE = """
+CREATE TABLE IF NOT EXISTS ly_knowledge (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    title VARCHAR(200) NOT NULL COMMENT '标题/名称',
+    category VARCHAR(100) DEFAULT NULL COMMENT '分类',
+    file_name VARCHAR(255) DEFAULT NULL COMMENT '文件名',
+    file_url VARCHAR(500) NOT NULL COMMENT '文件地址',
+    file_size BIGINT DEFAULT NULL COMMENT '文件大小（字节）',
+    file_type VARCHAR(50) DEFAULT NULL COMMENT '文件类型/扩展名',
+    sort INT DEFAULT 0 COMMENT '排序',
+    visibility TINYINT DEFAULT 1 COMMENT '可见性：1-公开，0-私有',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted TINYINT DEFAULT 0,
+    PRIMARY KEY (id),
+    KEY idx_category (category),
+    KEY idx_sort (sort)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='知识库表'
+"""
 
 
 def _user_id(authorization: Optional[str]) -> Optional[int]:
@@ -64,10 +89,56 @@ def get_by_id(
 
 @router.post("/upload")
 def upload_file(file: UploadFile = File(...)):
-    """上传知识库文件，按内容哈希去重，同内容只保留一份"""
+    """上传知识库文件，按内容哈希去重，同内容只保留一份；同时创建知识库记录以便在知识库中显示"""
     result = file_service.upload(file)
     if not result:
         return error(400, "上传失败或文件类型不支持（支持 pdf/doc/docx/txt/xls/xlsx/ppt/pptx/md/csv/zip）")
+    # 创建知识库记录，使上传的文件在知识库中显示（若该 file_url 已存在则跳过，避免重复）
+    file_url = result.get("url") or ("/uploads/" + (result.get("path") or "").lstrip("/"))
+    title = result.get("fileName") or "未命名文件"
+    knowledge_saved = True
+
+    def _save_to_knowledge(retry_after_create: bool = False) -> tuple:
+        """尝试写入知识库，返回 (success: bool, knowledge_id: int|None)"""
+        try:
+            existing = db.query_one(
+                "SELECT id FROM ly_knowledge WHERE file_url = %s AND deleted = 0 LIMIT 1",
+                (file_url,),
+            )
+            if not existing:
+                kid = knowledge_service.save(
+                    title=title,
+                    file_url=file_url,
+                    file_name=result.get("fileName"),
+                    file_size=result.get("fileSize"),
+                    file_type=result.get("fileType"),
+                    sort=0,
+                    visibility=1,
+                )
+                knowledge_id = kid if kid else None
+            else:
+                knowledge_id = existing.get("id")
+            return (True, knowledge_id)
+        except pymysql.err.MySQLError as e:
+            err_code = getattr(e, "args", (None,))[0]
+            if err_code == 1146 and not retry_after_create:  # Table doesn't exist
+                log.warning("ly_knowledge 表不存在，尝试自动创建: %s", e)
+                try:
+                    db.execute(_CREATE_LY_KNOWLEDGE)
+                    log.info("ly_knowledge 表已创建，重试写入")
+                    return _save_to_knowledge(retry_after_create=True)
+                except Exception as create_e:
+                    log.error("创建 ly_knowledge 表失败: %s", create_e, exc_info=True)
+                    return (False, None)
+            log.error("知识库记录创建失败 (code=%s): %s", err_code, e, exc_info=True)
+            return (False, None)
+        except Exception as e:
+            log.error("知识库记录创建失败: %s", e, exc_info=True)
+            return (False, None)
+
+    knowledge_saved, knowledge_id = _save_to_knowledge()
+    result["knowledgeSaved"] = knowledge_saved
+    result["knowledgeId"] = knowledge_id
     return success(result)
 
 

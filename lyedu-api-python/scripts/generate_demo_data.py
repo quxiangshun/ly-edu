@@ -158,14 +158,7 @@ def main():
             ids["chapter"].append(lid)
         print("  ly_course_chapter: 15")
 
-        # 10. ly_course_attachment
-        sql = "INSERT INTO ly_course_attachment (course_id, name, type, file_url, sort) VALUES (%s, %s, %s, %s, %s)"
-        for i in range(N):
-            cur.execute(
-                sql,
-                (ids["course"][i], f"演示附件{i}.pdf", "pdf", f"/files/demo/{i}.pdf", i),
-            )
-        print("  ly_course_attachment: 15")
+        # 10. ly_course_knowledge（课程-知识库中间表，移至 #25 后）
 
         # 11. ly_video（兼容有无 play_count/like_count：先试带两列，失败则用不含两列的 INSERT）
         ids["video"] = []
@@ -416,6 +409,18 @@ def main():
             )
             ids["knowledge"].append(lid)
         print("  ly_knowledge: 15")
+
+        # 25b. ly_course_knowledge（课程-知识库中间表）
+        try:
+            sql = "INSERT INTO ly_course_knowledge (course_id, knowledge_id, sort) VALUES (%s, %s, %s)"
+            for i in range(N):
+                cur.execute(sql, (ids["course"][i], ids["knowledge"][i], i))
+            print("  ly_course_knowledge: 15")
+        except Exception as e:
+            if "ly_course_knowledge" in str(e) or "doesn't exist" in str(e).lower():
+                print("  ly_course_knowledge: 跳过（请执行 v5 迁移）")
+            else:
+                raise
 
         # 26. ly_knowledge_department
         sql = "INSERT INTO ly_knowledge_department (knowledge_id, department_id) VALUES (%s, %s)"

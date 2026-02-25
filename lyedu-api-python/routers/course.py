@@ -13,7 +13,7 @@ from services.course import chapter_service
 from services.content import video_service
 from services.user import user_video_progress_service
 from services.user import user_course_service
-from services.course import course_attachment_service
+from services.course import course_knowledge_service
 from services.course import course_comment_service
 from services.course import course_exam_service
 from services.learning import tag_service
@@ -151,7 +151,7 @@ def get_by_id(id: int, authorization: Optional[str] = Header(None, alias="Author
             chapter_items.append(
                 {"id": None, "title": "未分类", "sort": 999999, "hours": uncategorized}
             )
-        attachments = course_attachment_service.list_by_course_id(id)
+        attachments = course_knowledge_service.list_by_course_id_camel(id)
         detail = {
             "course": course,
             "videos": videos,

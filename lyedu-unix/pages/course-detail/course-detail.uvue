@@ -80,8 +80,9 @@
 			</view>
 			<view v-show="activeTab === 'attachment'" class="tab-panel">
 				<view v-if="detail != null && detail.attachments != null && detail.attachments.length > 0">
-					<view v-for="att in detail.attachments" :key="att.id" class="attach-row" @click="handleAttachment(att)">
+					<view v-for="att in detail.attachments" :key="att.id" class="attach-row">
 						<text class="attach-name">{{ att.name }}</text>
+						<image class="attach-download-icon" src="/static/icons/iconify/ri--download-line.svg" mode="aspectFit" @click="handleAttachment(att)"></image>
 					</view>
 				</view>
 				<view v-else class="empty-tip">
@@ -122,6 +123,7 @@
 	import { assetUrl } from '../../config/api'
 	import { joinCourse } from '../../api/learning'
 	import { themePrimary } from '../../utils/theme'
+	import { getDownloadFilePath } from '../../utils/file'
 
 	const themeRootStyle = computed((): Record<string, string> => ({ '--brand-primary': themePrimary.value }))
 
@@ -362,14 +364,31 @@
 			uni.showToast({ title: '附件地址无效', icon: 'none' })
 			return
 		}
-		uni.downloadFile({
-			url: fullUrl,
-			success: (res) => {
-				if (res.statusCode === 200 && res.tempFilePath != null) {
-					uni.openDocument({ filePath: res.tempFilePath })
+		const name = att.name ?? att.title ?? '附件'
+		const fileType = att.type ?? att.fileType ?? att.file_type
+		const customPath = getDownloadFilePath(name, fileType, url)
+		if (customPath != null) {
+			uni.downloadFile({
+				url: fullUrl,
+				filePath: customPath,
+				success: (res) => {
+					const path = res.filePath ?? res.tempFilePath
+					if (res.statusCode === 200 && path != null && path.length > 0) {
+						uni.openDocument({ filePath: path })
+					}
 				}
-			}
-		})
+			})
+		} else {
+			uni.downloadFile({
+				url: fullUrl,
+				success: (res) => {
+					const path = res.tempFilePath
+					if (res.statusCode === 200 && path != null && path.length > 0) {
+						uni.openDocument({ filePath: path })
+					}
+				}
+			})
+		}
 	}
 </script>
 
@@ -584,13 +603,24 @@
 	color: #969799;
 }
 .attach-row {
+	flex-direction: row;
+	align-items: center;
 	padding: 12px 0;
 	border-bottom-width: 1px;
 	border-bottom-color: #f0f0f0;
 }
 .attach-name {
+	flex: 1;
 	font-size: 15px;
 	color: #323233;
+	min-width: 0;
+}
+.attach-download-icon {
+	width: 22px;
+	height: 22px;
+	margin-left: 12px;
+	flex-shrink: 0;
+	opacity: 0.5;
 }
 .empty-tip {
 	padding: 24px 0;

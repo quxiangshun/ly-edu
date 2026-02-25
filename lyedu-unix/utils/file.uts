@@ -1,0 +1,69 @@
+/**
+ * 文件下载工具：使用数据库存储的标题作为保存文件名
+ */
+
+/** 从 fileType 或 fileUrl 解析扩展名 */
+function getExtension(fileType: string | null | undefined, fileUrl: string | null | undefined): string {
+	if (fileType != null && fileType.length > 0) {
+		const t = String(fileType).trim().toLowerCase()
+		if (!t.startsWith('.')) return '.' + t
+		return t
+	}
+	if (fileUrl != null && fileUrl.length > 0) {
+		const u = String(fileUrl)
+		const idx = u.lastIndexOf('.')
+		if (idx >= 0 && idx < u.length - 1) {
+			const ext = u.substring(idx).toLowerCase()
+			if (ext.length <= 6) return ext
+		}
+	}
+	return ''
+}
+
+/** 将标题转为安全文件名（去除非法字符） */
+function sanitizeFileName(title: string | null | undefined): string {
+	if (title == null || title.length === 0) return '未命名'
+	let s = String(title).trim()
+	if (s.length === 0) return '未命名'
+	// 替换文件系统非法字符
+	const invalid = ['/', '\\', ':', '*', '?', '"', '<', '>', '|']
+	for (let i = 0; i < invalid.length; i++) {
+		s = s.split(invalid[i]).join('_')
+	}
+	return s.length > 0 ? s : '未命名'
+}
+
+/**
+ * 根据数据库标题和文件信息生成保存文件名
+ * @param title 数据库存储的标题（如 knowledge.title、attachment.name）
+ * @param fileType 文件类型（如 pdf、doc）
+ * @param fileUrl 文件 URL，用于从路径解析扩展名
+ */
+export function buildDownloadFileName(
+	title: string | null | undefined,
+	fileType: string | null | undefined,
+	fileUrl: string | null | undefined
+): string {
+	const base = sanitizeFileName(title)
+	const ext = getExtension(fileType, fileUrl)
+	if (ext.length > 0 && !base.toLowerCase().endsWith(ext.toLowerCase())) {
+		return base + ext
+	}
+	return base
+}
+
+/**
+ * 获取下载时的 filePath（使用数据库标题），用于 downloadFile 的 filePath 参数。
+ * 在 Web 等不支持 uni.env 的平台返回 null，此时使用默认临时路径。
+ */
+export function getDownloadFilePath(
+	title: string | null | undefined,
+	fileType: string | null | undefined,
+	fileUrl: string | null | undefined
+): string | null {
+	// #ifdef H5
+	return null
+	// #endif
+	const fileName = buildDownloadFileName(title, fileType, fileUrl)
+	return uni.env.USER_DATA_PATH + '/' + fileName
+}

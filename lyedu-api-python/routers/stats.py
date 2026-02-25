@@ -54,7 +54,7 @@ def resource():
     c1 = db.query_one("SELECT COUNT(*) AS c FROM ly_course WHERE deleted = 0", ()) or {}
     c2 = db.query_one("SELECT COUNT(*) AS c FROM ly_video WHERE deleted = 0", ()) or {}
     c3 = db.query_one("SELECT COUNT(*) AS c FROM ly_course_chapter WHERE deleted = 0", ()) or {}
-    c4 = db.query_one("SELECT COUNT(*) AS c FROM ly_course_attachment WHERE deleted = 0", ()) or {}
+    c4 = db.query_one("SELECT COUNT(*) AS c FROM ly_course_knowledge WHERE deleted = 0", ()) or {}
     return success({
         "courseCount": c1.get("c") or 0,
         "videoCount": c2.get("c") or 0,

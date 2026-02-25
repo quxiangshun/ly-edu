@@ -19,6 +19,7 @@
 <script setup lang="uts">
 	import { getKnowledgePage, type Knowledge } from '../../api/knowledge'
 	import { assetUrl } from '../../config/api'
+	import { getDownloadFilePath } from '../../utils/file'
 
 	const loading = ref(false)
 	const knowledgeList = ref<Knowledge[]>([])
@@ -67,14 +68,29 @@
 			return
 		}
 		uni.showToast({ title: '正在打开' })
-		uni.downloadFile({
-			url: url,
-			success: (res) => {
-				if (res.statusCode === 200 && res.tempFilePath != null) {
-					uni.openDocument({ filePath: res.tempFilePath })
+		const customPath = getDownloadFilePath(row.title, row.fileType, row.fileUrl)
+		if (customPath != null) {
+			uni.downloadFile({
+				url: url,
+				filePath: customPath,
+				success: (res) => {
+					const path = res.filePath ?? res.tempFilePath
+					if (res.statusCode === 200 && path != null && path.length > 0) {
+						uni.openDocument({ filePath: path })
+					}
 				}
-			}
-		})
+			})
+		} else {
+			uni.downloadFile({
+				url: url,
+				success: (res) => {
+					const path = res.tempFilePath
+					if (res.statusCode === 200 && path != null && path.length > 0) {
+						uni.openDocument({ filePath: path })
+					}
+				}
+			})
+		}
 	}
 </script>
 
