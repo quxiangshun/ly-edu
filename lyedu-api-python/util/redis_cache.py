@@ -22,13 +22,17 @@ def _get_client():
     if redis is None:
         return None
     try:
+        host = config.REDIS_HOST
+        if host == "localhost":
+            host = "127.0.0.1"  # 避免 IPv6 解析导致 exe 连接失败
         _client = redis.Redis(
-            host=config.REDIS_HOST,
+            host=host,
             port=config.REDIS_PORT,
+            username=config.REDIS_USERNAME,
             password=config.REDIS_PASSWORD,
             db=config.REDIS_DB,
             decode_responses=True,
-            connect_timeout=10,
+            socket_connect_timeout=10,
         )
         _client.ping()
         return _client

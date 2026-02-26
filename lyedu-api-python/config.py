@@ -1,60 +1,71 @@
-"""App config, mirrors Java application.yml；优先从 ~/.lyedu/conf/config.ini 读取，否则从 .env 读取"""
+"""App config, mirrors Java application.yml；打包用 ~/.lyedu/conf/config.ini，开发用 .env"""
 import os
 import sys
-import threading
-import time
 from pathlib import Path
 
-_CONFIG_DIR = Path(__file__).resolve().parent
+# 打包为 exe 时，__file__ 指向临时解压目录；UPLOAD_PATH 等使用 exe 所在目录
+_CONFIG_DIR = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent
 
-# ========== LyEdu 固定配置目录：~/.lyedu/conf/config.ini ==========
-# 若 config.ini 存在则优先使用；不存在则生成 config.ini.template，无 .env 时退出
-import lyedu_config
-if lyedu_config.ensure_config_or_exit():
-    _, template_path, config_path = lyedu_config.get_config_paths()
-    try:
-        cfg = lyedu_config.load_config_ini(config_path)
-        lyedu_config.apply_config_ini_to_environ(cfg)
-    except Exception as e:
-        print(f"[LyEdu] 配置文件格式错误：{e}")
-        print(f"[LyEdu] 请参考模板文件 {template_path} 检查配置格式")
-        sys.exit(1)
-    # 已设置 MYSQL_*、REDIS_* 到 os.environ，后续 load_dotenv 不会覆盖（默认 override=False）
-
-try:
-    from dotenv import load_dotenv
-    load_dotenv(_CONFIG_DIR / ".env")
-    _env = os.getenv("ENV", "").strip().lower()
-    if not _env:
-        _choice = [None]
-
-        def _prompt():
-            try:
-                _choice[0] = input("未指定 ENV，请选择环境: 1=dev, 2=prod [1/2]: ").strip() or "1"
-            except (EOFError, KeyboardInterrupt):
-                pass
-
-        print("[LyEdu] 必须指定 ENV 环境（可手动执行 ENV=dev 或 ENV=prod）")
-        t = threading.Thread(target=_prompt, daemon=True)
-        t.start()
-        for _ in range(300):
-            time.sleep(1)
-            if _choice[0] is not None:
-                break
-        if _choice[0] is None:
-            print("[LyEdu] 由于长时间没有操作，已断开，需要重新执行")
+if getattr(sys, "frozen", False):
+    # 打包：仅 ~/.lyedu/conf/config.ini
+    import lyedu_config
+    if lyedu_config.ensure_config_or_exit():
+        _, template_path, config_path = lyedu_config.get_config_paths()
+        try:
+            cfg = lyedu_config.load_config_ini(config_path)
+            lyedu_config.apply_config_ini_to_environ(cfg)
+            # 启动前验证 MySQL、Redis 连接，配置错误时提示并退出
+            err = lyedu_config.test_mysql_connection()
+            if err:
+                print(f"[LyEdu] MySQL 连接失败：{err}")
+                lyedu_config._pause_if_frozen(
+                    f"MySQL 连接失败，请检查 config.ini 中的配置是否正确。\n\n"
+                    f"常见原因：\n"
+                    f"· MySQL 服务未启动\n"
+                    f"· 主机/端口/用户名/密码填写错误\n"
+                    f"· 数据库不存在\n\n"
+                    f"错误详情：{err}"
+                )
+                sys.exit(1)
+            err = lyedu_config.test_redis_connection()
+            if err:
+                print(f"[LyEdu] Redis 连接失败：{err}")
+                lyedu_config._pause_if_frozen(
+                    f"Redis 连接失败，请检查 config.ini 中的配置是否正确。\n\n"
+                    f"常见原因：\n"
+                    f"· Redis 服务未启动\n"
+                    f"· 主机/端口/密码填写错误\n\n"
+                    f"错误详情：{err}"
+                )
+                sys.exit(1)
+        except Exception as e:
+            err_msg = f"[LyEdu] 配置文件格式错误：{e}\n请参考模板文件 {template_path} 检查配置格式"
+            print(err_msg)
+            lyedu_config._pause_if_frozen(str(e))
             sys.exit(1)
-        if _choice[0] in ("1", "dev"):
-            _env = "dev"
-        elif _choice[0] in ("2", "prod"):
-            _env = "prod"
-        else:
-            _env = "dev"
-        os.environ["ENV"] = _env
-        print(f"[LyEdu] 已选择环境: {_env}")
-    load_dotenv(_CONFIG_DIR / f".env.{_env}")
-except ImportError:
-    pass
+else:
+    # 开发：使用 .env，不使用 config.ini
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(_CONFIG_DIR / ".env")
+        load_dotenv(_CONFIG_DIR / ".env.dev")
+    except ImportError:
+        pass
+    # 开发环境也验证 MySQL、Redis 连接
+    import lyedu_config
+    err = lyedu_config.test_mysql_connection()
+    if err:
+        print(f"[LyEdu] MySQL 连接失败：{err}")
+        print("[LyEdu] 请检查 .env 或 .env.dev 中的 MYSQL_* 配置")
+        sys.exit(1)
+    err = lyedu_config.test_redis_connection()
+    if err:
+        print(f"[LyEdu] Redis 连接失败：{err}")
+        print("[LyEdu] 请检查 .env 或 .env.dev 中的 REDIS_* 配置")
+        sys.exit(1)
+
+# ENV：开发默认 dev；生产环境命令行启动必须添加 ENV=prod
+os.environ.setdefault("ENV", "dev")
 
 HOST = os.getenv("HOST", "0.0.0.0")
 PORT = int(os.getenv("PORT", "9700"))
@@ -67,8 +78,9 @@ MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "lyedu123456")
 MYSQL_DATABASE = os.getenv("MYSQL_DATABASE", "lyedu")
 MYSQL_CHARSET = os.getenv("MYSQL_CHARSET", "utf8mb4")
 
-# Redis（若项目使用）
+# Redis（若项目使用）；Redis 7 需提供默认用户名
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+REDIS_USERNAME = os.getenv("REDIS_USERNAME", "default")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
 REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", "") or None
 REDIS_DB = int(os.getenv("REDIS_DB", "0"))

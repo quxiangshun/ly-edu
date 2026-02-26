@@ -8,6 +8,12 @@
 #   用户: root  或  lyedu
 #   密码: lyedu123456
 #   数据库: lyedu
+#
+# Redis 连接（本机，Redis 7 默认用户名必填）：
+#   主机: 127.0.0.1 或 localhost
+#   端口: 6379
+#   用户名: default
+#   密码: lyedu123456
 services:
   mysql:
     image: ${DOCKER_REGISTRY:-}mysql:8.0
@@ -32,12 +38,19 @@ services:
     restart: unless-stopped
 
   redis:
-    image: ${DOCKER_REGISTRY:-}redis:7-alpine
+    image: ${DOCKER_REGISTRY:-}redis:8.2.5
     container_name: lyedu-redis
+    # 关键修改：使用 ACL 设置默认用户密码；bind 0.0.0.0 以便宿主机可连接
+    command: >
+      redis-server
+      --bind 0.0.0.0
+      --aclfile /etc/redis/users.acl
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
+      # 挂载 ACL 配置文件
+      - ./redis-acl.conf:/etc/redis/users.acl
     networks:
       - lyedu-network
     restart: unless-stopped

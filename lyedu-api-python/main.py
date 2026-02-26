@@ -1,10 +1,34 @@
 # -*- coding: utf-8 -*-
 """LyEdu API - Python 版本 (FastAPI)"""
 import os
+import shutil
 import sys
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
+
+# 打包 exe 时，未捕获异常退出前暂停，便于查看错误；Windows 用消息框
+if getattr(sys, "frozen", False):
+    _orig_excepthook = sys.excepthook
+    def _excepthook(typ, val, tb):
+        import traceback
+        _orig_excepthook(typ, val, tb)
+        err = f"{typ.__name__}: {val}" if val else str(typ)
+        if sys.platform.startswith("win"):
+            import ctypes
+            ctypes.windll.user32.MessageBoxW(  # type: ignore
+                None,
+                f"程序异常退出：\n\n{err}\n\n详细信息见控制台输出。",
+                "LyEdu - 错误",
+                0x10,  # MB_ICONERROR
+            )
+        else:
+            try:
+                input("\n按回车键退出...")
+            except (EOFError, KeyboardInterrupt):
+                pass
+        sys.exit(1)
+    sys.excepthook = _excepthook
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,17 +40,48 @@ import config
 from routers import auth, course, course_attachment, chapter, video, learning, user, department, stats, knowledge, question, paper, exam, exam_status, exam_record, certificate_template, certificate, user_certificate, task, user_task, config as config_router, point, point_rule, image, upload, course_comment, tag, feishu
 
 
+def _ensure_alembic_in_lyedu() -> tuple[Path, Path] | None:
+    """打包 exe 时，在 ~/.lyedu 下同步 alembic 目录和 alembic.ini。
+    每次启动都从 _MEIPASS 覆盖更新，确保 v1、v2、v3 等新迁移随 exe 版本同步。"""
+    if not getattr(sys, "frozen", False):
+        return None
+    lyedu_dir = Path.home() / ".lyedu"
+    alembic_dest = lyedu_dir / "alembic"
+    ini_dest = lyedu_dir / "alembic.ini"
+    meipass = Path(sys._MEIPASS)
+    src_alembic = meipass / "alembic"
+    src_ini = meipass / "alembic.ini"
+    if not src_alembic.exists() or not src_ini.exists():
+        return None
+    lyedu_dir.mkdir(parents=True, exist_ok=True)
+    # 每次启动覆盖，确保 exe 更新后 v2、v3 等新迁移能同步到 ~/.lyedu
+    if alembic_dest.exists():
+        shutil.rmtree(alembic_dest)
+    shutil.copytree(src_alembic, alembic_dest)
+    shutil.copy2(src_ini, ini_dest)
+    return (ini_dest, alembic_dest)
+
+
 def _run_alembic_upgrade() -> None:
     """启动时自动执行 Alembic 迁移（alembic upgrade head），与 Java 端 Flyway 行为一致。
     使用 Alembic API 在进程内执行，避免子进程 python -m alembic 在某些环境（如 Python 3.14）失败。
     若数据库中曾记录为已移除的版本（如原 v2～v16），会自动将 alembic_version 改为当前 head（v1）后重试。
+    打包 exe 时使用 ~/.lyedu/alembic，与 config.ini 同一目录层级，方便用户管理。
     """
-    base_dir = Path(__file__).resolve().parent
-    script_dir = (base_dir / "alembic").resolve()
-    if not script_dir.exists():
-        print("[LyEdu] [Alembic] 跳过: 未找到 alembic 目录。", file=sys.stderr)
-        return
-    ini_path = base_dir / "alembic.ini"
+    if getattr(sys, "frozen", False):
+        res = _ensure_alembic_in_lyedu()
+        if res:
+            ini_path, script_dir = res
+        else:
+            print("[LyEdu] [Alembic] 跳过: 未找到 alembic 资源。", file=sys.stderr)
+            return
+    else:
+        base_dir = Path(__file__).resolve().parent
+        script_dir = (base_dir / "alembic").resolve()
+        ini_path = base_dir / "alembic.ini"
+        if not script_dir.exists():
+            print("[LyEdu] [Alembic] 跳过: 未找到 alembic 目录。", file=sys.stderr)
+            return
     max_attempts = 3
     fixed_stale_revision = False
     for attempt in range(1, max_attempts + 1):
@@ -34,6 +89,7 @@ def _run_alembic_upgrade() -> None:
             from alembic.config import Config
             from alembic import command
             alembic_cfg = Config(str(ini_path))
+            alembic_cfg.set_main_option("script_location", str(script_dir))
             command.upgrade(alembic_cfg, "head")
             print("[LyEdu] [Alembic] 数据库迁移已执行完成 (up to head)。")
             return
@@ -63,7 +119,7 @@ def _run_alembic_upgrade() -> None:
                 continue
             print("[LyEdu] [Alembic] 自动迁移失败（应用仍会启动）:", err_msg[:500], file=sys.stderr)
             print("[LyEdu] [Alembic] 请检查: 1) 是否已启动 MySQL（如 docker compose -f compose-mysql-redis.yml up）"
-                  " 2) .env 或环境变量 MYSQL_* 是否正确（可参考 .env.example）", file=sys.stderr)
+                  " 2) ~/.lyedu/conf/config.ini 中 MYSQL_* 配置是否正确", file=sys.stderr)
             return
 
 
@@ -147,3 +203,26 @@ def root():
 @app.get(API_PREFIX)
 def api_root():
     return {'message': 'LyEdu API', 'docs': '/docs'}
+
+
+if __name__ == "__main__":
+    import uvicorn
+    try:
+        uvicorn.run(app, host=config.HOST, port=config.PORT)
+    except Exception as e:
+        err = str(e)
+        print(f"[LyEdu] 启动失败: {err}", file=sys.stderr)
+        if getattr(sys, "frozen", False) and sys.platform.startswith("win"):
+            import ctypes
+            ctypes.windll.user32.MessageBoxW(  # type: ignore
+                None,
+                f"LyEdu 服务启动失败：\n\n{err}\n\n请检查 MySQL/Redis 是否已启动、配置是否正确。",
+                "LyEdu - 启动失败",
+                0x10,  # MB_ICONERROR
+            )
+        elif getattr(sys, "frozen", False):
+            try:
+                input("\n按回车键退出...")
+            except (EOFError, KeyboardInterrupt):
+                pass
+        raise

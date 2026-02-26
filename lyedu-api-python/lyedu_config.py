@@ -2,11 +2,11 @@
 """
 LyEdu 配置模板生成及加载
 
-配置路径：~/.lyedu/conf/
+配置路径：~/.lyedu/conf/（mac/Linux/windows 打包后统一只读此目录）
 - config.ini.template：模板文件（程序自动生成，用户参考）
 - config.ini：实际配置文件（用户复制模板后填写）
 
-优先使用 config.ini；若不存在则生成 config.ini.template 并提示用户复制后修改。
+config.ini 不存在则生成模板并提示后退出；开发环境可选用 .env 覆盖部分变量。
 """
 import configparser
 import os
@@ -41,8 +41,8 @@ host = 127.0.0.1
 port = 3306
 # MySQL 用户名（必填）
 user = root
-# MySQL 密码（无密码则留空）
-password = your_mysql_password_here
+# MySQL 密码（与 compose-mysql-redis.yml 一致；无密码则留空）
+password = lyedu123456
 # 数据库名（必填）
 database = lyedu
 # 字符集（建议 utf8mb4）
@@ -51,12 +51,14 @@ charset = utf8mb4
 [redis]
 # Redis 服务器地址（必填）
 host = 127.0.0.1
+# Redis 7 默认用户名（必填，通常为 default）
+user = default
 # Redis 端口（必填，默认 6379）
 port = 6379
 # Redis 数据库编号（必填，默认 0）
 db = 0
-# Redis 密码（无密码则留空）
-password = your_redis_password_here
+# Redis 密码（与 compose-mysql-redis.yml 一致；无密码则留空）
+password = lyedu123456
 """
     with open(template_path, "w", encoding="utf-8") as f:
         f.write(template_content)
@@ -69,7 +71,7 @@ def _validate_config(config: configparser.ConfigParser) -> None:
         raise ValueError("配置文件缺少 [mysql] 或 [redis] 节点")
 
     mysql_required = ["host", "port", "user", "database"]
-    redis_required = ["host", "port", "db"]
+    redis_required = ["host", "port", "db", "user"]
 
     for item in mysql_required:
         value = config.get("mysql", item, fallback="").strip()
@@ -105,51 +107,116 @@ def load_config_ini(config_path: str) -> Optional[configparser.ConfigParser]:
         raise
 
 
+def _pause_if_frozen(msg: str = ""):
+    """打包 exe 时退出前暂停，便于查看错误信息；Windows 用消息框，避免控制台闪退"""
+    if not getattr(sys, "frozen", False):
+        return
+    if sys.platform.startswith("win"):
+        import ctypes
+        text = msg or "请完成配置后重新运行程序。"
+        ctypes.windll.user32.MessageBoxW(  # type: ignore
+            None,
+            text,
+            "LyEdu - 配置未就绪",
+            0x40,  # MB_ICONINFORMATION
+        )
+    else:
+        try:
+            sys.stdout.flush()
+            sys.stderr.flush()
+            input("\n按回车键退出...")
+        except (EOFError, KeyboardInterrupt):
+            pass
+
+
 def ensure_config_or_exit() -> bool:
     """
-    确保有可用的配置来源：
-    - 若 ~/.lyedu/conf/config.ini 存在：返回 True，调用方需从 config.ini 加载
-    - 若不存在：创建目录、生成 config.ini.template，若无 .env 则退出
-
-    返回 True 表示应使用 config.ini，False 表示应使用 .env（若存在）
+    打包后（mac/Linux/windows）仅读取 ~/.lyedu/conf/config.ini，不存在则生成模板并提示后退出。
     """
     config_dir, template_path, config_path = get_config_paths()
 
     if os.path.exists(config_path):
         return True
 
-    # config.ini 不存在：确保目录存在
+    # config.ini 不存在：创建目录、生成模板、提示并退出
     if not os.path.exists(config_dir):
         try:
             os.makedirs(config_dir, mode=0o700)
             print(f"[LyEdu] 配置目录已创建：{config_dir}")
         except PermissionError:
             print(f"[LyEdu] 无权限创建配置目录 {config_dir}，请以管理员身份运行")
+            _pause_if_frozen(f"无权限创建配置目录：{config_dir}\n请以管理员身份运行。")
             sys.exit(1)
         except OSError as e:
             print(f"[LyEdu] 创建配置目录失败：{e}")
+            _pause_if_frozen(f"创建配置目录失败：{e}")
             sys.exit(1)
 
-    # 生成模板
     generate_config_template(template_path)
+    print("\n[LyEdu] 未找到配置文件，请执行以下操作：")
+    if sys.platform.startswith("win"):
+        copy_cmd = f'copy "{template_path}" "{config_path}"'
+        print(f"  1. 复制模板：{copy_cmd}")
+        msg = (
+            "未找到配置文件 config.ini\n\n"
+            "请执行以下操作：\n"
+            "1. 复制模板：config.ini.template → config.ini\n"
+            f"   路径：{config_dir}\n\n"
+            "2. 用记事本打开 config.ini，填写 MySQL/Redis 信息\n\n"
+            "3. 保存后重新运行本程序"
+        )
+    else:
+        print(f"  1. 复制模板：cp {template_path} {config_path}")
+        msg = f"未找到配置文件。请复制 {template_path} 为 {config_path}，填写 MySQL/Redis 后重试。"
+    print(f"  2. 编辑配置：打开 {config_path} 填写 MySQL/Redis 信息")
+    print("  3. 重新运行程序")
+    _pause_if_frozen(msg)
+    sys.exit(1)
 
-    # 检查项目目录是否有 .env 或 .env.dev（开发环境可继续）
-    from pathlib import Path
-    _config_dir = Path(__file__).resolve().parent
-    has_env = (_config_dir / ".env").exists() or (_config_dir / ".env.dev").exists()
 
-    if not has_env:
-        print("\n[LyEdu] 未找到配置文件，请执行以下操作：")
-        if sys.platform.startswith("win"):
-            print(f'  1. 复制模板：copy "{template_path}" "{config_path}"')
-        else:
-            print(f"  1. 复制模板：cp {template_path} {config_path}")
-        print(f"  2. 编辑配置：打开 {config_path} 填写 MySQL/Redis 信息")
-        print("  3. 重新运行程序")
-        sys.exit(1)
+def test_mysql_connection() -> Optional[str]:
+    """测试 MySQL 连接，成功返回 None，失败返回错误信息"""
+    try:
+        import pymysql
+        conn = pymysql.connect(
+            host=os.environ.get("MYSQL_HOST", "localhost"),
+            port=int(os.environ.get("MYSQL_PORT", "3306")),
+            user=os.environ.get("MYSQL_USER", "root"),
+            password=os.environ.get("MYSQL_PASSWORD", ""),
+            database=os.environ.get("MYSQL_DATABASE", "lyedu"),
+            charset=os.environ.get("MYSQL_CHARSET", "utf8mb4"),
+            connect_timeout=5,
+        )
+        conn.close()
+        return None
+    except Exception as e:
+        return str(e)
 
-    # 有 .env，使用 .env 继续
-    return False
+
+def test_redis_connection() -> Optional[str]:
+    """测试 Redis 连接，成功返回 None，失败返回错误信息；Redis 7 需提供默认用户名"""
+    try:
+        import redis
+        host = os.environ.get("REDIS_HOST", "localhost").strip()
+        if host == "localhost":
+            host = "127.0.0.1"  # 避免 IPv6 解析导致连接失败
+        pw = os.environ.get("REDIS_PASSWORD", "").strip()
+        username = os.environ.get("REDIS_USERNAME", "default").strip() or "default"
+        client = redis.Redis(
+            host=host,
+            port=int(os.environ.get("REDIS_PORT", "6379")),
+            username=username,
+            password=pw if pw else None,
+            db=int(os.environ.get("REDIS_DB", "0")),
+            decode_responses=True,
+            socket_connect_timeout=10,
+        )
+        client.ping()
+        return None
+    except ImportError:
+        return "未安装 redis 模块，请执行 pip install redis"
+    except Exception as e:
+        return str(e)
 
 
 def apply_config_ini_to_environ(config: configparser.ConfigParser) -> None:
@@ -164,6 +231,7 @@ def apply_config_ini_to_environ(config: configparser.ConfigParser) -> None:
     os.environ["MYSQL_DATABASE"] = mysql.get("database", "lyedu").strip()
     os.environ["MYSQL_CHARSET"] = mysql.get("charset", "utf8mb4").strip()
     os.environ["REDIS_HOST"] = redis.get("host", "localhost").strip()
+    os.environ["REDIS_USERNAME"] = redis.get("user", "default").strip()
     os.environ["REDIS_PORT"] = str(redis.getint("port", 6379))
     os.environ["REDIS_DB"] = str(redis.getint("db", 0))
     pw = redis.get("password", "").strip()
