@@ -1,5 +1,0 @@
-refactor: 精简 docker/mysql/init.sql，表结构交由 Alembic 创建
-
-- init.sql 仅保留 root@'%' 与 lyedu 库初始化
-- 移除所有建表语句，避免与 Alembic v1 重复维护
-- 更新 docs/FILE_STRUCTURE、docs/PROJECT_STRUCTURE 说明
