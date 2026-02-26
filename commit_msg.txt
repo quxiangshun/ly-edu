@@ -1,0 +1,13 @@
+feat: LyEdu 配置模板 + 暂停维护 lyedu-api
+
+【lyedu-api-python 配置模板】
+- 新增 lyedu_config：~/.lyedu/conf 下自动生成 config.ini.template，提示用户复制为 config.ini 后填写
+- 修改 config.py：优先加载 config.ini，兼容 .env 开发模式
+- 新增 docs/配置模板生成及使用指南.md
+- db/redis 连接增加 connect_timeout=10
+
+【lyedu-api 暂停维护】
+- 将 lyedu-api 加入 .gitignore
+- Java 文档重命名为 xxx_java.md（GRADLE_SETUP、PROJECT_STRUCTURE、DOCKER_SETUP、FILE_STRUCTURE）
+- README、PROJECT_STRUCTURE、DOCKER_SETUP、FILE_STRUCTURE 重写，仅保留 lyedu-admin/lyedu-api-python/lyedu-pc/lyedu-unix/lyedu-entry
+- 更新 db/README、FEISHU_APP、scripts/dev，移除 lyedu-api 引用

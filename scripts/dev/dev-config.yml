@@ -33,7 +33,6 @@ redis:
 start_docker_mysql_redis: false
 
 # 是否启动各服务（true/false）
-start_lyedu_api: false
 start_lyedu_api_python: true
 start_lyedu_admin: true
 start_lyedu_pc: true

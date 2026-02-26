@@ -21,7 +21,7 @@
 |------|------|
 | **start.ps1** | 读取 `dev-config.yml`（无则 `dev-config.json`），按配置初始化环境（虚拟环境、npm install、Docker MySQL+Redis），在新终端中启动各服务；将终端 PID 写入仓库根目录 `.dev-servers.json` |
 | **stop.ps1** | 根据 `.dev-servers.json` 关闭由 start 打开的终端，并结束占用 9700/9800/9900 端口的进程 |
-| **dev-config.yml** | 当前使用的配置（YAML，可写注释）：`database`、`redis` 连接信息及用途说明；`start_docker_mysql_redis`、`start_lyedu_api`、`start_lyedu_api_python`、`start_lyedu_admin`、`start_lyedu_pc` 等开关。说明见文件内注释 |
+| **dev-config.yml** | 当前使用的配置（YAML，可写注释）：`database`、`redis` 连接信息；`start_docker_mysql_redis`、`start_lyedu_api_python`、`start_lyedu_admin`、`start_lyedu_pc` 等开关。说明见文件内注释 |
 | **dev-config.example.yml** | 配置示例，可复制为 `dev-config.yml` 后修改 |
 | **dev-config.json** / **dev-config.example.json** | 仍支持，当不存在 `dev-config.yml` 时使用 |
 
@@ -43,7 +43,7 @@
 | 文件 | 作用 |
 |------|------|
 | **.env.example** | 环境变量示例，供 Docker Compose 使用。主要变量：`DOCKER_REGISTRY`（镜像前缀）、`NPM_REGISTRY`（前端构建时的 npm 源）。复制为 `.env` 后按需修改 |
-| **compose.yml** | 完整编排：MySQL + Redis + Java API + admin + pc。构建上下文与卷路径已按从本目录出发的 `../../` 书写，需在 **scripts/docker** 目录下执行 |
+| **compose.yml** | 完整编排（含 lyedu-api Java，已暂停维护）：MySQL + Redis + API + admin + pc。当前推荐使用 `compose-mysql-redis.yml` 仅启动数据库，API 与前端本地运行 |
 | **compose-mysql-redis.yml** | 仅 MySQL + Redis，供本地开发直连。同样需在 **scripts/docker** 目录下执行 |
 
 **使用方式**：

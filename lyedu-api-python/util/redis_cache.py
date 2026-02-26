@@ -28,6 +28,7 @@ def _get_client():
             password=config.REDIS_PASSWORD,
             db=config.REDIS_DB,
             decode_responses=True,
+            connect_timeout=10,
         )
         _client.ping()
         return _client

@@ -43,7 +43,6 @@ function Parse-DevConfigYaml {
         database = $db
         redis = $redis
         start_docker_mysql_redis = $config['start_docker_mysql_redis']
-        start_lyedu_api = $config['start_lyedu_api']
         start_lyedu_api_python = $config['start_lyedu_api_python']
         start_lyedu_admin = $config['start_lyedu_admin']
         start_lyedu_pc = $config['start_lyedu_pc']
@@ -202,24 +201,6 @@ if ($config.start_lyedu_pc) {
         }
         $cmd = 'npm run dev'
         Start-InNewWindow -Title 'lyedu-pc' -Command $cmd -WorkDir $pcDir
-    }
-}
-
-# Java API（可选）
-if ($config.start_lyedu_api) {
-    $apiDir = Join-Path $Root 'lyedu-api'
-    if (-not (Test-Path $apiDir)) {
-        Write-Host 'Skip lyedu-api: dir not found' -ForegroundColor Yellow
-    } else {
-        $gradlew = Join-Path $apiDir 'gradlew.bat'
-        if (-not (Test-Path $gradlew)) { $gradlew = Join-Path $apiDir 'gradlew' }
-        $sq = [char]39
-        $amp = [char]38
-        $sp = [char]32
-        $sqStr = $sq.ToString()
-        $gradlewEsc = $gradlew.Replace($sqStr, $sqStr + $sqStr)
-        $cmd = $amp.ToString() + $sp + $sq + $gradlewEsc + $sq + $sp + 'bootRun'
-        Start-InNewWindow -Title 'lyedu-api' -Command $cmd -WorkDir $apiDir
     }
 }
 

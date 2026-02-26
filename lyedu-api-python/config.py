@@ -1,4 +1,4 @@
-"""App config, mirrors Java application.yml；所有连接信息从 .env 读取"""
+"""App config, mirrors Java application.yml；优先从 ~/.lyedu/conf/config.ini 读取，否则从 .env 读取"""
 import os
 import sys
 import threading
@@ -6,6 +6,20 @@ import time
 from pathlib import Path
 
 _CONFIG_DIR = Path(__file__).resolve().parent
+
+# ========== LyEdu 固定配置目录：~/.lyedu/conf/config.ini ==========
+# 若 config.ini 存在则优先使用；不存在则生成 config.ini.template，无 .env 时退出
+import lyedu_config
+if lyedu_config.ensure_config_or_exit():
+    _, template_path, config_path = lyedu_config.get_config_paths()
+    try:
+        cfg = lyedu_config.load_config_ini(config_path)
+        lyedu_config.apply_config_ini_to_environ(cfg)
+    except Exception as e:
+        print(f"[LyEdu] 配置文件格式错误：{e}")
+        print(f"[LyEdu] 请参考模板文件 {template_path} 检查配置格式")
+        sys.exit(1)
+    # 已设置 MYSQL_*、REDIS_* 到 os.environ，后续 load_dotenv 不会覆盖（默认 override=False）
 
 try:
     from dotenv import load_dotenv

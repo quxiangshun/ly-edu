@@ -18,6 +18,7 @@ def get_connection():
         database=config.MYSQL_DATABASE,
         charset=config.MYSQL_CHARSET,
         cursorclass=DictCursor,
+        connect_timeout=10,
     )
 
 

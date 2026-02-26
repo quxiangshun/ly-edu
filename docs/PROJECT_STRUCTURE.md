@@ -4,111 +4,54 @@
 
 ```
 lyedu/
-├── lyedu-api/              # 后端 API 服务
-│   ├── src/
-│   │   ├── main/
-│   │   │   ├── java/com/lyedu/
-│   │   │   │   ├── annotation/      # 自定义注解
-│   │   │   │   ├── common/          # 通用类（Result, ResultCode等）
-│   │   │   │   ├── config/          # 配置类
-│   │   │   │   ├── controller/      # 控制器
-│   │   │   │   ├── entity/          # 实体类
-│   │   │   │   ├── exception/       # 异常处理
-│   │   │   │   ├── mapper/          # MyBatis Mapper
-│   │   │   │   ├── service/         # 业务服务层
-│   │   │   │   └── util/            # 工具类
-│   │   │   └── resources/
-│   │   │       ├── application.yml  # 应用配置
-│   │   │       └── mapper/          # MyBatis XML
-│   │   └── test/                    # 测试代码
-│   ├── pom.xml                      # Maven 配置
-│   └── Dockerfile                   # Docker 构建文件
-│
-├── lyedu-admin/            # 管理后台前端
-│   ├── src/
-│   │   ├── api/            # API 接口
-│   │   ├── assets/         # 静态资源
-│   │   ├── components/     # 组件
-│   │   ├── router/         # 路由配置
-│   │   ├── stores/         # Pinia 状态管理
-│   │   ├── utils/          # 工具函数
-│   │   ├── views/          # 页面组件
-│   │   ├── App.vue         # 根组件
-│   │   └── main.ts         # 入口文件
-│   ├── package.json
-│   ├── vite.config.ts
-│   ├── tsconfig.json
-│   └── Dockerfile
-│
-├── lyedu-pc/               # PC 端前端
-│   ├── src/
-│   │   ├── api/
-│   │   ├── assets/
-│   │   ├── components/
-│   │   ├── router/
-│   │   ├── stores/
-│   │   ├── utils/
-│   │   ├── views/
-│   │   ├── App.vue
-│   │   └── main.ts
-│   ├── package.json
-│   ├── vite.config.ts
-│   └── Dockerfile
-│
-├── lyedu-unix/              # 学员端 H5/微信小程序（uni-app x）
-│   ├── api/
-│   ├── config/
-│   ├── pages/
-│   ├── utils/
-│   ├── App.uvue
-│   ├── main.uts
-│   ├── pages.json
-│   └── manifest.json
-│
-├── docker/                  # Docker 相关文件
+├── lyedu-api-python/       # 后端 API（Python，FastAPI）
+├── lyedu-admin/            # 管理后台前端（Vue3 + Element Plus）
+├── lyedu-pc/               # PC 端学员前端（Vue3 + Element Plus）
+├── lyedu-unix/             # 学员端 H5/微信小程序（uni-app x）
+├── lyedu-entry/            # 统一入口（可选）
+├── db/                     # 数据库迁移（Alembic）
+│   └── alembic/            # Python 端 Alembic 迁移脚本
+├── docker/                 # Docker 相关
 │   └── mysql/
 │       └── init.sql        # 数据库初始化脚本
-│
-├── scripts/docker/          # Docker 用 .env + compose，见 scripts/README.md
-├── .gitignore              # Git 忽略文件
-├── .dockerignore           # Docker 忽略文件
-├── README.md               # 项目说明
-└── LICENSE                 # 许可证
+├── scripts/                # 脚本与配置
+│   ├── dev/                # 开发环境一键启动/停止
+│   └── docker/             # Docker compose 与 .env
+├── docs/                   # 项目文档
+├── pkg/                    # 构建产物（如有）
+└── README.md
 ```
 
 ## 技术选型说明
 
 ### 后端技术栈
-- **SpringBoot 4**: 最新版本的 Spring Boot 框架
-- **JDK 25**: 最新版本的 Java 开发工具包
-- **MyBatis Plus**: 增强的 MyBatis 框架，简化数据库操作
-- **MySQL**: 关系型数据库
-- **Redis**: 缓存数据库
-- **JWT**: 无状态身份认证
+- **FastAPI**：异步 Web 框架
+- **Python 3.10+**：推荐 3.14.2
+- **PyMySQL**：MySQL 连接
+- **Redis**：缓存（可选）
+- **Alembic**：数据库迁移
+- **JWT**：无状态身份认证
 
 ### 前端技术栈
-- **Vue 3**: 渐进式 JavaScript 框架
-- **TypeScript**: 类型安全的 JavaScript 超集
-- **Vite**: 下一代前端构建工具
-- **Element Plus**: PC 端 UI 组件库（管理后台、PC 端）
-- **uni-app x**: 学员端 H5/微信小程序
-- **Pinia**: Vue 3 状态管理库
-- **Vue Router**: Vue 官方路由管理器
-- **Axios**: HTTP 客户端
+- **Vue 3**：渐进式 JavaScript 框架
+- **TypeScript**：类型安全的 JavaScript 超集
+- **Vite**：下一代前端构建工具
+- **Element Plus**：PC 端 UI 组件库（管理后台、PC 端）
+- **uni-app x**：学员端 H5/微信小程序
+- **Pinia**：Vue 3 状态管理库
+- **Vue Router**：Vue 官方路由管理器
+- **Axios**：HTTP 客户端
+
+### 数据库与迁移
+- **MySQL 8.0+**
+- **db/alembic/**：Alembic 迁移，Python 启动时自动执行 `alembic upgrade head`
 
 ## 开发规范
 
 ### 命名规范
-- 类名：大驼峰命名（PascalCase），如 `UserController`
-- 方法名：小驼峰命名（camelCase），如 `getUserInfo`
-- 常量：全大写下划线分隔，如 `MAX_SIZE`
-- 包名：全小写，如 `com.lyedu.controller`
-
-### 代码规范
-- 使用 4 个空格缩进
-- 每行代码不超过 120 个字符
-- 类和方法必须添加注释
-- 使用 Lombok 简化实体类代码
+- 类名：大驼峰命名（PascalCase）
+- 函数/变量：小写下划线（snake_case）
+- 常量：全大写下划线分隔
 
 ### Git 提交规范
 - feat: 新功能
@@ -121,20 +64,18 @@ lyedu/
 
 ## 部署说明
 
-### Docker 部署
-使用 Docker Compose 一键部署所有服务：
-```bash
-docker-compose up -d
-```
-
 ### 本地开发
-1. 启动 MySQL 和 Redis
-2. 运行后端服务（SpringBoot）
-3. 运行前端服务（Vite dev server）
+1. 启动 MySQL 和 Redis（可选 Docker：`scripts/docker` 下 `docker compose -f compose-mysql-redis.yml up -d`）
+2. 启动 lyedu-api-python：`cd lyedu-api-python && ENV=dev uvicorn main:app --reload --host 0.0.0.0 --port 9700`
+3. 启动 lyedu-admin、lyedu-pc 等前端
+4. 或使用一键脚本：`.\scripts\dev\start.ps1`
+
+### Docker 部署
+仅 MySQL + Redis：`cd scripts/docker && docker compose -f compose-mysql-redis.yml up -d`，API 与前端本地运行。
 
 ## 注意事项
 
 1. **完全原创**：本项目所有代码均为原创，不包含任何第三方项目的代码
 2. **图标使用**：前端图标使用 Iconify 开源图标库
-3. **数据库初始化**：首次运行会自动执行初始化脚本
-4. **环境变量**：生产环境请修改 `.env` 文件中的敏感信息
+3. **数据库迁移**：Python 应用启动时自动执行 Alembic 迁移
+4. **环境变量**：生产环境请修改 `.env` 或 `~/.lyedu/conf/config.ini` 中的敏感信息

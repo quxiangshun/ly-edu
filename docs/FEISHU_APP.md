@@ -13,23 +13,11 @@ H5/PC 端可嵌套在飞书工作台内，点击应用直接进入；也支持�
 
 ## 2. 后端配置
 
-### Java（lyedu-api）
+在 lyedu-api-python 的 `.env` 或 `~/.lyedu/conf/config.ini` 中配置环境变量：
 
-在 `application.yml` 或环境变量中配置：
-
-```yaml
-lyedu:
-  feishu:
-    app-id: ${FEISHU_APP_ID:}
-    app-secret: ${FEISHU_APP_SECRET:}
-    redirect-uri: ${FEISHU_REDIRECT_URI:}  # 可选，与前端回调一致
-```
-
-或环境变量：`FEISHU_APP_ID`、`FEISHU_APP_SECRET`、`FEISHU_REDIRECT_URI`。
-
-### Python（lyedu-api-python）
-
-环境变量：`FEISHU_APP_ID`、`FEISHU_APP_SECRET`、`FEISHU_REDIRECT_URI`（与 Java 含义一致）。
+- `FEISHU_APP_ID`：飞书应用 App ID
+- `FEISHU_APP_SECRET`：飞书应用 App Secret
+- `FEISHU_REDIRECT_URI`：重定向 URL（可选，与前端回调一致）
 
 ## 3. 前端登录方式（扩展点）
 
@@ -70,7 +58,7 @@ lyedu:
    - **通讯录 - 部门信息（只读）**
    - **通讯录 - 用户信息（只读）**
 2. **后端环境变量**：与登录一致，配置 `FEISHU_APP_ID`、`FEISHU_APP_SECRET`。
-3. **数据库**：需执行迁移（Alembic v3 / Flyway V3），为部门表增加 `feishu_department_id` 字段，用于与飞书部门一一对应。
+3. **数据库**：需执行迁移（Alembic v3），为部门表增加 `feishu_department_id` 字段，用于与飞书部门一一对应。
 
 ### 6.2 手动同步
 

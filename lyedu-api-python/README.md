@@ -32,10 +32,12 @@ python -m venv venv
 pip install -r requirements.txt
 ```
 
-4. 配置环境：
+4. 配置环境（二选一）：
 
-- 复制 `.env.example` 为 `.env`，或使用 `.env.dev` / `.env.prod`（见下方「环境变量」）
-- **ENV**：启动前需指定环境。方式一：`ENV=dev uvicorn main:app ...`；方式二：未指定时终端会提示选择 1=dev / 2=prod（5 分钟内无输入将退出）
+- **方式一（推荐打包/交付）**：使用 `~/.lyedu/conf/config.ini`（见下方「LyEdu 配置模板」）
+- **方式二（开发）**：复制 `.env.example` 为 `.env`，或使用 `.env.dev` / `.env.prod`（见下方「环境变量」）
+
+**ENV**：启动前需指定环境。方式一：`ENV=dev uvicorn main:app ...`；方式二：未指定时终端会提示选择 1=dev / 2=prod（5 分钟内无输入将退出）
 
 5. 启动服务（**启动时会自动执行 Alembic 迁移**）：
 
@@ -92,6 +94,33 @@ pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
 
 环境文件：`.env.example` 为模板；`.env.dev`、`.env.prod` 为开发/生产预设（可提交），未设置 `ENV` 时可复制其一为 `.env` 或通过 `ENV=dev` 指定加载。
 
+### LyEdu 配置模板（~/.lyedu/conf）
+
+程序优先使用 `~/.lyedu/conf/config.ini` 中的 MySQL/Redis 配置；若不存在则自动在 `~/.lyedu/conf` 下生成 `config.ini.template` 模板。适合打包为可执行文件后交付：用户无需接触项目目录，只需在用户目录下配置即可。
+
+**首次使用步骤：**
+
+1. 运行程序后，若未找到 `config.ini`，会自动创建 `~/.lyedu/conf` 并生成 `config.ini.template`
+2. 复制模板为实际配置：
+
+   ```powershell
+   # Windows（PowerShell 或 CMD）
+   copy "%USERPROFILE%\.lyedu\conf\config.ini.template" "%USERPROFILE%\.lyedu\conf\config.ini"
+   ```
+
+   ```bash
+   # Linux / macOS
+   cp ~/.lyedu/conf/config.ini.template ~/.lyedu/conf/config.ini
+   ```
+
+3. 编辑 `config.ini` 填写 MySQL/Redis 信息
+4. 重新运行程序
+
+**说明：**
+
+- `~/.lyedu` 为隐藏目录：Windows 需在「查看」→「隐藏的项目」中显示
+- 若项目目录有 `.env` 或 `.env.dev`，在无 `config.ini` 时仍可使用 .env 继续运行（开发模式）
+
 启动（应用启动时会自动执行 Alembic 迁移；迁移失败仅打日志，不阻塞服务）：
 
 ```bash
@@ -132,7 +161,8 @@ ENV=dev uvicorn main:app --host 0.0.0.0 --port 9700
 ```
 lyedu-api-python/
   main.py           # 入口，挂载路由与 CORS
-  config.py         # 配置（环境变量、ENV 选择 .env.dev/.env.prod）
+  config.py         # 配置（优先 ~/.lyedu/conf/config.ini，否则 .env）
+  lyedu_config.py   # LyEdu 配置模板生成与加载（config.ini.template）
   db.py             # MySQL 连接与 query/execute
   common/result.py  # 统一响应 Result/ResultCode
   models/schemas.py # 请求体 Pydantic 模型
