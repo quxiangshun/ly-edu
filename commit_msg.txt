@@ -1,5 +1,0 @@
-docs: 虚拟环境目录统一为 .venv
-
-- lyedu-api-python/README.md：venv → .venv
-- install.ps1 / install.bat：创建 .venv
-- lyedu-api-python/scripts/README.md：同步更新
