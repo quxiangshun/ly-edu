@@ -11,20 +11,20 @@
 
 **请在终端（命令提示符或 PowerShell）里执行以下命令，不要用“打开文件”的方式运行。**
 
-1. 进入项目目录，用 **python -m** 创建虚拟环境（使用 `venv` 目录名）：
+1. 进入项目目录，用 **python -m** 创建虚拟环境（使用 `.venv` 目录名）：
 
 ```bash
 cd lyedu-api-python
-python -m venv venv
+python -m venv .venv
 ```
 
-若本机只有 `py` 启动器，可用：`py -3 -m venv venv`。
+若本机只有 `py` 启动器，可用：`py -3 -m venv .venv`。
 
 2. 激活虚拟环境：
 
-- **Windows 命令提示符：** `venv\Scripts\activate.bat`
-- **Windows PowerShell：** `venv\Scripts\Activate.ps1`
-- **Linux/macOS：** `source venv/bin/activate`
+- **Windows 命令提示符：** `.venv\Scripts\activate.bat`
+- **Windows PowerShell：** `.venv\Scripts\Activate.ps1`
+- **Linux/macOS：** `source .venv/bin/activate`
 
 3. 安装依赖（建议使用国内镜像，见下方）：
 
@@ -78,7 +78,7 @@ pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
 | 腾讯云   | https://mirrors.cloud.tencent.com/pypi/simple |
 | 豆瓣     | https://pypi.douban.com/simple/          |
 
-**方式三：一键脚本（创建 venv + 用清华源安装）**
+**方式三：一键脚本（创建 .venv + 用清华源安装）**
 
 - PowerShell：`.\install.ps1`
 - 命令提示符：`install.bat`
