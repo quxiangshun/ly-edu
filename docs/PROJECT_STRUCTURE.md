@@ -9,8 +9,6 @@ lyedu/
 ├── lyedu-pc/               # PC 端学员前端（Vue3 + Element Plus）
 ├── lyedu-unix/             # 学员端 H5/微信小程序（uni-app x）
 ├── lyedu-entry/            # 统一入口（可选）
-├── db/                     # 数据库迁移（Alembic）
-│   └── alembic/            # Python 端 Alembic 迁移脚本
 ├── docker/                 # Docker 相关
 │   └── mysql/
 │       └── init.sql        # 数据库初始化脚本
@@ -44,7 +42,7 @@ lyedu/
 
 ### 数据库与迁移
 - **MySQL 8.0+**
-- **db/alembic/**：Alembic 迁移，Python 启动时自动执行 `alembic upgrade head`
+- **lyedu-api-python/alembic/**：Alembic 迁移，启动时自动执行 `alembic upgrade head`
 
 ## 开发规范
 

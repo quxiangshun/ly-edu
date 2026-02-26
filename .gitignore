@@ -117,9 +117,6 @@ env/
 *.egg-info/
 .eggs/
 
-# lyedu-api（Java 后端，已暂停维护）
-lyedu-api/
-
 # uni-app x 构建产物
 lyedu-unix/unpackage/
 # 上传的文件（图片、视频等）

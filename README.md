@@ -23,7 +23,7 @@ LyEdu 采用**前后端分离**架构：前端为 Vue3，后端为 **Python（Fa
 
 ### 数据库与迁移
 - MySQL 8.0+
-- 统一迁移目录 `db/alembic/`，详见 [db/README.md](db/README.md)
+- 迁移脚本位于 `lyedu-api-python/alembic/`，启动时自动执行
 
 ## 快速开始
 
@@ -127,8 +127,6 @@ lyedu/
 ├── lyedu-pc/               # PC 端前端
 ├── lyedu-unix/             # 学员端 H5/小程序（uni-app x）
 ├── lyedu-entry/            # 统一入口（可选）
-├── db/                     # 数据库迁移（Alembic）
-│   └── alembic/            # Python 用
 ├── scripts/                # 脚本与配置（dev 一键启动、docker），见 scripts/README.md
 ├── docs/                   # 项目文档
 └── README.md

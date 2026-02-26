@@ -22,9 +22,9 @@ def _run_alembic_upgrade() -> None:
     若数据库中曾记录为已移除的版本（如原 v2～v16），会自动将 alembic_version 改为当前 head（v1）后重试。
     """
     base_dir = Path(__file__).resolve().parent
-    script_dir = (base_dir.parent / "db" / "alembic").resolve()
+    script_dir = (base_dir / "alembic").resolve()
     if not script_dir.exists():
-        print("[LyEdu] [Alembic] 跳过: 未找到 db/alembic 目录（请从仓库根目录拉取代码）。", file=sys.stderr)
+        print("[LyEdu] [Alembic] 跳过: 未找到 alembic 目录。", file=sys.stderr)
         return
     ini_path = base_dir / "alembic.ini"
     max_attempts = 3

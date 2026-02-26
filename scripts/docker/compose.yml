@@ -1,6 +1,6 @@
-# 完整编排：MySQL + Redis + Java API + admin + pc
+# 完整编排：MySQL + Redis + Python API + admin + pc
 # 使用: 在本目录 (scripts/docker) 下执行: docker compose up -d
-# 需先构建 API jar: cd lyedu-api 后运行 .\build-api.ps1 或 ./build-api.sh
+# 需在仓库根目录构建：docker build -f lyedu-api-python/Dockerfile .
 # 本目录下的 .env 会被自动加载（DOCKER_REGISTRY、NPM_REGISTRY）
 services:
   mysql:
@@ -38,23 +38,22 @@ services:
   api:
     build:
       context: ../..
-      dockerfile: lyedu-api/Dockerfile
+      dockerfile: lyedu-api-python/Dockerfile
     container_name: lyedu-api
     ports:
       - "9700:9700"
     environment:
-      - SPRING_PROFILES_ACTIVE=prod
+      - ENV=prod
       - MYSQL_HOST=mysql
       - MYSQL_PORT=3306
-      - MYSQL_DATABASE=lyedu
       - MYSQL_USERNAME=lyedu
       - MYSQL_PASSWORD=lyedu123456
-      - JAVA_OPTS=-Dfile.encoding=UTF-8 -Duser.language=zh -Duser.country=CN
+      - MYSQL_DATABASE=lyedu
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - UPLOAD_PATH=/app/uploads
+      - UPLOAD_PATH=/workspace/lyedu-api-python/uploads
     volumes:
-      - ../../uploads:/app/uploads
+      - ../../uploads:/workspace/lyedu-api-python/uploads
     depends_on:
       - mysql
       - redis

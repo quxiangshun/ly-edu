@@ -16,18 +16,6 @@
 
 ---
 
-## db/ — 数据库迁移（Alembic）
-
-| 文件/目录 | 作用 |
-|-----------|------|
-| **db/README.md** | 数据库迁移说明 |
-| **db/alembic/** | Python 端使用的 Alembic 迁移 |
-| **db/alembic/env.py** | Alembic 环境：从 lyedu-api-python/config 读库连接，执行迁移 |
-| **db/alembic/script.py.mako** | 生成新迁移脚本的模板 |
-| **db/alembic/versions/** | Alembic 迁移版本脚本 |
-
----
-
 ## docker/ — Docker 相关
 
 | 文件/目录 | 作用 |
@@ -48,7 +36,6 @@
 | **LYEDU_API_PYTHON.md** | Python API 详细说明 |
 | **配置模板生成及使用指南.md** | LyEdu 配置模板（~/.lyedu/conf）使用指南 |
 | **SUPPORT.md** | 用户支持与打赏说明 |
-| **GRADLE_SETUP_java.md** / **DOCKER_SETUP_java.md** / **FILE_STRUCTURE_java.md** / **PROJECT_STRUCTURE_java.md** | Java 版（lyedu-api）历史文档，已暂停维护 |
 
 ---
 
@@ -61,7 +48,7 @@
 | **lyedu_config.py** | LyEdu 配置模板生成与加载 |
 | **db.py** | MySQL 连接（pymysql） |
 | **requirements.txt** | Python 依赖 |
-| **alembic.ini** | Alembic 配置（script_location 指向仓库根 db/alembic） |
+| **alembic.ini** | Alembic 配置（script_location = alembic） |
 | **.env.example** | 环境变量模板 |
 | **.env.dev** / **.env.prod** | 开发/生产环境预设 |
 | **Dockerfile** | 构建 Python API 镜像 |
@@ -72,6 +59,7 @@
 | **services/** | 业务逻辑层，按域分子目录 |
 | **models/schemas.py** | Pydantic 请求/响应模型 |
 | **common/result.py** | 统一响应结构 |
+| **alembic/** | 数据库迁移脚本（env.py、versions/）；启动时自动执行 |
 | **util/** | JWT、飞书 API 等 |
 
 ---
@@ -128,7 +116,6 @@
 
 - **根目录**：README、许可证、 scripts。
 - **scripts/**：开发环境一键脚本（dev）、Docker 用 .env+compose 组合（docker）。
-- **db/**：Alembic 迁移脚本。
 - **docker/**：MySQL 容器初始化 SQL。
 - **docs/**：结构、部署、功能、飞书、支持等文档。
 - **lyedu-api-python/**：Python 后端（FastAPI、Alembic 自动迁移）。

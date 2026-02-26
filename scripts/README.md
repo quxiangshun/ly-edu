@@ -43,7 +43,7 @@
 | 文件 | 作用 |
 |------|------|
 | **.env.example** | 环境变量示例，供 Docker Compose 使用。主要变量：`DOCKER_REGISTRY`（镜像前缀）、`NPM_REGISTRY`（前端构建时的 npm 源）。复制为 `.env` 后按需修改 |
-| **compose.yml** | 完整编排（含 lyedu-api Java，已暂停维护）：MySQL + Redis + API + admin + pc。当前推荐使用 `compose-mysql-redis.yml` 仅启动数据库，API 与前端本地运行 |
+| **compose.yml** | 完整编排：MySQL + Redis + Python API + admin + pc。或使用 `compose-mysql-redis.yml` 仅启动数据库，API 与前端本地运行 |
 | **compose-mysql-redis.yml** | 仅 MySQL + Redis，供本地开发直连。同样需在 **scripts/docker** 目录下执行 |
 
 **使用方式**：
@@ -54,7 +54,7 @@ copy .env.example .env
 # 按需编辑 .env（如 DOCKER_REGISTRY、NPM_REGISTRY）
 docker compose -f compose-mysql-redis.yml up -d   # 仅数据库
 # 或
-docker compose up -d   # 完整服务（需先构建 API jar 等）
+docker compose up -d   # 完整服务（会构建 Python API、admin、pc 镜像）
 ```
 
 **路径说明**：compose 内相对路径（如 `../../lyedu-admin`、`../../uploads`）均相对于 **scripts/docker**，因此必须在 `scripts/docker` 下执行 `docker compose`，与根目录下的 compose 可并存（根目录保留一份便于兼容旧用法）。

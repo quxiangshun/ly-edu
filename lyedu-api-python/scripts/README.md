@@ -125,7 +125,7 @@ python scripts/seed_questions.py
 
 **数据源/目标：** 从 `.env` 或 config 读取（见 `.env.example` 中 `FA_SOURCE_*`、`FA_TARGET_*`）。默认：数据源 `127.0.0.1:3307/xjty`，目标复用 `MYSQL_*`（如 `localhost:3306/lyedu`）。
 
-**前置：** 目标库需先执行 **db/alembic** 的 v6 迁移（含 ly_user v5 字段、ly_video.description、ly_department.avatar/description/old_id/old_source）。同步脚本只做数据同步，不修改表结构。
+**前置：** 目标库需先执行 **alembic** 的 v6 迁移（含 ly_user v5 字段、ly_video.description、ly_department.avatar/description/old_id/old_source）。同步脚本只做数据同步，不修改表结构。
 
 **映射概要：**
 

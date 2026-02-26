@@ -34,7 +34,21 @@ docker compose -f compose-mysql-redis.yml up -d
 - **Redis**：localhost:6379
 - 本地启动 lyedu-api-python、lyedu-admin、lyedu-pc 等直连上述地址；Python 启动时会自动执行 Alembic 迁移。
 
-### 方式二：本地运行完整服务
+### 方式二：完整编排（MySQL + Redis + Python API + 前端）
+
+在 **scripts/docker** 下执行（会构建并启动所有服务）：
+
+```powershell
+cd scripts\docker
+copy .env.example .env
+docker compose up -d
+```
+
+- **API**：http://localhost:9700
+- **管理后台**：http://localhost:9900
+- **PC 端**：http://localhost:9800
+
+### 方式三：仅数据库 + 本地运行前端
 
 1. 按方式一启动 MySQL + Redis
 2. 按 [README.md](../README.md) 启动 lyedu-api-python、lyedu-admin、lyedu-pc

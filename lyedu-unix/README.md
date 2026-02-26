@@ -51,7 +51,7 @@ lyedu-unix/
 export const API_BASE_URL = 'http://localhost:9700/api'
 ```
 
-需确保后端（lyedu-api-python 或 lyedu-api）已启动，默认端口 9700。
+需确保后端 lyedu-api-python 已启动，默认端口 9700。
 
 ### 生产环境 / 已配置代理
 
@@ -78,4 +78,4 @@ export const API_BASE_URL = '/api'
 ## 后端对接
 
 - 接口路径、参数、返回值与 PC 端（lyedu-pc）一致
-- 后端共用 lyedu-api-python 或 lyedu-api
+- 后端为 lyedu-api-python
