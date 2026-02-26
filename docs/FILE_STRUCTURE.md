@@ -20,7 +20,7 @@
 
 | 文件/目录 | 作用 |
 |-----------|------|
-| **docker/mysql/init.sql** | MySQL 容器首次启动时执行的初始化 SQL |
+| **docker/mysql/init.sql** | MySQL 容器首次启动时执行：root@'%'、创建 lyedu 库；表结构由 Alembic 创建 |
 
 ---
 

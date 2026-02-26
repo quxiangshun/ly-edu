@@ -11,7 +11,7 @@ lyedu/
 ├── lyedu-entry/            # 统一入口（可选）
 ├── docker/                 # Docker 相关
 │   └── mysql/
-│       └── init.sql        # 数据库初始化脚本
+│       └── init.sql        # MySQL 用户/库初始化；表由 Alembic 创建
 ├── scripts/                # 脚本与配置
 │   ├── dev/                # 开发环境一键启动/停止
 │   └── docker/             # Docker compose 与 .env
