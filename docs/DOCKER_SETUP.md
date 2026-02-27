@@ -30,7 +30,7 @@ copy .env.example .env
 docker compose -f compose-mysql-redis.yml up -d
 ```
 
-- **MySQL**：localhost:3306（root / lyedu123456，库 lyedu）
+- **MySQL**：localhost:3306（root / Lyedu@123，库 lyedu）
 - **Redis**：localhost:6379
 - 本地启动 lyedu-api-python、lyedu-admin、lyedu-pc 等直连上述地址；Python 启动时会自动执行 Alembic 迁移。
 

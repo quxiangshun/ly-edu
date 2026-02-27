@@ -111,7 +111,7 @@
           <el-input v-model="form.username" placeholder="请输入用户名" :disabled="isEdit" />
         </el-form-item>
         <el-form-item v-if="!isEdit" label="密码" prop="password">
-          <el-input v-model="form.password" type="password" placeholder="留空则使用默认密码123456" show-password />
+          <el-input v-model="form.password" type="password" placeholder="留空则使用默认密码 Lyedu@123" show-password />
         </el-form-item>
         <el-form-item label="昵称" prop="nickname">
           <el-input v-model="form.nickname" placeholder="请输入昵称" />
@@ -498,7 +498,7 @@ const handleDelete = async (row: User) => {
 }
 
 const EMPLOYEE_IMPORT_HEADERS = ['用户名', '密码', '真实姓名', '邮箱', '手机号', '部门ID', '角色', '状态', '入职日期']
-const EMPLOYEE_IMPORT_EXAMPLE = ['zhangsan', '123456', '张三', 'zhangsan@example.com', '13800138000', 1, 'student', 1, '2024-01-01']
+const EMPLOYEE_IMPORT_EXAMPLE = ['zhangsan', 'Lyedu@123', '张三', 'zhangsan@example.com', '13800138000', 1, 'student', 1, '2024-01-01']
 
 const handleDownloadTemplate = () => {
   const ws = XLSX.utils.aoa_to_sheet([EMPLOYEE_IMPORT_HEADERS, EMPLOYEE_IMPORT_EXAMPLE])

@@ -6,23 +6,23 @@
 #   主机: 127.0.0.1 或 localhost
 #   端口: 3306
 #   用户: root  或  lyedu
-#   密码: lyedu123456
+#   密码: Lyedu@123
 #   数据库: lyedu
 #
 # Redis 连接（本机，Redis 7 默认用户名必填）：
 #   主机: 127.0.0.1 或 localhost
 #   端口: 6379
 #   用户名: default
-#   密码: lyedu123456
+#   密码: Lyedu@123
 services:
   mysql:
     image: ${DOCKER_REGISTRY:-}mysql:8.0
     container_name: lyedu-mysql
     environment:
-      MYSQL_ROOT_PASSWORD: lyedu123456
+      MYSQL_ROOT_PASSWORD: Lyedu@123
       MYSQL_DATABASE: lyedu
       MYSQL_USER: lyedu
-      MYSQL_PASSWORD: lyedu123456
+      MYSQL_PASSWORD: Lyedu@123
       TZ: Asia/Shanghai
     ports:
       - "3306:3306"

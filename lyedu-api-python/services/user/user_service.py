@@ -247,7 +247,7 @@ def save(
     import bcrypt
     import secrets
     if set_password:
-        pwd = (password or "123456").strip()
+        pwd = (password or "Lyedu@123").strip()
     else:
         pwd = secrets.token_urlsafe(32)
     raw = (pwd[:72]).encode("utf-8")  # bcrypt 限制 72 字节

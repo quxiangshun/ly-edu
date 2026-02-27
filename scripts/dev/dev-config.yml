@@ -16,7 +16,7 @@ database:
   host: "127.0.0.1"
   port: 3306
   user: lyedu
-  password: lyedu123456
+  password: Lyedu@123
   database: lyedu
 
 # ---------------------------------------------------------------------------

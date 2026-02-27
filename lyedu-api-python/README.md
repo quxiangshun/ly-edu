@@ -185,6 +185,27 @@ lyedu-api-python/
   README.md
 ```
 
+## 打包与交付
+
+程序可打包为单文件可执行，便于部署，无需安装 Python。
+
+| 平台   | 产出              | 构建方式 |
+|--------|-------------------|----------|
+| Windows | `dist/lyedu_backend.exe` | 本地执行 `python -m PyInstaller lyedu_backend.spec` |
+| Linux   | `dist/lyedu_backend`     | 在仓库根目录执行 `.\lyedu-api-python\build.ps1`（通过 Docker 跨平台构建） |
+
+**Linux 打包说明：**
+
+- 需安装 Docker；在 Windows 下可通过 Docker 模拟 Linux 环境完成打包。
+- 产出为 `lyedu-api-python/dist/lyedu_backend`，拷贝到 Linux 主机后执行：`chmod +x lyedu_backend && ./lyedu_backend`，功能与 exe 相同。
+- 国内网络访问 Docker Hub / PyPI 较慢时，可设置环境变量使用镜像：
+
+  ```powershell
+  $env:DOCKER_REGISTRY = "docker.m.daocloud.io/library/"   # Docker 镜像
+  $env:PIP_INDEX = "https://pypi.tuna.tsinghua.edu.cn/simple"  # PyPI 镜像
+  .\lyedu-api-python\build.ps1
+  ```
+
 ## 与 Java 版对照
 
 - 数据库表、字段与 Java 版一致，可直接共用 MySQL。

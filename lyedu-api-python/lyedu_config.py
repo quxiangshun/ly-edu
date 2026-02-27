@@ -42,7 +42,7 @@ port = 3306
 # MySQL 用户名（必填）
 user = root
 # MySQL 密码（与 compose-mysql-redis.yml 一致；无密码则留空）
-password = lyedu123456
+password = Lyedu@123
 # 数据库名（必填）
 database = lyedu
 # 字符集（建议 utf8mb4）
@@ -58,7 +58,7 @@ port = 6379
 # Redis 数据库编号（必填，默认 0）
 db = 0
 # Redis 密码（与 compose-mysql-redis.yml 一致；无密码则留空）
-password = lyedu123456
+password = Lyedu@123
 """
     with open(template_path, "w", encoding="utf-8") as f:
         f.write(template_content)

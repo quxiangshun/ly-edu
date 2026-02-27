@@ -5,7 +5,7 @@ wait_for_mysql() {
     host="${MYSQL_HOST:-mysql}"
     port="${MYSQL_PORT:-3306}"
     user="${MYSQL_USERNAME:-root}"
-    pass="${MYSQL_PASSWORD:-lyedu123456}"
+    pass="${MYSQL_PASSWORD:-Lyedu@123}"
     db="${MYSQL_DATABASE:-lyedu}"
     tries=0
     max=30

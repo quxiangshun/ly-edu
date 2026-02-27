@@ -91,7 +91,7 @@ python scripts/generate_demo_data.py
 
 **兼容：** 若未执行 Alembic v13（或 Flyway V14），`ly_video` 无 `play_count`/`like_count` 时脚本会自动用不含这两列的 INSERT；若表 `ly_video_like`、`ly_course_video`、`ly_course_exam` 不存在则会跳过对应插入并提示执行相应迁移。
 
-插入顺序按外键依赖：部门、分类、用户、课程、章节、视频、试题、试卷、考试、证书、任务、评论、知识库、积分、文件等；演示用户密码与初始化一致（lyedu123456）。
+插入顺序按外键依赖：部门、分类、用户、课程、章节、视频、试题、试卷、考试、证书、任务、评论、知识库、积分、文件等；演示用户密码与初始化一致（Lyedu@123）。
 
 ---
 

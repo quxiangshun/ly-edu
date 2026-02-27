@@ -835,7 +835,7 @@ def upgrade() -> None:
     # ----- 种子数据 -----
     op.execute("""
         INSERT INTO ly_user (id, username, password, real_name, email, role, status)
-        VALUES (1, 'admin', '$2a$10$YORpsv2uYZQNNt5hxVNrw.KyeVMcn.fjWYyX3CWGXSwdpL6hRpVSy', '管理员', 'admin@lyedu.com', 'admin', 1)
+        VALUES (1, 'admin', '$2b$12$Ooog4ZUDdmTu2Py9EUGwduE/BwXYoWvhS46DQidBMfyeKL5iCXteC', '管理员', 'admin@lyedu.com', 'admin', 1)
         ON DUPLICATE KEY UPDATE password = VALUES(password), real_name = VALUES(real_name)
     """)
     op.execute("""

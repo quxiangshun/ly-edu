@@ -72,7 +72,7 @@ def check_target_schema(tgt):
 
 def _hash_password(plain: str) -> str:
     """明文转 bcrypt 密文，与 ly 登录校验兼容；超过 72 字节则截断（bcrypt 限制）。"""
-    raw = (plain or "123456").strip().encode("utf-8")[:72]
+    raw = (plain or "Lyedu@123").strip().encode("utf-8")[:72]
     return bcrypt.hashpw(raw, bcrypt.gensalt()).decode("ascii")
 
 

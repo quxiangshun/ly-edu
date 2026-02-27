@@ -74,7 +74,7 @@ PORT = int(os.getenv("PORT", "9700"))
 MYSQL_HOST = os.getenv("MYSQL_HOST", "localhost")
 MYSQL_PORT = int(os.getenv("MYSQL_PORT", "3306"))
 MYSQL_USER = os.getenv("MYSQL_USERNAME", os.getenv("MYSQL_USER", "root"))
-MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "lyedu123456")
+MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "Lyedu@123")
 MYSQL_DATABASE = os.getenv("MYSQL_DATABASE", "lyedu")
 MYSQL_CHARSET = os.getenv("MYSQL_CHARSET", "utf8mb4")
 

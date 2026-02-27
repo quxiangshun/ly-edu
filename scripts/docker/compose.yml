@@ -7,10 +7,10 @@ services:
     image: ${DOCKER_REGISTRY:-}mysql:8.0
     container_name: lyedu-mysql
     environment:
-      MYSQL_ROOT_PASSWORD: lyedu123456
+      MYSQL_ROOT_PASSWORD: Lyedu@123
       MYSQL_DATABASE: lyedu
       MYSQL_USER: lyedu
-      MYSQL_PASSWORD: lyedu123456
+      MYSQL_PASSWORD: Lyedu@123
       TZ: Asia/Shanghai
     ports:
       - "3306:3306"
@@ -47,7 +47,7 @@ services:
       - MYSQL_HOST=mysql
       - MYSQL_PORT=3306
       - MYSQL_USERNAME=lyedu
-      - MYSQL_PASSWORD=lyedu123456
+      - MYSQL_PASSWORD=Lyedu@123
       - MYSQL_DATABASE=lyedu
       - REDIS_HOST=redis
       - REDIS_PORT=6379

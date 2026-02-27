@@ -1,0 +1,42 @@
+# LyEdu 后端 PyInstaller 打包镜像（分层构建，基础环境缓存复用）
+# 使用: 见 lyedu-api-python/build.ps1
+#
+# 分层说明:
+#   Stage base  - Python + requirements + PyInstaller（仅在 requirements 变更时重建）
+#   Stage builder - 复制源码并打包（源码变更时重建，复用 base 缓存）
+#
+# 国内网络: 默认 1ms 镜像，直连可传 --build-arg DOCKER_REGISTRY=
+ARG DOCKER_REGISTRY=docker.1ms.run/library/
+ARG PIP_INDEX=https://pypi.tuna.tsinghua.edu.cn/simple
+
+# ========== Stage 1: 基础环境（显式 -bullseye 锁定 GLIBC 2.31，兼容 CentOS 8、Ubuntu 20.04 等） ==========
+FROM ${DOCKER_REGISTRY}python:3.10-slim-bullseye AS base
+
+ARG PIP_INDEX
+
+WORKDIR /build
+
+# 先只复制依赖文件，利用 Docker 层缓存
+COPY lyedu-api-python/requirements.txt .
+
+# 安装运行时依赖 + PyInstaller，此层会被缓存（PIP_INDEX 为空时使用默认源）
+RUN pip install --no-cache-dir ${PIP_INDEX:+-i "$PIP_INDEX"} -r requirements.txt \
+    && pip install --no-cache-dir ${PIP_INDEX:+-i "$PIP_INDEX"} pyinstaller
+
+# ========== Stage 2: 打包（源码变更时重建，基础环境复用） ==========
+FROM base AS builder
+
+# PyInstaller 在 Linux 下需要 objdump（来自 binutils）
+RUN apt-get update && apt-get install -y --no-install-recommends binutils && rm -rf /var/lib/apt/lists/*
+
+# 复制完整源码，.dockerignore 排除 build/dist/.venv 等
+COPY lyedu-api-python /build
+
+WORKDIR /build
+
+# 执行打包
+RUN python -m PyInstaller lyedu_backend.spec --clean --distpath /out
+
+# ========== Stage 3: 导出层（scratch 仅含可执行文件，避免 Alpine 符号链接在 Windows 导出失败） ==========
+FROM scratch AS export
+COPY --from=builder /out/lyedu_backend /lyedu_backend

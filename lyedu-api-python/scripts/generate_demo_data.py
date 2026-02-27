@@ -13,8 +13,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import db
 
-# 与 V1 初始化一致，密码 lyedu123456
-DEMO_PASSWORD_HASH = "$2a$10$YORpsv2uYZQNNt5hxVNrw.KyeVMcn.fjWYyX3CWGXSwdpL6hRpVSy"
+# 与 V1 初始化一致，密码 Lyedu@123
+DEMO_PASSWORD_HASH = "$2b$12$Ooog4ZUDdmTu2Py9EUGwduE/BwXYoWvhS46DQidBMfyeKL5iCXteC"
 N = 15
 
 
