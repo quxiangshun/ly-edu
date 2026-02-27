@@ -174,6 +174,36 @@ def ensure_config_or_exit() -> bool:
     sys.exit(1)
 
 
+def ensure_mysql_database() -> Optional[str]:
+    """若数据库不存在则自动创建，成功返回 None，失败返回错误信息"""
+    try:
+        import pymysql
+        db_name = os.environ.get("MYSQL_DATABASE", "lyedu").strip()
+        if not db_name:
+            return "MYSQL_DATABASE 未配置"
+        if "`" in db_name or not all(c.isalnum() or c in "_-" for c in db_name):
+            return "MYSQL_DATABASE 只能包含字母、数字、下划线和连字符"
+        conn = pymysql.connect(
+            host=os.environ.get("MYSQL_HOST", "localhost"),
+            port=int(os.environ.get("MYSQL_PORT", "3306")),
+            user=os.environ.get("MYSQL_USER", "root"),
+            password=os.environ.get("MYSQL_PASSWORD", ""),
+            database=None,  # 不指定库，以便在库不存在时也能连接
+            charset=os.environ.get("MYSQL_CHARSET", "utf8mb4"),
+            connect_timeout=5,
+        )
+        try:
+            with conn.cursor() as cur:
+                cur.execute(f"CREATE DATABASE IF NOT EXISTS `{db_name}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
+            conn.commit()
+            print(f"[LyEdu] 数据库 {db_name} 已就绪（不存在时已自动创建）")
+        finally:
+            conn.close()
+        return None
+    except Exception as e:
+        return str(e)
+
+
 def test_mysql_connection() -> Optional[str]:
     """测试 MySQL 连接，成功返回 None，失败返回错误信息"""
     try:

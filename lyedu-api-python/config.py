@@ -14,7 +14,15 @@ if getattr(sys, "frozen", False):
         try:
             cfg = lyedu_config.load_config_ini(config_path)
             lyedu_config.apply_config_ini_to_environ(cfg)
-            # 启动前验证 MySQL、Redis 连接，配置错误时提示并退出
+            # 启动前自动创建数据库（若不存在）、验证 MySQL、Redis 连接
+            err = lyedu_config.ensure_mysql_database()
+            if err:
+                print(f"[LyEdu] 自动创建数据库失败：{err}")
+                lyedu_config._pause_if_frozen(
+                    f"无法连接 MySQL 或创建数据库：{err}\n\n"
+                    f"请检查 config.ini 中的主机/端口/用户名/密码是否正确。"
+                )
+                sys.exit(1)
             err = lyedu_config.test_mysql_connection()
             if err:
                 print(f"[LyEdu] MySQL 连接失败：{err}")
@@ -51,8 +59,12 @@ else:
         load_dotenv(_CONFIG_DIR / ".env.dev")
     except ImportError:
         pass
-    # 开发环境也验证 MySQL、Redis 连接
+    # 开发环境也自动创建数据库（若不存在）、验证 MySQL、Redis 连接
     import lyedu_config
+    err = lyedu_config.ensure_mysql_database()
+    if err:
+        print(f"[LyEdu] 自动创建数据库失败：{err}")
+        sys.exit(1)
     err = lyedu_config.test_mysql_connection()
     if err:
         print(f"[LyEdu] MySQL 连接失败：{err}")
