@@ -206,23 +206,78 @@ def api_root():
 
 
 if __name__ == "__main__":
-    import uvicorn
+    import subprocess
+    import urllib.request
+
+    # --serve：内部使用，直接运行 uvicorn（由主进程 detach 后保持运行）
+    if "--serve" in sys.argv:
+        import uvicorn
+        try:
+            uvicorn.run(app, host=config.HOST, port=config.PORT)
+        except Exception as e:
+            err = str(e)
+            print(f"[LyEdu] 启动失败: {err}", file=sys.stderr)
+            if getattr(sys, "frozen", False) and sys.platform.startswith("win"):
+                import ctypes
+                ctypes.windll.user32.MessageBoxW(  # type: ignore
+                    None,
+                    f"LyEdu 服务启动失败：\n\n{err}\n\n请检查 MySQL/Redis 是否已启动、配置是否正确。",
+                    "LyEdu - 启动失败",
+                    0x10,  # MB_ICONERROR
+                )
+            elif getattr(sys, "frozen", False):
+                try:
+                    input("\n按回车键退出...")
+                except (EOFError, KeyboardInterrupt):
+                    pass
+            raise
+        sys.exit(0)
+
+    # 主入口：后台启动服务，等待就绪后打印提示并返回命令行
+    host = config.HOST if config.HOST != "0.0.0.0" else "127.0.0.1"
+    port = config.PORT
+    log_dir = Path.home() / ".lyedu"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log_file = log_dir / "lyedu.log"
+
+    creationflags = 0
+    if sys.platform.startswith("win"):
+        creationflags = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS
+
     try:
-        uvicorn.run(app, host=config.HOST, port=config.PORT)
+        cmd = [sys.executable, "--serve"] if getattr(sys, "frozen", False) else [sys.executable, __file__, "--serve"]
+        lf = open(log_file, "a", encoding="utf-8")
+        lf.write(f"\n--- LyEdu 启动 {time.strftime('%Y-%m-%d %H:%M:%S')} ---\n")
+        lf.flush()
+        proc = subprocess.Popen(
+            cmd,
+            stdout=lf,
+            stderr=subprocess.STDOUT,
+            stdin=subprocess.DEVNULL,
+            creationflags=creationflags,
+            start_new_session=(sys.platform != "win32"),
+        )
     except Exception as e:
-        err = str(e)
-        print(f"[LyEdu] 启动失败: {err}", file=sys.stderr)
-        if getattr(sys, "frozen", False) and sys.platform.startswith("win"):
-            import ctypes
-            ctypes.windll.user32.MessageBoxW(  # type: ignore
-                None,
-                f"LyEdu 服务启动失败：\n\n{err}\n\n请检查 MySQL/Redis 是否已启动、配置是否正确。",
-                "LyEdu - 启动失败",
-                0x10,  # MB_ICONERROR
-            )
-        elif getattr(sys, "frozen", False):
-            try:
-                input("\n按回车键退出...")
-            except (EOFError, KeyboardInterrupt):
-                pass
-        raise
+        print(f"[LyEdu] 启动失败: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    # 等待服务就绪
+    url = f"http://{host}:{port}/"
+    for i in range(30):
+        try:
+            urllib.request.urlopen(url, timeout=1)
+            break
+        except Exception:
+            if proc.poll() is not None:
+                print("[LyEdu] 服务进程已退出，请检查", log_file, file=sys.stderr)
+                sys.exit(1)
+            time.sleep(0.5)
+    else:
+        print("[LyEdu] 等待超时，服务可能仍在启动，请查看", log_file, file=sys.stderr)
+
+    print(f"[LyEdu] 后台服务已启动，运行于 http://{host}:{port}")
+    print("[LyEdu] 停止服务：执行 stop.ps1 / stop.sh 或结束对应进程")
+    for n in range(3, 0, -1):
+        print(f"[LyEdu] {n}...", end=" ", flush=True)
+        time.sleep(1)
+    print("OK")

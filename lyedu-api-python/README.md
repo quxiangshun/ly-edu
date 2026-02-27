@@ -51,6 +51,8 @@ ENV=dev uvicorn main:app --host 0.0.0.0 --port 9700
 - **PowerShell：** `.\start.ps1`
 - **Linux/macOS：** `./start.sh`（需 `chmod +x start.sh`）
 
+**打包可执行文件**：运行 `lyedu_backend`（或 `lyedu_backend.exe`）启动后，控制台会提示「后台服务已启动」，停止方式：在运行窗口按 **Ctrl+C**；也可使用 `.\stop.ps1`（Windows）或 `./stop.sh`（Linux）按端口停止。
+
 ### pip 使用国内镜像源
 
 安装依赖时若较慢，可改用国内镜像：
