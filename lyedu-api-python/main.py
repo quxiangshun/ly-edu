@@ -36,10 +36,11 @@ if getattr(sys, "frozen", False):
     sys.excepthook = _excepthook
 
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.responses import FileResponse
+from starlette.responses import FileResponse, Response
 
 import config
 from routers import auth, course, course_attachment, chapter, video, learning, user, department, stats, knowledge, question, paper, exam, exam_status, exam_record, certificate_template, certificate, user_certificate, task, user_task, config as config_router, point, point_rule, image, upload, course_comment, tag, feishu
@@ -133,7 +134,12 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title='LyEdu API', version='1.0.0', lifespan=lifespan)
+app = FastAPI(
+    title='LyEdu API',
+    version='1.0.0',
+    description='接口说明见 /docs（Swagger）与 docs/LYEDU_API_PYTHON.md',
+    lifespan=lifespan,
+)
 app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
 
 
@@ -201,12 +207,27 @@ app.include_router(feishu.router, prefix=API_PREFIX)
 
 @app.get('/')
 def root():
-    return {'message': 'LyEdu API (Python)', 'docs': '/docs', 'api': API_PREFIX}
+    return {
+        'message': 'LyEdu API (Python)',
+        'docs': '/docs',
+        'api': API_PREFIX,
+        'interface_doc': '/interface-doc',
+        'openapi': '/openapi.json',
+    }
 
 
 @app.get(API_PREFIX)
 def api_root():
-    return {'message': 'LyEdu API', 'docs': '/docs'}
+    return {'message': 'LyEdu API', 'docs': '/docs', 'interface_doc': '/interface-doc'}
+
+
+@app.get('/interface-doc', include_in_schema=False)
+def serve_interface_doc():
+    """提供接口说明 Markdown（仓库含 docs 时可用，Docker/打包环境可能 404）"""
+    doc_path = Path(__file__).resolve().parent.parent / 'docs' / 'LYEDU_API_PYTHON.md'
+    if doc_path.exists():
+        return Response(content=doc_path.read_text(encoding='utf-8'), media_type='text/markdown; charset=utf-8')
+    return JSONResponse({'message': 'Interface doc not found (run from repo root)'}, status_code=404)
 
 
 if __name__ == "__main__":
