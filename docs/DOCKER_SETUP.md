@@ -88,7 +88,7 @@ Communications link failure
 **解决方法**：
 1. 确保 MySQL 容器已完全启动：`docker compose -f compose-mysql-redis.yml logs mysql`
 2. 首次启动需要 30-60 秒初始化
-3. 检查 `docker/mysql/init.sql` 是否存在
+3. 检查 `scripts/docker/mysql-init.sql` 是否存在
 
 ## 验证部署
 

@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """知识库路由，与 Java KnowledgeController 对应"""
-import logging
 from typing import List, Optional
 
 import pymysql
 from fastapi import APIRouter, File, Header, UploadFile
+from loguru import logger
 from pydantic import BaseModel
 
 import db
@@ -13,7 +13,6 @@ from services.content import file_service, knowledge_service
 from util.jwt_util import parse_authorization
 
 router = APIRouter(prefix="/knowledge", tags=["knowledge"])
-log = logging.getLogger(__name__)
 
 # 知识库表建表 SQL（与 v1_init_schema 一致，用于表不存在时自动创建）
 _CREATE_LY_KNOWLEDGE = """
@@ -122,18 +121,18 @@ def upload_file(file: UploadFile = File(...)):
         except pymysql.err.MySQLError as e:
             err_code = getattr(e, "args", (None,))[0]
             if err_code == 1146 and not retry_after_create:  # Table doesn't exist
-                log.warning("ly_knowledge 表不存在，尝试自动创建: %s", e)
+                logger.warning("ly_knowledge 表不存在，尝试自动创建: {}", e)
                 try:
                     db.execute(_CREATE_LY_KNOWLEDGE)
-                    log.info("ly_knowledge 表已创建，重试写入")
+                    logger.info("ly_knowledge 表已创建，重试写入")
                     return _save_to_knowledge(retry_after_create=True)
                 except Exception as create_e:
-                    log.error("创建 ly_knowledge 表失败: %s", create_e, exc_info=True)
+                    logger.exception("创建 ly_knowledge 表失败: {}", create_e)
                     return (False, None)
-            log.error("知识库记录创建失败 (code=%s): %s", err_code, e, exc_info=True)
+            logger.exception("知识库记录创建失败 (code={}): {}", err_code, e)
             return (False, None)
         except Exception as e:
-            log.error("知识库记录创建失败: %s", e, exc_info=True)
+            logger.exception("知识库记录创建失败: {}", e)
             return (False, None)
 
     knowledge_saved, knowledge_id = _save_to_knowledge()

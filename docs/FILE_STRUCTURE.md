@@ -16,11 +16,11 @@
 
 ---
 
-## docker/ — Docker 相关
+## scripts/docker/ — Docker 与 MySQL 初始化
 
-| 文件/目录 | 作用 |
-|-----------|------|
-| **docker/mysql/init.sql** | MySQL 容器首次启动时执行：root@'%'、创建 lyedu 库；表结构由 Alembic 创建 |
+| 文件 | 作用 |
+|------|------|
+| **mysql-init.sql** | MySQL 容器首次启动时执行：root@'%' 等用户权限；库由 compose MYSQL_DATABASE 创建，表由 Alembic 创建 |
 
 ---
 

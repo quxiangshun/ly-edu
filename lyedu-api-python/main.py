@@ -7,6 +7,11 @@ import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+# 最早初始化 loguru，供 config 等模块使用
+import util.logger  # noqa: F401
+
+from loguru import logger
+
 # 打包 exe 时，未捕获异常退出前暂停，便于查看错误；Windows 用消息框
 if getattr(sys, "frozen", False):
     _orig_excepthook = sys.excepthook
@@ -73,14 +78,14 @@ def _run_alembic_upgrade() -> None:
         if res:
             ini_path, script_dir = res
         else:
-            print("[LyEdu] [Alembic] 跳过: 未找到 alembic 资源。", file=sys.stderr)
+            logger.warning("[Alembic] 跳过: 未找到 alembic 资源")
             return
     else:
         base_dir = Path(__file__).resolve().parent
         script_dir = (base_dir / "alembic").resolve()
         ini_path = base_dir / "alembic.ini"
         if not script_dir.exists():
-            print("[LyEdu] [Alembic] 跳过: 未找到 alembic 目录。", file=sys.stderr)
+            logger.warning("[Alembic] 跳过: 未找到 alembic 目录")
             return
     max_attempts = 3
     fixed_stale_revision = False
@@ -91,7 +96,7 @@ def _run_alembic_upgrade() -> None:
             alembic_cfg = Config(str(ini_path))
             alembic_cfg.set_main_option("script_location", str(script_dir))
             command.upgrade(alembic_cfg, "head")
-            print("[LyEdu] [Alembic] 数据库迁移已执行完成 (up to head)。")
+            logger.info("[Alembic] 数据库迁移已执行完成 (up to head)")
             return
         except Exception as e:
             err_msg = str(e).strip()
@@ -102,11 +107,11 @@ def _run_alembic_upgrade() -> None:
                     n = db.execute("UPDATE alembic_version SET version_num = %s", ("v1",))
                     if n == 0:
                         db.execute("INSERT INTO alembic_version (version_num) VALUES (%s)", ("v1",))
-                    print("[LyEdu] [Alembic] 已将数据库版本从已移除的修订改为 v1，正在重试迁移。", file=sys.stderr)
+                    logger.warning("[Alembic] 已将数据库版本从已移除的修订改为 v1，正在重试迁移")
                     fixed_stale_revision = True
                     continue
                 except Exception as fix_e:
-                    print("[LyEdu] [Alembic] 自动修正版本失败:", str(fix_e)[:200], file=sys.stderr)
+                    logger.error("[Alembic] 自动修正版本失败: {}", str(fix_e)[:200])
             is_conn = (
                 "connection refused" in err_msg.lower()
                 or "can't connect" in err_msg.lower()
@@ -114,12 +119,11 @@ def _run_alembic_upgrade() -> None:
                 or "connection reset" in err_msg.lower()
             )
             if is_conn and attempt < max_attempts:
-                print(f"[LyEdu] [Alembic] 第 {attempt} 次迁移失败（可能 MySQL 未就绪），{attempt} 秒后重试: {err_msg[:200]}", file=sys.stderr)
+                logger.warning("[Alembic] 第 {} 次迁移失败（可能 MySQL 未就绪），{} 秒后重试: {}", attempt, attempt, err_msg[:200])
                 time.sleep(attempt)
                 continue
-            print("[LyEdu] [Alembic] 自动迁移失败（应用仍会启动）:", err_msg[:500], file=sys.stderr)
-            print("[LyEdu] [Alembic] 请检查: 1) 是否已启动 MySQL（如 docker compose -f compose-mysql-redis.yml up）"
-                  " 2) ~/.lyedu/conf/config.ini 中 MYSQL_* 配置是否正确", file=sys.stderr)
+            logger.error("[Alembic] 自动迁移失败（应用仍会启动）: {}", err_msg[:500])
+            logger.error("[Alembic] 请检查: 1) 是否已启动 MySQL（如 docker compose -f compose-mysql-redis.yml up）2) ~/.lyedu/conf/config.ini 中 MYSQL_* 配置是否正确")
             return
 
 
@@ -153,7 +157,7 @@ API_PREFIX = '/api'
 # 上传文件访问：使用 FileResponse 支持 Range 分片加载（视频拖拽、分段请求）
 Path(config.UPLOAD_PATH).mkdir(parents=True, exist_ok=True)
 UPLOAD_PATH_RESOLVED = config.UPLOAD_PATH.resolve()
-print(f"[LyEdu] UPLOAD_PATH = {UPLOAD_PATH_RESOLVED}")
+logger.info("UPLOAD_PATH = {}", UPLOAD_PATH_RESOLVED)
 
 
 @app.get(API_PREFIX + "/uploads/{path:path}")
@@ -216,7 +220,7 @@ if __name__ == "__main__":
             uvicorn.run(app, host=config.HOST, port=config.PORT)
         except Exception as e:
             err = str(e)
-            print(f"[LyEdu] 启动失败: {err}", file=sys.stderr)
+            logger.error("启动失败: {}", err)
             if getattr(sys, "frozen", False) and sys.platform.startswith("win"):
                 import ctypes
                 ctypes.windll.user32.MessageBoxW(  # type: ignore
@@ -258,7 +262,7 @@ if __name__ == "__main__":
             start_new_session=(sys.platform != "win32"),
         )
     except Exception as e:
-        print(f"[LyEdu] 启动失败: {e}", file=sys.stderr)
+        logger.error("启动失败: {}", e)
         sys.exit(1)
 
     # 等待服务就绪
@@ -269,15 +273,15 @@ if __name__ == "__main__":
             break
         except Exception:
             if proc.poll() is not None:
-                print("[LyEdu] 服务进程已退出，请检查", log_file, file=sys.stderr)
+                logger.error("服务进程已退出，请检查 {}", log_file)
                 sys.exit(1)
             time.sleep(0.5)
     else:
-        print("[LyEdu] 等待超时，服务可能仍在启动，请查看", log_file, file=sys.stderr)
+        logger.warning("等待超时，服务可能仍在启动，请查看 {}", log_file)
 
-    print(f"[LyEdu] 后台服务已启动，运行于 http://{host}:{port}")
-    print("[LyEdu] 停止服务：执行 stop.ps1 / stop.sh 或结束对应进程")
+    logger.info("后台服务已启动，运行于 http://{}:{}", host, port)
+    logger.info("停止服务：执行 stop.ps1 / stop.sh 或结束对应进程")
     for n in range(3, 0, -1):
-        print(f"[LyEdu] {n}...", end=" ", flush=True)
+        logger.info("{}...", n)
         time.sleep(1)
-    print("OK")
+    logger.info("OK")

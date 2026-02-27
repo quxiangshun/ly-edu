@@ -9,6 +9,7 @@ import re
 import random
 from typing import Dict, List, Optional, Any
 
+from loguru import logger
 from util import feishu_api
 from services.org import department_service
 from services.user import user_service
@@ -38,8 +39,6 @@ def _normalize_dept_item(it: dict, parent_feishu_id: str) -> Optional[Dict[str, 
 
 def _collect_all_departments_recursive() -> List[Dict[str, Any]]:
     """从根 0 递归拉取全量部门（仅用「获取子部门」接口），返回 feishu_id, name, sort, parent_feishu_id。"""
-    import logging
-    log = logging.getLogger(__name__)
     all_depts: List[Dict[str, Any]] = []
     seen: set = set()
     queue: List[str] = ["0"]
@@ -54,7 +53,7 @@ def _collect_all_departments_recursive() -> List[Dict[str, Any]]:
             )
             items = page.get("items") or []
             if not items and page_token is None and parent_feishu_id == "0":
-                log.warning("feishu 根部门 0 下未获取到任何子部门，请检查飞书应用权限与 token")
+                logger.warning("feishu 根部门 0 下未获取到任何子部门，请检查飞书应用权限与 token")
             for it in items:
                 norm = _normalize_dept_item(it, parent_feishu_id)
                 if not norm or norm["feishu_id"] in seen:
@@ -79,13 +78,11 @@ def sync_departments(overwrite_existing: bool = False) -> Dict[str, Any]:
     feishu_to_our: Dict[str, int] = {"0": 0}
 
     try:
-        import logging
-        log = logging.getLogger(__name__)
         all_depts = _collect_all_departments_recursive()
         if not all_depts:
-            log.warning("feishu sync_departments: 未拉取到任何部门，跳过写库")
+            logger.warning("feishu sync_departments: 未拉取到任何部门，跳过写库")
             return result
-        log.info("feishu sync_departments: 拉取到 %d 个部门，开始写库", len(all_depts))
+        logger.info("feishu sync_departments: 拉取到 {} 个部门，开始写库", len(all_depts))
 
         for d in all_depts:
             feishu_id = d["feishu_id"]

@@ -3,6 +3,8 @@ import os
 import sys
 from pathlib import Path
 
+from loguru import logger
+
 # 打包为 exe 时，__file__ 指向临时解压目录；UPLOAD_PATH 等使用 exe 所在目录
 _CONFIG_DIR = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent
 
@@ -17,7 +19,7 @@ if getattr(sys, "frozen", False):
             # 启动前自动创建数据库（若不存在）、验证 MySQL、Redis 连接
             err = lyedu_config.ensure_mysql_database()
             if err:
-                print(f"[LyEdu] 自动创建数据库失败：{err}")
+                logger.error("自动创建数据库失败：{}", err)
                 lyedu_config._pause_if_frozen(
                     f"无法连接 MySQL 或创建数据库：{err}\n\n"
                     f"请检查 config.ini 中的主机/端口/用户名/密码是否正确。"
@@ -25,7 +27,7 @@ if getattr(sys, "frozen", False):
                 sys.exit(1)
             err = lyedu_config.test_mysql_connection()
             if err:
-                print(f"[LyEdu] MySQL 连接失败：{err}")
+                logger.error("MySQL 连接失败：{}", err)
                 lyedu_config._pause_if_frozen(
                     f"MySQL 连接失败，请检查 config.ini 中的配置是否正确。\n\n"
                     f"常见原因：\n"
@@ -37,7 +39,7 @@ if getattr(sys, "frozen", False):
                 sys.exit(1)
             err = lyedu_config.test_redis_connection()
             if err:
-                print(f"[LyEdu] Redis 连接失败：{err}")
+                logger.error("Redis 连接失败：{}", err)
                 lyedu_config._pause_if_frozen(
                     f"Redis 连接失败，请检查 config.ini 中的配置是否正确。\n\n"
                     f"常见原因：\n"
@@ -48,7 +50,7 @@ if getattr(sys, "frozen", False):
                 sys.exit(1)
         except Exception as e:
             err_msg = f"[LyEdu] 配置文件格式错误：{e}\n请参考模板文件 {template_path} 检查配置格式"
-            print(err_msg)
+            logger.error("{}", err_msg)
             lyedu_config._pause_if_frozen(str(e))
             sys.exit(1)
 else:
@@ -63,17 +65,17 @@ else:
     import lyedu_config
     err = lyedu_config.ensure_mysql_database()
     if err:
-        print(f"[LyEdu] 自动创建数据库失败：{err}")
+        logger.error("自动创建数据库失败：{}", err)
         sys.exit(1)
     err = lyedu_config.test_mysql_connection()
     if err:
-        print(f"[LyEdu] MySQL 连接失败：{err}")
-        print("[LyEdu] 请检查 .env 或 .env.dev 中的 MYSQL_* 配置")
+        logger.error("MySQL 连接失败：{}", err)
+        logger.error("请检查 .env 或 .env.dev 中的 MYSQL_* 配置")
         sys.exit(1)
     err = lyedu_config.test_redis_connection()
     if err:
-        print(f"[LyEdu] Redis 连接失败：{err}")
-        print("[LyEdu] 请检查 .env 或 .env.dev 中的 REDIS_* 配置")
+        logger.error("Redis 连接失败：{}", err)
+        logger.error("请检查 .env 或 .env.dev 中的 REDIS_* 配置")
         sys.exit(1)
 
 # ENV：开发默认 dev；生产环境命令行启动必须添加 ENV=prod

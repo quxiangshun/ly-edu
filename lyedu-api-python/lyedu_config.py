@@ -13,6 +13,8 @@ import os
 import sys
 from typing import Optional, Tuple
 
+from loguru import logger
+
 
 def get_config_paths() -> Tuple[str, str, str]:
     """
@@ -62,7 +64,7 @@ password = Lyedu@123
 """
     with open(template_path, "w", encoding="utf-8") as f:
         f.write(template_content)
-    print(f"[LyEdu] 配置模板已生成：{template_path}")
+    logger.info("配置模板已生成：{}", template_path)
 
 
 def _validate_config(config: configparser.ConfigParser) -> None:
@@ -142,21 +144,21 @@ def ensure_config_or_exit() -> bool:
     if not os.path.exists(config_dir):
         try:
             os.makedirs(config_dir, mode=0o700)
-            print(f"[LyEdu] 配置目录已创建：{config_dir}")
+            logger.info("配置目录已创建：{}", config_dir)
         except PermissionError:
-            print(f"[LyEdu] 无权限创建配置目录 {config_dir}，请以管理员身份运行")
+            logger.error("无权限创建配置目录 {}，请以管理员身份运行", config_dir)
             _pause_if_frozen(f"无权限创建配置目录：{config_dir}\n请以管理员身份运行。")
             sys.exit(1)
         except OSError as e:
-            print(f"[LyEdu] 创建配置目录失败：{e}")
+            logger.error("创建配置目录失败：{}", e)
             _pause_if_frozen(f"创建配置目录失败：{e}")
             sys.exit(1)
 
     generate_config_template(template_path)
-    print("\n[LyEdu] 未找到配置文件，请执行以下操作：")
+    logger.warning("未找到配置文件，请执行以下操作：")
     if sys.platform.startswith("win"):
         copy_cmd = f'copy "{template_path}" "{config_path}"'
-        print(f"  1. 复制模板：{copy_cmd}")
+        logger.info("  1. 复制模板：{}", copy_cmd)
         msg = (
             "未找到配置文件 config.ini\n\n"
             "请执行以下操作：\n"
@@ -166,10 +168,10 @@ def ensure_config_or_exit() -> bool:
             "3. 保存后重新运行本程序"
         )
     else:
-        print(f"  1. 复制模板：cp {template_path} {config_path}")
+        logger.info("  1. 复制模板：cp {} {}", template_path, config_path)
         msg = f"未找到配置文件。请复制 {template_path} 为 {config_path}，填写 MySQL/Redis 后重试。"
-    print(f"  2. 编辑配置：打开 {config_path} 填写 MySQL/Redis 信息")
-    print("  3. 重新运行程序")
+    logger.info("  2. 编辑配置：打开 {} 填写 MySQL/Redis 信息", config_path)
+    logger.info("  3. 重新运行程序")
     _pause_if_frozen(msg)
     sys.exit(1)
 
@@ -196,7 +198,7 @@ def ensure_mysql_database() -> Optional[str]:
             with conn.cursor() as cur:
                 cur.execute(f"CREATE DATABASE IF NOT EXISTS `{db_name}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
             conn.commit()
-            print(f"[LyEdu] 数据库 {db_name} 已就绪（不存在时已自动创建）")
+            logger.info("数据库 {} 已就绪（不存在时已自动创建）", db_name)
         finally:
             conn.close()
         return None

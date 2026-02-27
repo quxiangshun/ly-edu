@@ -4,6 +4,7 @@ from typing import Any, List, Optional
 from urllib.parse import quote
 
 import config
+from loguru import logger
 
 FEISHU_BASE = "https://open.feishu.cn/open-apis"
 SCOPE = "contact:user.base:readonly"
@@ -69,9 +70,8 @@ def list_department_children(
         data = resp.json()
         if data.get("code") != 0:
             try:
-                import logging
-                logging.getLogger(__name__).warning(
-                    "feishu list_department_children code=%s msg=%s",
+                logger.warning(
+                    "feishu list_department_children code={} msg={}",
                     data.get("code"),
                     data.get("msg", ""),
                 )
@@ -86,9 +86,8 @@ def list_department_children(
         }
     except Exception as e:
         try:
-            import logging
-            logging.getLogger(__name__).warning(
-                "feishu list_department_children 请求异常 department_id=%s: %s",
+            logger.warning(
+                "feishu list_department_children 请求异常 department_id={}: {}",
                 department_id, e,
             )
         except Exception:
@@ -132,9 +131,8 @@ def list_departments_by_parent(
         data = resp.json()
         if data.get("code") != 0:
             try:
-                import logging
-                logging.getLogger(__name__).warning(
-                    "feishu list_departments_by_parent code=%s msg=%s parent_department_id=%s",
+                logger.warning(
+                    "feishu list_departments_by_parent code={} msg={} parent_department_id={}",
                     data.get("code"),
                     data.get("msg", ""),
                     parent_department_id,
@@ -151,9 +149,8 @@ def list_departments_by_parent(
         }
     except Exception as e:
         try:
-            import logging
-            logging.getLogger(__name__).warning(
-                "feishu list_departments_by_parent 请求异常 parent_department_id=%s: %s",
+            logger.warning(
+                "feishu list_departments_by_parent 请求异常 parent_department_id={}: {}",
                 parent_department_id, e,
             )
         except Exception:
@@ -193,9 +190,8 @@ def list_all_users(
         data = resp.json()
         if data.get("code") != 0:
             try:
-                import logging
-                logging.getLogger(__name__).warning(
-                    "feishu list_all_users code=%s msg=%s",
+                logger.warning(
+                    "feishu list_all_users code={} msg={}",
                     data.get("code"),
                     data.get("msg", ""),
                 )
@@ -248,9 +244,8 @@ def list_users_by_department(
         data = resp.json()
         if data.get("code") != 0:
             try:
-                import logging
-                logging.getLogger(__name__).warning(
-                    "feishu list_users_by_department code=%s msg=%s",
+                logger.warning(
+                    "feishu list_users_by_department code={} msg={}",
                     data.get("code"),
                     data.get("msg", ""),
                 )

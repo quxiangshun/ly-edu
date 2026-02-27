@@ -9,12 +9,9 @@ lyedu/
 ├── lyedu-pc/               # PC 端学员前端（Vue3 + Element Plus）
 ├── lyedu-unix/             # 学员端 H5/微信小程序（uni-app x）
 ├── lyedu-entry/            # 统一入口（可选）
-├── docker/                 # Docker 相关
-│   └── mysql/
-│       └── init.sql        # MySQL 用户/库初始化；表由 Alembic 创建
 ├── scripts/                # 脚本与配置
 │   ├── dev/                # 开发环境一键启动/停止
-│   └── docker/             # Docker compose 与 .env
+│   └── docker/             # Docker compose 与 mysql-init.sql
 ├── docs/                   # 项目文档
 ├── pkg/                    # 构建产物（如有）
 └── README.md
