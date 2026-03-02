@@ -75,6 +75,24 @@ app_id =
 app_secret =
 # 飞书 OAuth 回调地址（可选）
 redirect_uri =
+
+[dingtalk]
+# 钉钉开放平台 AppKey（可选，不启用钉钉登录可留空）
+app_key =
+# 钉钉开放平台 AppSecret（可选）
+app_secret =
+# 钉钉 OAuth 回调地址（可选）
+redirect_uri =
+
+[wecom]
+# 企业微信 CorpID（可选，不启用企微登录可留空）
+corp_id =
+# 企业微信应用 AgentId（可选）
+agent_id =
+# 企业微信应用 Secret（可选）
+secret =
+# 企微 OAuth 回调地址（可选）
+redirect_uri =
 """
     with open(template_path, "w", encoding="utf-8") as f:
         f.write(template_content)
@@ -291,3 +309,14 @@ def apply_config_ini_to_environ(config: configparser.ConfigParser) -> None:
         os.environ["FEISHU_APP_ID"] = f.get("app_id", "").strip()
         os.environ["FEISHU_APP_SECRET"] = f.get("app_secret", "").strip()
         os.environ["FEISHU_REDIRECT_URI"] = f.get("redirect_uri", "").strip()
+    if config.has_section("dingtalk"):
+        d = config["dingtalk"]
+        os.environ["DINGTALK_APP_KEY"] = d.get("app_key", "").strip()
+        os.environ["DINGTALK_APP_SECRET"] = d.get("app_secret", "").strip()
+        os.environ["DINGTALK_REDIRECT_URI"] = d.get("redirect_uri", "").strip()
+    if config.has_section("wecom"):
+        w = config["wecom"]
+        os.environ["WECOM_CORP_ID"] = w.get("corp_id", "").strip()
+        os.environ["WECOM_AGENT_ID"] = w.get("agent_id", "").strip()
+        os.environ["WECOM_SECRET"] = w.get("secret", "").strip()
+        os.environ["WECOM_REDIRECT_URI"] = w.get("redirect_uri", "").strip()

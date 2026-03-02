@@ -94,7 +94,9 @@ pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
 | MySQL | `MYSQL_HOST`、`MYSQL_PORT`、`MYSQL_USERNAME`、`MYSQL_PASSWORD`、`MYSQL_DATABASE` | `[mysql]` |
 | Redis | `REDIS_HOST`、`REDIS_PORT`、`REDIS_USERNAME`、`REDIS_PASSWORD`、`REDIS_DB` | `[redis]` |
 | 服务监听 | `HOST`（默认 0.0.0.0）、`PORT`（默认 9700） | `[server]` 的 host、port |
-| 飞书 | `FEISHU_APP_ID`、`FEISHU_APP_SECRET`、`FEISHU_REDIRECT_URI`（飞书登录与通讯录同步，可选） | `[feishu]` 的 app_id、app_secret、redirect_uri |
+| 飞书 | `FEISHU_APP_ID`、`FEISHU_APP_SECRET`、`FEISHU_REDIRECT_URI`（可选） | `[feishu]` 的 app_id、app_secret、redirect_uri |
+| 钉钉 | `DINGTALK_APP_KEY`、`DINGTALK_APP_SECRET`、`DINGTALK_REDIRECT_URI`（预留，可选） | `[dingtalk]` 的 app_key、app_secret、redirect_uri |
+| 企微 | `WECOM_CORP_ID`、`WECOM_AGENT_ID`、`WECOM_SECRET`、`WECOM_REDIRECT_URI`（预留，可选） | `[wecom]` 的 corp_id、agent_id、secret、redirect_uri |
 | JWT | `JWT_SECRET`、`JWT_EXPIRE` | — |
 
 环境文件：`.env.example` 为模板；`.env.dev`、`.env.prod` 为开发/生产预设（可提交），未设置 `ENV` 时可复制其一为 `.env` 或通过 `ENV=dev` 指定加载。
@@ -105,7 +107,9 @@ pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
 
 - **`[mysql]`**、**`[redis]`**：数据库与缓存（必填）
 - **`[server]`**：API 监听地址 `host`（默认 0.0.0.0）、端口 `port`（默认 9700）
-- **`[feishu]`**：飞书开放平台 `app_id`、`app_secret`、`redirect_uri`（可选，不启用飞书可留空）
+- **`[feishu]`**：飞书开放平台 `app_id`、`app_secret`、`redirect_uri`（可选）
+- **`[dingtalk]`**：钉钉开放平台 `app_key`、`app_secret`、`redirect_uri`（预留，可选）
+- **`[wecom]`**：企业微信 `corp_id`、`agent_id`、`secret`、`redirect_uri`（预留，可选）
 
 适合打包为可执行文件后交付：用户无需接触项目目录，只需在用户目录下配置即可。
 
@@ -124,7 +128,7 @@ pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
    cp ~/.lyedu/conf/config.ini.template ~/.lyedu/conf/config.ini
    ```
 
-3. 编辑 `config.ini` 填写 MySQL、Redis、服务（host/port）、飞书（可选）等信息
+3. 编辑 `config.ini` 填写 MySQL、Redis、服务（host/port）、飞书/钉钉/企微（可选）等信息
 4. 重新运行程序
 
 **说明：**

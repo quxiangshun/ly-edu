@@ -107,6 +107,17 @@ FEISHU_APP_ID = os.getenv("FEISHU_APP_ID", "")
 FEISHU_APP_SECRET = os.getenv("FEISHU_APP_SECRET", "")
 FEISHU_REDIRECT_URI = os.getenv("FEISHU_REDIRECT_URI", "")
 
+# 钉钉开放平台（预留，登录与通讯录同步）
+DINGTALK_APP_KEY = os.getenv("DINGTALK_APP_KEY", "")
+DINGTALK_APP_SECRET = os.getenv("DINGTALK_APP_SECRET", "")
+DINGTALK_REDIRECT_URI = os.getenv("DINGTALK_REDIRECT_URI", "")
+
+# 企业微信（预留，登录与通讯录同步）
+WECOM_CORP_ID = os.getenv("WECOM_CORP_ID", "")
+WECOM_AGENT_ID = os.getenv("WECOM_AGENT_ID", "")
+WECOM_SECRET = os.getenv("WECOM_SECRET", "")
+WECOM_REDIRECT_URI = os.getenv("WECOM_REDIRECT_URI", "")
+
 # 微信小程序（手机号登录、绑定 union_id）
 WECHAT_MP_APP_ID = os.getenv("WECHAT_MP_APP_ID", "")
 WECHAT_MP_APP_SECRET = os.getenv("WECHAT_MP_APP_SECRET", "")
