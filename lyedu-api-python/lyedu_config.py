@@ -33,7 +33,7 @@ def get_config_paths() -> Tuple[str, str, str]:
 def generate_config_template(template_path: str) -> None:
     """生成配置模板文件"""
     template_content = """# LyEdu 配置模板文件
-# 请将此文件复制为 config.ini 并填写实际的 MySQL/Redis 配置
+# 请将此文件复制为 config.ini 并填写实际的 MySQL/Redis/服务 配置
 # 保存路径：~/.lyedu/conf/config.ini
 
 [mysql]
@@ -61,6 +61,12 @@ port = 6379
 db = 0
 # Redis 密码（与 compose-mysql-redis.yml 一致；无密码则留空）
 password = Lyedu@123
+
+[server]
+# API 监听地址（可选，默认 0.0.0.0）
+host = 0.0.0.0
+# API 监听端口（可选，默认 9700）
+port = 9700
 """
     with open(template_path, "w", encoding="utf-8") as f:
         f.write(template_content)
@@ -268,3 +274,7 @@ def apply_config_ini_to_environ(config: configparser.ConfigParser) -> None:
     os.environ["REDIS_DB"] = str(redis.getint("db", 0))
     pw = redis.get("password", "").strip()
     os.environ["REDIS_PASSWORD"] = pw if pw else ""
+    if config.has_section("server"):
+        s = config["server"]
+        os.environ["HOST"] = s.get("host", "0.0.0.0").strip()
+        os.environ["PORT"] = str(s.getint("port", 9700))

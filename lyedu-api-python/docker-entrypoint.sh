@@ -37,5 +37,5 @@ echo "[LyEdu] Running database migrations (Alembic upgrade head)..."
 alembic -c alembic.ini upgrade head
 echo "[LyEdu] Migrations done. Starting API."
 
-# 启动应用（不再在应用内重复执行迁移）
-exec uvicorn main:app --host 0.0.0.0 --port 9700
+# 启动应用（HOST/PORT 从环境变量或 config 默认 0.0.0.0 / 9700）
+exec python main.py

@@ -16,5 +16,5 @@ if ($LASTEXITCODE -ne 0) {
     if ($r -ne "y" -and $r -ne "Y") { exit $LASTEXITCODE }
 }
 
-Write-Host "Starting LyEdu API (uvicorn)..." -ForegroundColor Green
-& uvicorn main:app --host $env:HOST --port $env:PORT --reload
+Write-Host "Starting LyEdu API (python main.py, HOST/PORT 见 .env.dev)..." -ForegroundColor Green
+& python main.py

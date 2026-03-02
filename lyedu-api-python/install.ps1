@@ -14,4 +14,4 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "2. 激活虚拟环境并安装依赖 (清华源) ..."
 & ".\.venv\Scripts\pip.exe" install -r requirements.txt -i $mirror
 
-Write-Host "完成。激活环境: .\.venv\Scripts\Activate.ps1  启动: uvicorn main:app --host 0.0.0.0 --port 9700"
+Write-Host "完成。激活环境: .\.venv\Scripts\Activate.ps1  启动: python main.py  (HOST/PORT 见 .env.dev)"
