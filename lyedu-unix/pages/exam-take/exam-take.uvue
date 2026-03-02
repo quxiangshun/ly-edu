@@ -90,13 +90,23 @@
 		}
 	})
 
+	/** 选项 JSON 中全角逗号替换为半角，避免误输入中文逗号导致解析失败 */
+	function normalizeOptionsJson(s: string): string {
+		return s.split('\uFF0C').join(',')
+	}
+
 	function parseOptions(opts: string | null | undefined): string[] {
 		if (opts == null || opts.length === 0) return []
 		try {
 			const arr = JSON.parse(opts)
 			return Array.isArray(arr) ? arr : []
 		} catch (_e) {
-			return []
+			try {
+				const arr = JSON.parse(normalizeOptionsJson(opts))
+				return Array.isArray(arr) ? arr : []
+			} catch (_e2) {
+				return []
+			}
 		}
 	}
 

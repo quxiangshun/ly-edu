@@ -90,7 +90,17 @@
           <el-input v-model="form.title" type="textarea" :rows="3" placeholder="题目标题/题干" />
         </el-form-item>
         <el-form-item v-if="['single','multi','judge'].includes(form.type)" label="选项(JSON)" prop="options">
-          <el-input v-model="form.options" type="textarea" :rows="2" placeholder='如 ["A选项","B选项","C选项","D选项"] 或 判断 ["正确","错误"]' />
+          <el-input v-model="form.options" type="textarea" :rows="2" placeholder='如 ["A选项","B选项","C选项","D选项"] 或 判断 ["正确","错误"]' @blur="runOptionsValidation" />
+          <div v-if="optionsValidationErrors.length > 0" class="options-validation-errors">
+            <div class="options-validation-title">选项格式问题：</div>
+            <ul>
+              <li v-for="(msg, idx) in optionsValidationErrors" :key="idx" class="options-validation-item">{{ msg }}</li>
+            </ul>
+            <el-button type="primary" size="small" @click="fixOptionsFormat">修复</el-button>
+          </div>
+          <div v-else-if="form.options.trim()" class="options-validation-actions">
+            <el-button size="small" @click="runOptionsValidation">校验选项</el-button>
+          </div>
         </el-form-item>
         <el-form-item label="参考答案" prop="answer">
           <el-input v-model="form.answer" placeholder="单选填A/B/C/D，多选填AB，判断填T/F，填空/简答填文本" />
@@ -112,7 +122,7 @@
     </el-dialog>
 
     <!-- 上传试题对话框 -->
-    <el-dialog v-model="importDialogVisible" title="上传试题" width="800px" :close-on-click-modal="false">
+    <el-dialog v-model="importDialogVisible" title="上传试题" width="1280px" :close-on-click-modal="false">
       <p class="import-tip">
         支持 Excel(.xlsx)、CSV、JSON 文件，或直接在下方粘贴 JSON 数组。请先
         <el-dropdown trigger="click" @command="handleDownloadTemplateByType">
@@ -144,17 +154,33 @@
           <template v-else-if="importPreviewRows.length > 0">
             <p class="import-preview-title">共解析到 {{ importPreviewRows.length }} 条，请确认后点击「提交」导入。</p>
             <div class="import-preview-table-wrap">
-              <el-table :data="importPreviewRows" border stripe size="small" max-height="240">
+              <el-table :data="importPreviewRows" border stripe size="small" max-height="320">
                 <el-table-column prop="0" label="题型" width="80" show-overflow-tooltip />
-                <el-table-column prop="1" label="题干" min-width="200" show-overflow-tooltip />
+                <el-table-column prop="1" label="题干" min-width="180" show-overflow-tooltip />
+                <el-table-column prop="2" label="选项(JSON)" min-width="220" show-overflow-tooltip />
+                <el-table-column label="描述问题" min-width="280" class="option-issue-column">
+                  <template #default="scope">
+                    <div class="option-issue-cell">
+                      <template v-if="importPreviewOptionFixedDetails[scope.$index]">
+                        <div v-for="(line, k) in (importPreviewOptionFixedDetails[scope.$index] || '').split('；').filter(Boolean)" :key="'f-' + k" class="option-issue-line option-fixed-detail">· {{ line }}</div>
+                      </template>
+                      <template v-else-if="importPreviewOptionIssues[scope.$index]">
+                        <div v-for="(line, k) in (importPreviewOptionIssues[scope.$index] || '').split('；').filter(Boolean)" :key="'e-' + k" class="option-issue-line option-issue-desc">· {{ line }}</div>
+                      </template>
+                      <span v-else class="option-issue-ok">—</span>
+                      <el-button v-if="importPreviewOptionIssues[scope.$index]" type="primary" size="small" class="fix-btn" @click="fixPreviewRowOption(scope.$index)">修复</el-button>
+                    </div>
+                  </template>
+                </el-table-column>
                 <el-table-column prop="3" label="参考答案" width="90" show-overflow-tooltip />
                 <el-table-column prop="4" label="分值" width="64" />
                 <el-table-column prop="6" label="排序" width="64" />
               </el-table>
             </div>
-            <el-button type="primary" :loading="importSubmitLoading" @click="handleSubmitImportFile" style="margin-top: 8px">
-              提交
-            </el-button>
+            <div class="import-preview-actions">
+              <el-button type="primary" :loading="importSubmitLoading" @click="handleSubmitImportFile">提交</el-button>
+              <el-button :disabled="!hasAnyOptionIssue" @click="fixAllPreviewRowOptions">一键修复</el-button>
+            </div>
           </template>
         </el-tab-pane>
         <el-tab-pane label="粘贴 JSON" name="json">
@@ -168,6 +194,21 @@
           <div class="import-json-actions">
             <el-button type="primary" :loading="importJsonLoading" @click="handleImportJson">导入 JSON 数据</el-button>
             <el-button @click="importJsonText = getDefaultJsonTemplate()">恢复默认模板</el-button>
+          </div>
+          <div v-if="importJsonErrors.length" class="import-json-error-panel">
+            <p class="import-json-error-title">
+              检测到 <strong>{{ importJsonErrors.length }}</strong> 个 JSON 格式问题，请根据下表中的高亮位置修正括号或引号。
+            </p>
+            <el-table :data="importJsonErrors" border stripe size="small" max-height="220" class="import-json-error-table">
+              <el-table-column prop="line" label="行号" width="80" />
+              <el-table-column prop="column" label="列号" width="80" />
+              <el-table-column prop="message" label="错误信息" min-width="220" show-overflow-tooltip />
+              <el-table-column label="附近内容" min-width="260">
+                <template #default="{ row }">
+                  <span class="json-error-snippet" v-html="row.snippet"></span>
+                </template>
+              </el-table-column>
+            </el-table>
           </div>
         </el-tab-pane>
       </el-tabs>
@@ -185,7 +226,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import * as XLSX from 'xlsx'
@@ -229,9 +270,16 @@ const importJsonLoading = ref(false)
 const importResult = ref<{ successCount: number; failCount: number; messages?: string[] } | null>(null)
 const importSelectedFile = ref<File | null>(null)
 const importPreviewRows = ref<string[][]>([])
+/** 导入预览表每行「选项(JSON)」的校验问题描述，与 importPreviewRows 逐行对应 */
+const importPreviewOptionIssues = ref<string[]>([])
+/** 导入预览表每行修复后的修改说明（第几字符被修改等），修复后写入此列 */
+const importPreviewOptionFixedDetails = ref<string[]>([])
+/** 是否存在任意一行的选项格式问题（用于一键修复按钮可用状态） */
+const hasAnyOptionIssue = computed(() => importPreviewOptionIssues.value.some((s) => (s ?? '').length > 0))
 const importPreviewError = ref('')
 const importFileLoading = ref(false)
 const importSubmitLoading = ref(false)
+const importJsonErrors = ref<{ line: number; column: number; index: number; message: string; snippet: string }[]>([])
 
 const searchForm = reactive({ keyword: '', type: '' })
 const pagination = reactive({ page: 1, size: 10, total: 0 })
@@ -248,9 +296,88 @@ const form = reactive({
   sort: 0
 })
 
+/** 单选/多选/判断题的选项(JSON) 校验结果，用于在表单中标注非法数据 */
+const optionsValidationErrors = ref<string[]>([])
+
 const rules: FormRules = {
   type: [{ required: true, message: '请选择题型', trigger: 'change' }],
   title: [{ required: true, message: '请输入题干', trigger: 'blur' }]
+}
+
+/** 校验选项(JSON) 格式，返回错误描述列表。单选/多选/判断的选项应为 JSON 数组。 */
+function validateOptionsFormat(optionsStr: string): string[] {
+  const s = optionsStr.trim()
+  const errors: string[] = []
+  if (!s) return errors
+
+  // 括号：全角【】应为半角 []
+  if (s.includes('\u3010') || s.includes('\u3011')) {
+    errors.push('括号格式错误：使用了【或】，应为半角 [ 或 ]')
+  }
+  // 逗号：全角 ，应为半角 ,
+  if (s.includes('\uFF0C')) {
+    errors.push('逗号格式错误：使用了全角逗号 ，，应为半角逗号 ,')
+  }
+  // 引号：中文双引号 "" 或 直角「」应为半角 "
+  if (s.includes('\u201C') || s.includes('\u201D') || s.includes('\u300C') || s.includes('\u300D')) {
+    errors.push('引号格式错误：使用了中文/全角引号，应为半角双引号 "')
+  }
+  // 缺少结尾 ]
+  if (s.length > 0 && s[s.length - 1] !== ']') {
+    errors.push('缺少结尾的 ]')
+  }
+  // 缺少开头 [
+  if (s.length > 0 && s[0] !== '[') {
+    errors.push('缺少开头的 [')
+  }
+
+  // 若上述都无，再尝试解析
+  if (errors.length === 0) {
+    try {
+      const parsed = JSON.parse(s)
+      if (!Array.isArray(parsed)) errors.push('选项应为 JSON 数组，例如 ["A","B","C"]')
+    } catch (_e) {
+      errors.push('JSON 解析失败，请检查括号、逗号、引号是否成对且为半角符号')
+    }
+  }
+  return errors
+}
+
+/** 修复选项字符串中的常见格式问题（全角→半角、补全括号） */
+function doFixOptionsFormat(optionsStr: string): string {
+  return doFixOptionsFormatWithDetail(optionsStr).fixed
+}
+
+/** 修复并返回修改说明，用于导入预览表「描述问题」列 */
+function doFixOptionsFormatWithDetail(optionsStr: string): { fixed: string; details: string[] } {
+  const details: string[] = []
+  let s = optionsStr.trim()
+  if (!s) return { fixed: s, details: [] }
+  let out = ''
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i]
+    const pos = i + 1
+    if (c === '\u3010') { out += '['; details.push(`第${pos}个字符【被修改成了[`) }
+    else if (c === '\u3011') { out += ']'; details.push(`第${pos}个字符】被修改成了]`) }
+    else if (c === '\uFF0C') { out += ','; details.push(`第${pos}个字符，被修改成了,`) }
+    else if (c === '\u201C' || c === '\u201D') { out += '"'; details.push(`第${pos}个字符引号被修改成了"`) }
+    else if (c === '\u300C' || c === '\u300D') { out += '"'; details.push(`第${pos}个字符「或」被修改成了"`) }
+    else out += c
+  }
+  if (out.length > 0 && out[0] !== '[') { out = '[' + out; details.push('缺少[，已在开头新增[') }
+  if (out.length > 0 && out[out.length - 1] !== ']') { out = out + ']'; details.push('缺少]，已在末尾新增]') }
+  return { fixed: out, details }
+}
+
+function runOptionsValidation() {
+  if (!['single', 'multi', 'judge'].includes(form.type)) return
+  optionsValidationErrors.value = validateOptionsFormat(form.options)
+}
+
+function fixOptionsFormat() {
+  form.options = doFixOptionsFormat(form.options)
+  optionsValidationErrors.value = validateOptionsFormat(form.options)
+  if (optionsValidationErrors.value.length === 0) ElMessage.success('已按规范修复选项格式')
 }
 
 async function loadList() {
@@ -288,6 +415,7 @@ function handleAdd() {
   form.score = 10
   form.analysis = ''
   form.sort = 0
+  optionsValidationErrors.value = []
   dialogVisible.value = true
 }
 
@@ -307,7 +435,9 @@ async function handleEdit(row: Question) {
     ElMessage.error('获取详情失败')
     return
   }
+  optionsValidationErrors.value = []
   dialogVisible.value = true
+  nextTick(() => runOptionsValidation())
 }
 
 async function handleSubmit() {
@@ -388,6 +518,57 @@ function fitColWidths(rows: (string | number)[][]): { wch: number }[] {
   return widths.map((w) => ({ wch: Math.max(w, 6) }))
 }
 
+/** 将文本中的 HTML 特殊字符转义为安全文本 */
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+/** 从 JSON.parse 的错误中解析出大致出错位置（行/列/索引） */
+function analyzeJsonSyntaxError(
+  text: string,
+  error: unknown
+): { line: number; column: number; index: number } | null {
+  const msg = (error as { message?: string })?.message ?? String(error)
+  const m = msg.match(/position\s+(\d+)/i)
+  if (!m) return null
+  const index = Number(m[1])
+  if (!Number.isFinite(index) || index < 0 || index > text.length) return null
+  let line = 1
+  let column = 1
+  for (let i = 0; i < index && i < text.length; i++) {
+    const ch = text[i]
+    if (ch === '\n') {
+      line++
+      column = 1
+    } else {
+      column++
+    }
+  }
+  return { line, column, index }
+}
+
+/** 构造一段带高亮错误字符的 HTML 片段，便于在表格中展示 */
+function buildJsonErrorSnippet(text: string, index: number, radius = 30): string {
+  if (text.length === 0) return ''
+  if (index < 0) index = 0
+  if (index >= text.length) index = text.length - 1
+  const start = Math.max(0, index - radius)
+  const end = Math.min(text.length, index + radius)
+  const snippet = text.slice(start, end)
+  const innerIndex = index - start
+  const before = escapeHtml(snippet.slice(0, innerIndex))
+  const errorChar = escapeHtml(snippet[innerIndex] || '')
+  const after = escapeHtml(snippet.slice(innerIndex + 1))
+  const prefix = start > 0 ? '... ' : ''
+  const suffix = end < text.length ? ' ...' : ''
+  return `${prefix}${before}<span class="json-error-char">${errorChar || ' '}</span>${after}${suffix}`
+}
+
 /** CSV 单元格转义（含逗号、换行、双引号时用双引号包裹） */
 function csvEscape(cell: string | number): string {
   const s = String(cell)
@@ -438,11 +619,16 @@ function handleDownloadTemplateByType(format: 'xlsx' | 'csv' | 'json') {
 
 function openImportDialog() {
   importResult.value = null
+  importJsonErrors.value = []
   importJsonText.value = getDefaultJsonTemplate()
   importPreviewRows.value = []
   importPreviewError.value = ''
   importSelectedFile.value = null
+  importTab.value = 'file'
   importDialogVisible.value = true
+  nextTick(() => {
+    importUploadRef.value?.clearFiles?.()
+  })
 }
 
 /** 解析 CSV 一行（简单处理双引号包裹的字段） */
@@ -537,12 +723,24 @@ async function parseFileForPreview(file: File): Promise<{ rows: string[][] } | {
   }
 }
 
+/** 对导入预览的一行取题型与选项，返回选项格式问题描述（单选/多选/判断才校验） */
+function getOptionIssueForPreviewRow(row: string[]): string {
+  const typeStr = (row[0] ?? '').trim()
+  if (typeStr !== '单选' && typeStr !== '多选' && typeStr !== '判断') return ''
+  const opts = (row[2] ?? '').trim()
+  if (!opts) return ''
+  const errs = validateOptionsFormat(opts)
+  return errs.join('；')
+}
+
 async function onImportFileChange(uploadFile: { raw?: File }) {
   const file = uploadFile?.raw
   if (!file) return
   importResult.value = null
   importPreviewError.value = ''
   importPreviewRows.value = []
+  importPreviewOptionIssues.value = []
+  importPreviewOptionFixedDetails.value = []
   importSelectedFile.value = file
   importFileLoading.value = true
   try {
@@ -551,15 +749,51 @@ async function onImportFileChange(uploadFile: { raw?: File }) {
       importPreviewError.value = result.error
     } else {
       importPreviewRows.value = result.rows
+      importPreviewOptionIssues.value = result.rows.map((row) => getOptionIssueForPreviewRow(row))
+      importPreviewOptionFixedDetails.value = result.rows.map(() => '')
     }
   } finally {
     importFileLoading.value = false
   }
 }
 
+/** 导入预览表：修复第 index 行的选项(JSON)，并把修改说明写入「描述问题」列 */
+function fixPreviewRowOption(index: number) {
+  const rows = importPreviewRows.value
+  if (index < 0 || index >= rows.length) return
+  const row = rows[index]
+  const opts = (row[2] ?? '').trim()
+  const { fixed, details } = doFixOptionsFormatWithDetail(opts)
+  const newRows = rows.map((r, i) => (i === index ? [...r.slice(0, 2), fixed, ...r.slice(3)] : r))
+  importPreviewRows.value = newRows
+  const issues = [...importPreviewOptionIssues.value]
+  const fixedDetails = [...importPreviewOptionFixedDetails.value]
+  issues[index] = ''
+  fixedDetails[index] = details.length > 0 ? details.join('；') : '已修复'
+  importPreviewOptionIssues.value = issues
+  importPreviewOptionFixedDetails.value = fixedDetails
+  if (details.length > 0) ElMessage.success(`第 ${index + 1} 行选项已修复`)
+}
+
+/** 一键修复：对所有存在选项问题的行执行修复 */
+function fixAllPreviewRowOptions() {
+  const issues = importPreviewOptionIssues.value
+  const indices = issues.map((s, i) => (s && s.length > 0 ? i : -1)).filter((i) => i >= 0)
+  if (indices.length === 0) {
+    ElMessage.info('当前没有需要修复的选项')
+    return
+  }
+  indices.forEach((i) => fixPreviewRowOption(i))
+  ElMessage.success(`已修复 ${indices.length} 行选项`)
+}
+
 async function handleSubmitImportFile() {
   const file = importSelectedFile.value
   if (!file || importPreviewRows.value.length === 0) return
+  if (hasAnyOptionIssue.value) {
+    ElMessage.warning('存在问题，无法提交，请先修复')
+    return
+  }
   try {
     await ElMessageBox.confirm(
       `确定导入共 ${importPreviewRows.value.length} 条试题吗？`,
@@ -598,9 +832,30 @@ async function handleImportJson() {
     return
   }
   importResult.value = null
+  importJsonErrors.value = []
   importJsonLoading.value = true
   try {
-    const data = JSON.parse(raw) as object[]
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(raw)
+    } catch (e: any) {
+      const detail = analyzeJsonSyntaxError(raw, e)
+      if (detail) {
+        const snippet = buildJsonErrorSnippet(raw, detail.index)
+        importJsonErrors.value = [
+          {
+            line: detail.line,
+            column: detail.column,
+            index: detail.index,
+            message: e?.message || 'JSON 格式错误',
+            snippet
+          }
+        ]
+      }
+      ElMessage.error('JSON 格式错误，请根据下方提示修正括号、逗号与引号')
+      return
+    }
+    const data = parsed as object[]
     if (!Array.isArray(data)) {
       ElMessage.error('JSON 须为数组格式')
       return
@@ -631,6 +886,8 @@ function closeImportDialog() {
   importJsonText.value = ''
   importResult.value = null
   importPreviewRows.value = []
+  importPreviewOptionIssues.value = []
+  importPreviewOptionFixedDetails.value = []
   importPreviewError.value = ''
   importSelectedFile.value = null
   importUploadRef.value?.clearFiles?.()
@@ -680,6 +937,32 @@ onMounted(loadList)
   margin-bottom: 16px;
 }
 
+.options-validation-errors {
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: rgba(245, 108, 108, 0.06);
+  border: 1px solid rgba(245, 108, 108, 0.3);
+  border-radius: 4px;
+  font-size: 13px;
+  .options-validation-title {
+    color: var(--el-color-danger);
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  ul {
+    margin: 0 0 8px;
+    padding-left: 18px;
+  }
+  .options-validation-item {
+    color: var(--el-text-color-regular);
+    margin-bottom: 2px;
+  }
+}
+
+.options-validation-actions {
+  margin-top: 6px;
+}
+
 .import-tip {
   margin-bottom: 16px;
   color: var(--el-text-color-regular);
@@ -708,9 +991,41 @@ onMounted(loadList)
   color: var(--el-text-color-regular);
 }
 
+.import-preview-actions {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .import-preview-table-wrap {
-  max-height: 240px;
+  max-height: 320px;
   overflow: auto;
+}
+
+.option-issue-cell {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 6px 10px;
+  font-size: 12px;
+  .option-issue-line {
+    white-space: nowrap;
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+  .option-issue-line.option-issue-desc {
+    color: var(--el-color-danger);
+  }
+  .option-issue-line.option-fixed-detail {
+    color: var(--el-color-success);
+  }
+  .option-issue-ok {
+    color: var(--el-text-color-secondary);
+  }
+  .fix-btn {
+    flex-shrink: 0;
+  }
 }
 
 .import-json-textarea {
@@ -722,6 +1037,37 @@ onMounted(loadList)
   margin-top: 8px;
   display: flex;
   gap: 8px;
+}
+
+.import-json-error-panel {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 4px;
+  border: 1px solid rgba(245, 108, 108, 0.35);
+  background: rgba(245, 108, 108, 0.04);
+}
+
+.import-json-error-title {
+  font-size: 13px;
+  color: var(--el-color-danger);
+  margin: 0 0 8px;
+}
+
+.import-json-error-table {
+  font-size: 12px;
+}
+
+.json-error-snippet {
+  font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, monospace;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.json-error-char {
+  font-weight: 700;
+  color: var(--el-color-danger);
+  background-color: rgba(245, 108, 108, 0.16);
+  border-bottom: 1px dashed var(--el-color-danger);
 }
 
 .import-result {

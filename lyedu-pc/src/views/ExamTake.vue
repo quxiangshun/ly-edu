@@ -108,13 +108,23 @@ const answers = reactive<Record<string, string>>({})
 const multiAnswers = reactive<Record<string, string[]>>({})
 const record = ref<ExamRecord | null>(null)
 
+/** 选项 JSON 中常见全角标点替换为半角，避免因误输入中文逗号等导致解析失败 */
+function normalizeOptionsJson(s: string): string {
+  return s.replace(/\uFF0C/g, ',') // 全角逗号 -> 半角逗号
+}
+
 function parseOptions(options?: string): string[] {
   if (!options) return []
   try {
     const arr = JSON.parse(options)
     return Array.isArray(arr) ? arr : []
   } catch {
-    return []
+    try {
+      const arr = JSON.parse(normalizeOptionsJson(options))
+      return Array.isArray(arr) ? arr : []
+    } catch {
+      return []
+    }
   }
 }
 

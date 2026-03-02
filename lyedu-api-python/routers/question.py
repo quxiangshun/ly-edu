@@ -24,6 +24,16 @@ TYPE_MAP = {
 }
 
 
+def _normalize_options_json(options_str: Optional[str]) -> Optional[str]:
+    """将选项 JSON 字符串中的常见全角标点替换为半角，避免解析失败。如中文逗号（全角）替换为半角逗号。"""
+    if not options_str or not options_str.strip():
+        return options_str.strip() or None
+    s = options_str.strip()
+    # 全角逗号 -> 半角逗号（选项数组中误输入中文逗号时仍可解析）
+    s = s.replace("\uff0c", ",")  # U+FF0C 全角逗号
+    return s if s else None
+
+
 def _val_str(v) -> str:
     """从 Excel/单元格值转为字符串"""
     if v is None:
@@ -56,7 +66,7 @@ def _process_import_row(
     sort_val = 0
     if sort_str and str(sort_str).replace(".0", "").isdigit():
         sort_val = int(float(sort_str))
-    options = (options_str.strip() or None) if options_str else None
+    options = _normalize_options_json(options_str)
     try:
         question_service.save(
             type_=type_,
@@ -104,7 +114,7 @@ def create(body: QuestionRequest):
     qid = question_service.save(
         type_=type_,
         title=title,
-        options=body.options,
+        options=_normalize_options_json(body.options),
         answer=body.answer,
         score=body.score or 10,
         analysis=body.analysis,
@@ -126,7 +136,7 @@ def update(question_id: int, body: QuestionRequest):
         question_id=question_id,
         type_=type_,
         title=title,
-        options=body.options,
+        options=_normalize_options_json(body.options),
         answer=body.answer,
         score=body.score or 10,
         analysis=body.analysis,
