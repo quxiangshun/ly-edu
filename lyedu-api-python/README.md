@@ -92,7 +92,7 @@ pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
 |------|------------------|-----------------|
 | 环境 | `ENV`（dev/prod，影响热重载） | — |
 | MySQL | `MYSQL_HOST`、`MYSQL_PORT`、`MYSQL_USERNAME`、`MYSQL_PASSWORD`、`MYSQL_DATABASE` | `[mysql]` |
-| Redis | `REDIS_HOST`、`REDIS_PORT`、`REDIS_USERNAME`、`REDIS_PASSWORD`、`REDIS_DB` | `[redis]` |
+| Redis | `REDIS_ENABLED`（1/0，**默认 0 不启用**；为 1 时检查连接并启用缓存）、`REDIS_HOST`、`REDIS_PORT`、`REDIS_USERNAME`、`REDIS_PASSWORD`、`REDIS_DB` | `[redis]` 的 enabled、host、port 等 |
 | 服务监听 | `HOST`（默认 0.0.0.0）、`PORT`（默认 9700） | `[server]` 的 host、port |
 | 飞书 | `FEISHU_APP_ID`、`FEISHU_APP_SECRET`、`FEISHU_REDIRECT_URI`（可选） | `[feishu]` 的 app_id、app_secret、redirect_uri |
 | 钉钉 | `DINGTALK_APP_KEY`、`DINGTALK_APP_SECRET`、`DINGTALK_REDIRECT_URI`（预留，可选） | `[dingtalk]` 的 app_key、app_secret、redirect_uri |
@@ -105,7 +105,7 @@ pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
 
 程序优先使用 `~/.lyedu/conf/config.ini`；若不存在则自动在 `~/.lyedu/conf` 下生成 `config.ini.template`。模板包含：
 
-- **`[mysql]`**、**`[redis]`**：数据库与缓存（必填）
+- **`[mysql]`**、**`[redis]`**：数据库与缓存；`[redis]` 含 `enabled`（1/0，默认 0 不启用），为 1 时检查连接并启用缓存
 - **`[server]`**：API 监听地址 `host`（默认 0.0.0.0）、端口 `port`（默认 9700）
 - **`[feishu]`**：飞书开放平台 `app_id`、`app_secret`、`redirect_uri`（可选）
 - **`[dingtalk]`**：钉钉开放平台 `app_key`、`app_secret`、`redirect_uri`（预留，可选）

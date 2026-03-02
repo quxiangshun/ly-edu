@@ -51,13 +51,15 @@ database = lyedu
 charset = utf8mb4
 
 [redis]
-# Redis 服务器地址（必填）
+# 是否启用 Redis（1/0 或 true/false；不启用则不检查连接、缓存不生效，默认不启用）
+enabled = 0
+# Redis 服务器地址（启用时必填）
 host = 127.0.0.1
-# Redis 7 默认用户名（必填，通常为 default）
+# Redis 7 默认用户名（启用时必填，通常为 default）
 user = default
-# Redis 端口（必填，默认 6379）
+# Redis 端口（启用时必填，默认 6379）
 port = 6379
-# Redis 数据库编号（必填，默认 0）
+# Redis 数据库编号（启用时必填，默认 0）
 db = 0
 # Redis 密码（与 compose-mysql-redis.yml 一致；无密码则留空）
 password = Lyedu@123
@@ -99,33 +101,48 @@ redirect_uri =
     logger.info("配置模板已生成：{}", template_path)
 
 
+def _redis_enabled_from_config(config: configparser.ConfigParser) -> bool:
+    """从 config 的 [redis] 节读取是否启用"""
+    if not config.has_section("redis"):
+        return False
+    return config.get("redis", "enabled", fallback="0").strip().lower() in ("1", "true", "yes")
+
+
 def _validate_config(config: configparser.ConfigParser) -> None:
     """校验配置项合法性"""
     if not config.has_section("mysql") or not config.has_section("redis"):
         raise ValueError("配置文件缺少 [mysql] 或 [redis] 节点")
 
     mysql_required = ["host", "port", "user", "database"]
-    redis_required = ["host", "port", "db", "user"]
-
     for item in mysql_required:
         value = config.get("mysql", item, fallback="").strip()
         if not value:
             raise ValueError(f"MySQL 配置项 '{item}' 不能为空")
 
-    for item in redis_required:
-        value = config.get("redis", item, fallback="").strip()
-        if not value:
-            raise ValueError(f"Redis 配置项 '{item}' 不能为空")
-
     try:
         mysql_port = config.getint("mysql", "port")
-        redis_port = config.getint("redis", "port")
-        if not (1 <= mysql_port <= 65535) or not (1 <= redis_port <= 65535):
-            raise ValueError("端口号必须在 1-65535 之间")
+        if not (1 <= mysql_port <= 65535):
+            raise ValueError("MySQL 端口号必须在 1-65535 之间")
     except ValueError as e:
         if "invalid literal" in str(e).lower():
-            raise ValueError("MySQL/Redis 端口必须是 1-65535 之间的整数") from e
+            raise ValueError("MySQL 端口必须是 1-65535 之间的整数") from e
         raise
+
+    # 仅当启用 Redis 时校验 [redis] 必填项与端口
+    if _redis_enabled_from_config(config):
+        redis_required = ["host", "port", "db", "user"]
+        for item in redis_required:
+            value = config.get("redis", item, fallback="").strip()
+            if not value:
+                raise ValueError(f"Redis 配置项 '{item}' 不能为空（启用 Redis 时必填）")
+        try:
+            redis_port = config.getint("redis", "port")
+            if not (1 <= redis_port <= 65535):
+                raise ValueError("Redis 端口号必须在 1-65535 之间")
+        except ValueError as e:
+            if "invalid literal" in str(e).lower():
+                raise ValueError("Redis 端口必须是 1-65535 之间的整数") from e
+            raise
 
 
 def load_config_ini(config_path: str) -> Optional[configparser.ConfigParser]:
@@ -258,7 +275,9 @@ def test_mysql_connection() -> Optional[str]:
 
 
 def test_redis_connection() -> Optional[str]:
-    """测试 Redis 连接，成功返回 None，失败返回错误信息；Redis 7 需提供默认用户名"""
+    """测试 Redis 连接，成功返回 None，失败返回错误信息；未启用 Redis 时直接返回 None"""
+    if os.environ.get("REDIS_ENABLED", "0").strip().lower() not in ("1", "true", "yes"):
+        return None
     try:
         import redis
         host = os.environ.get("REDIS_HOST", "localhost").strip()
@@ -294,6 +313,7 @@ def apply_config_ini_to_environ(config: configparser.ConfigParser) -> None:
     os.environ["MYSQL_PASSWORD"] = mysql.get("password", "").strip()
     os.environ["MYSQL_DATABASE"] = mysql.get("database", "lyedu").strip()
     os.environ["MYSQL_CHARSET"] = mysql.get("charset", "utf8mb4").strip()
+    os.environ["REDIS_ENABLED"] = "1" if _redis_enabled_from_config(config) else "0"  # 默认 0（不启用）
     os.environ["REDIS_HOST"] = redis.get("host", "localhost").strip()
     os.environ["REDIS_USERNAME"] = redis.get("user", "default").strip()
     os.environ["REDIS_PORT"] = str(redis.getint("port", 6379))

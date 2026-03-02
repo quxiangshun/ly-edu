@@ -37,17 +37,18 @@ if getattr(sys, "frozen", False):
                     f"错误详情：{err}"
                 )
                 sys.exit(1)
-            err = lyedu_config.test_redis_connection()
-            if err:
-                logger.error("Redis 连接失败：{}", err)
-                lyedu_config._pause_if_frozen(
-                    f"Redis 连接失败，请检查 config.ini 中的配置是否正确。\n\n"
-                    f"常见原因：\n"
-                    f"· Redis 服务未启动\n"
-                    f"· 主机/端口/密码填写错误\n\n"
-                    f"错误详情：{err}"
-                )
-                sys.exit(1)
+            if os.getenv("REDIS_ENABLED", "0").strip().lower() in ("1", "true", "yes"):
+                err = lyedu_config.test_redis_connection()
+                if err:
+                    logger.error("Redis 连接失败：{}", err)
+                    lyedu_config._pause_if_frozen(
+                        f"Redis 连接失败，请检查 config.ini 中的配置是否正确。\n\n"
+                        f"常见原因：\n"
+                        f"· Redis 服务未启动\n"
+                        f"· 主机/端口/密码填写错误\n\n"
+                        f"错误详情：{err}"
+                    )
+                    sys.exit(1)
         except Exception as e:
             err_msg = f"[LyEdu] 配置文件格式错误：{e}\n请参考模板文件 {template_path} 检查配置格式"
             logger.error("{}", err_msg)
@@ -72,11 +73,12 @@ else:
         logger.error("MySQL 连接失败：{}", err)
         logger.error("请检查 .env 或 .env.dev 中的 MYSQL_* 配置")
         sys.exit(1)
-    err = lyedu_config.test_redis_connection()
-    if err:
-        logger.error("Redis 连接失败：{}", err)
-        logger.error("请检查 .env 或 .env.dev 中的 REDIS_* 配置")
-        sys.exit(1)
+    if os.getenv("REDIS_ENABLED", "0").strip().lower() in ("1", "true", "yes"):
+        err = lyedu_config.test_redis_connection()
+        if err:
+            logger.error("Redis 连接失败：{}", err)
+            logger.error("请检查 .env 或 .env.dev 中的 REDIS_* 配置，或设置 REDIS_ENABLED=0 关闭 Redis")
+            sys.exit(1)
 
 # ENV：开发默认 dev；生产环境命令行启动必须添加 ENV=prod
 os.environ.setdefault("ENV", "dev")
@@ -92,7 +94,8 @@ MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "Lyedu@123")
 MYSQL_DATABASE = os.getenv("MYSQL_DATABASE", "lyedu")
 MYSQL_CHARSET = os.getenv("MYSQL_CHARSET", "utf8mb4")
 
-# Redis（若项目使用）；Redis 7 需提供默认用户名
+# Redis（REDIS_ENABLED=0 时不检查连接、缓存不生效）；Redis 7 需提供默认用户名
+REDIS_ENABLED = os.getenv("REDIS_ENABLED", "0").strip().lower() in ("1", "true", "yes")
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_USERNAME = os.getenv("REDIS_USERNAME", "default")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))

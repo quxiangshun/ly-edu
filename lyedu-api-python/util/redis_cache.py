@@ -17,6 +17,8 @@ _key_prefix = "lyedu:"
 
 def _get_client():
     global _client
+    if not getattr(config, "REDIS_ENABLED", False):
+        return None
     if _client is not None:
         return _client
     if redis is None:
