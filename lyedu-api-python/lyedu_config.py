@@ -67,6 +67,14 @@ password = Lyedu@123
 host = 0.0.0.0
 # API 监听端口（可选，默认 9700）
 port = 9700
+
+[feishu]
+# 飞书开放平台应用 App ID（可选，不启用飞书登录可留空）
+app_id =
+# 飞书开放平台应用 App Secret（可选）
+app_secret =
+# 飞书 OAuth 回调地址（可选）
+redirect_uri =
 """
     with open(template_path, "w", encoding="utf-8") as f:
         f.write(template_content)
@@ -278,3 +286,8 @@ def apply_config_ini_to_environ(config: configparser.ConfigParser) -> None:
         s = config["server"]
         os.environ["HOST"] = s.get("host", "0.0.0.0").strip()
         os.environ["PORT"] = str(s.getint("port", 9700))
+    if config.has_section("feishu"):
+        f = config["feishu"]
+        os.environ["FEISHU_APP_ID"] = f.get("app_id", "").strip()
+        os.environ["FEISHU_APP_SECRET"] = f.get("app_secret", "").strip()
+        os.environ["FEISHU_REDIRECT_URI"] = f.get("redirect_uri", "").strip()

@@ -37,21 +37,20 @@ pip install -r requirements.txt
 - **方式一（推荐打包/交付）**：使用 `~/.lyedu/conf/config.ini`（见下方「LyEdu 配置模板」）
 - **方式二（开发）**：复制 `.env.example` 为 `.env`，或使用 `.env.dev` / `.env.prod`（见下方「环境变量」）
 
-**ENV**：启动前需指定环境。方式一：`ENV=dev uvicorn main:app ...`；方式二：未指定时终端会提示选择 1=dev / 2=prod（5 分钟内无输入将退出）
+**ENV**：开发时未指定则默认 `dev`（会开启热重载）；生产可设 `ENV=prod`。
 
 5. 启动服务（**启动时会自动执行 Alembic 迁移**）：
 
 ```bash
-# 推荐：明确指定环境
-ENV=dev uvicorn main:app --host 0.0.0.0 --port 9700
+python main.py
 ```
 
-或使用启动脚本（先执行 `alembic upgrade head`，再启动 uvicorn）：
+HOST、PORT 从配置文件读取（见下方「环境变量」与「LyEdu 配置模板」），默认 `0.0.0.0` / `9700`。或使用启动脚本（先执行 `alembic upgrade head`，再启动）：
 
 - **PowerShell：** `.\start.ps1`
 - **Linux/macOS：** `./start.sh`（需 `chmod +x start.sh`）
 
-**打包可执行文件**：运行 `lyedu_backend`（或 `lyedu_backend.exe`）启动后，控制台会提示「后台服务已启动」，停止方式：在运行窗口按 **Ctrl+C**；也可使用 `.\stop.ps1`（Windows）或 `./stop.sh`（Linux）按端口停止。
+**打包可执行文件**：运行 `lyedu_backend`（或 `lyedu_backend.exe`）即在前台启动服务；停止：在运行窗口按 **Ctrl+C**，或使用 `.\stop.ps1`（Windows） / `./stop.sh`（Linux）按端口停止。
 
 ### pip 使用国内镜像源
 
@@ -87,18 +86,28 @@ pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
 
 ### 环境变量
 
-- `ENV`：环境标识，`dev` 或 `prod`，用于加载 `.env.dev` / `.env.prod`
-- `MYSQL_HOST`、`MYSQL_PORT`、`MYSQL_USERNAME`、`MYSQL_PASSWORD`、`MYSQL_DATABASE`
-- `REDIS_HOST`、`REDIS_PORT`、`REDIS_PASSWORD`（若使用 Redis）
-- `FEISHU_APP_ID`、`FEISHU_APP_SECRET`、`FEISHU_REDIRECT_URI`（飞书登录与通讯录同步）
-- `JWT_SECRET`、`JWT_EXPIRE`
-- 可选：`HOST`（默认 0.0.0.0）、`PORT`（默认 9700）
+开发时使用 `.env` / `.env.dev` / `.env.prod`；打包后使用 `~/.lyedu/conf/config.ini`（见下方「LyEdu 配置模板」）。二者可配置项对应关系如下：
+
+| 用途 | 环境变量（.env） | config.ini 节点 |
+|------|------------------|-----------------|
+| 环境 | `ENV`（dev/prod，影响热重载） | — |
+| MySQL | `MYSQL_HOST`、`MYSQL_PORT`、`MYSQL_USERNAME`、`MYSQL_PASSWORD`、`MYSQL_DATABASE` | `[mysql]` |
+| Redis | `REDIS_HOST`、`REDIS_PORT`、`REDIS_USERNAME`、`REDIS_PASSWORD`、`REDIS_DB` | `[redis]` |
+| 服务监听 | `HOST`（默认 0.0.0.0）、`PORT`（默认 9700） | `[server]` 的 host、port |
+| 飞书 | `FEISHU_APP_ID`、`FEISHU_APP_SECRET`、`FEISHU_REDIRECT_URI`（飞书登录与通讯录同步，可选） | `[feishu]` 的 app_id、app_secret、redirect_uri |
+| JWT | `JWT_SECRET`、`JWT_EXPIRE` | — |
 
 环境文件：`.env.example` 为模板；`.env.dev`、`.env.prod` 为开发/生产预设（可提交），未设置 `ENV` 时可复制其一为 `.env` 或通过 `ENV=dev` 指定加载。
 
 ### LyEdu 配置模板（~/.lyedu/conf）
 
-程序优先使用 `~/.lyedu/conf/config.ini` 中的 MySQL/Redis 配置；若不存在则自动在 `~/.lyedu/conf` 下生成 `config.ini.template` 模板。适合打包为可执行文件后交付：用户无需接触项目目录，只需在用户目录下配置即可。
+程序优先使用 `~/.lyedu/conf/config.ini`；若不存在则自动在 `~/.lyedu/conf` 下生成 `config.ini.template`。模板包含：
+
+- **`[mysql]`**、**`[redis]`**：数据库与缓存（必填）
+- **`[server]`**：API 监听地址 `host`（默认 0.0.0.0）、端口 `port`（默认 9700）
+- **`[feishu]`**：飞书开放平台 `app_id`、`app_secret`、`redirect_uri`（可选，不启用飞书可留空）
+
+适合打包为可执行文件后交付：用户无需接触项目目录，只需在用户目录下配置即可。
 
 **首次使用步骤：**
 
@@ -115,7 +124,7 @@ pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
    cp ~/.lyedu/conf/config.ini.template ~/.lyedu/conf/config.ini
    ```
 
-3. 编辑 `config.ini` 填写 MySQL/Redis 信息
+3. 编辑 `config.ini` 填写 MySQL、Redis、服务（host/port）、飞书（可选）等信息
 4. 重新运行程序
 
 **说明：**
@@ -126,12 +135,10 @@ pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
 启动（应用启动时会自动执行 Alembic 迁移；迁移失败仅打日志，不阻塞服务）：
 
 ```bash
-ENV=dev uvicorn main:app --host 0.0.0.0 --port 9700
+python main.py
 ```
 
-或使用脚本：`.\start.ps1`（PowerShell）/ `./start.sh`（Linux/macOS）；脚本会按环境变量 `ENV` 或交互选择加载配置。
-
-接口文档：<http://localhost:9700/docs>
+或使用脚本：`.\start.ps1`（PowerShell）/ `./start.sh`（Linux/macOS）。HOST/PORT 由 .env 或 config.ini 的 `[server]` 决定，默认访问 <http://localhost:9700/docs>。
 
 ## 已实现接口
 

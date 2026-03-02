@@ -10,11 +10,11 @@
 
 | 位置 | 脚本 | 作用 |
 |------|------|------|
-| **根目录** | `start.ps1` | Windows：激活 .venv → Alembic 迁移 → 启动 uvicorn |
+| **根目录** | `start.ps1` | Windows：激活 .venv → Alembic 迁移 → 启动 `python main.py`（HOST/PORT 见 .env 或 config.ini） |
 | **根目录** | `start.sh` | Linux/Mac：同上 |
 | **根目录** | `install.ps1` | Windows：创建 .venv、用清华源安装 requirements.txt |
-| **根目录** | `_start_runner.ps1` | 由仓库根 `scripts/dev/start.ps1` **动态生成**，写入 DB/Redis 等环境变量后执行迁移 + uvicorn |
-| **根目录** | `docker-entrypoint.sh` | Docker 容器入口：等 MySQL 就绪 → Alembic 迁移 → uvicorn |
+| **根目录** | `_start_runner.ps1` | 由仓库根 `scripts/dev/start.ps1` **动态生成**，写入 DB/Redis 等环境变量后执行迁移 + `python main.py` |
+| **根目录** | `docker-entrypoint.sh` | Docker 容器入口：等 MySQL 就绪 → Alembic 迁移 → `python main.py`（HOST/PORT 等由环境变量或默认 0.0.0.0/9700） |
 | **scripts/** | `generate_demo_data.py` | 插入全表 demo 数据 |
 | **scripts/** | `seed_questions.py` | 插入试题种子数据 |
 | **scripts/** | `sync_fa_to_ly.py` | 将 FA 系统数据同步到 LyEdu |
@@ -32,17 +32,17 @@ install.ps1
   └── 产出：.venv/
 
 start.ps1 / start.sh
-  └── 依赖：.venv 已存在、alembic、uvicorn、config/.env
-  └── 不创建 .venv，仅激活后执行迁移 + 启动
+  └── 依赖：.venv 已存在、alembic、config/.env 或 ~/.lyedu/conf/config.ini
+  └── 不创建 .venv，仅激活后执行迁移 + `python main.py`（HOST/PORT/飞书等从配置读）
 
 _start_runner.ps1
   └── 由 仓库根 scripts/dev/start.ps1 按 dev-config.yml（或 dev-config.json）生成
-  └── 依赖：.venv、alembic、uvicorn
-  └── 环境变量由生成方注入（MYSQL_*、REDIS_*、ENV 等）
+  └── 依赖：.venv、alembic
+  └── 环境变量由生成方注入（MYSQL_*、REDIS_*、ENV、HOST、PORT 等）
 
 docker-entrypoint.sh
   └── 依赖：镜像内已 pip install、环境变量 MYSQL_* 等由 Docker 传入
-  └── 行为：等 MySQL → alembic upgrade head → uvicorn
+  └── 行为：等 MySQL → alembic upgrade head → python main.py（HOST/PORT 默认 0.0.0.0/9700，可由环境变量覆盖）
 
 scripts/*.py（generate_demo_data、seed_questions、sync_fa_to_ly）
   └── 依赖：项目根 config.py / .env、已安装项目依赖（如 pymysql、openpyxl 等）
@@ -65,11 +65,11 @@ scripts/*.py（generate_demo_data、seed_questions、sync_fa_to_ly）
 
 | 脚本 | 作用 | 依赖 |
 |------|------|------|
-| **start.ps1** | Windows 下在本目录执行：设置 PYTHONUTF8；若存在 .venv 则激活；执行 `alembic upgrade head`；启动 `uvicorn main:app`（HOST/PORT 从环境变量读，未设则 uvicorn 默认）。 | .venv（可选）、alembic、uvicorn、config/.env |
-| **start.sh** | Linux/Mac 下同上：`alembic upgrade head` → `uvicorn main:app --reload`。 | 已安装依赖（alembic、uvicorn）、.env |
+| **start.ps1** | Windows 下在本目录执行：设置 PYTHONUTF8；若存在 .venv 则激活；执行 `alembic upgrade head`；启动 `python main.py`（HOST/PORT 从 .env 或 config.ini 的 [server] 读取，默认 0.0.0.0/9700）。 | .venv（可选）、alembic、config/.env 或 ~/.lyedu/conf/config.ini |
+| **start.sh** | Linux/Mac 下同上：`alembic upgrade head` → `python main.py`（开发环境自动 reload）。 | 已安装依赖、.env 或 config.ini |
 | **install.ps1** | 创建 .venv、用清华源 `pip install -r requirements.txt`。 | python、requirements.txt |
-| **_start_runner.ps1** | 由仓库根 **scripts/dev/start.ps1** 按 dev-config.yml（或 dev-config.json）动态生成，写入 MYSQL_*、REDIS_*、ENV 等环境变量后激活 .venv、执行 alembic、启动 uvicorn。勿手动编辑。 | .venv、alembic、uvicorn |
-| **docker-entrypoint.sh** | Docker 容器入口：循环检测 MySQL 可连后执行 `alembic upgrade head`，再 `uvicorn main:app`。 | 镜像内已安装依赖、环境变量 MYSQL_* 等 |
+| **_start_runner.ps1** | 由仓库根 **scripts/dev/start.ps1** 按 dev-config.yml（或 dev-config.json）动态生成，写入 MYSQL_*、REDIS_*、ENV、HOST、PORT 等后激活 .venv、执行 alembic、启动 `python main.py`。勿手动编辑。 | .venv、alembic |
+| **docker-entrypoint.sh** | Docker 容器入口：循环检测 MySQL 可连后执行 `alembic upgrade head`，再 `python main.py`（HOST/PORT 由环境变量或默认 0.0.0.0/9700；飞书等可选配置同 .env）。 | 镜像内已安装依赖、环境变量 MYSQL_* 等 |
 
 ---
 
