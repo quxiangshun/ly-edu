@@ -45,7 +45,7 @@
       </el-table>
     </el-card>
 
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="560px">
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="560px" :close-on-click-modal="false">
       <el-form :model="form" :rules="formRules" ref="formRef" label-width="100px">
         <el-form-item label="证书名称" prop="name">
           <el-input v-model="form.name" placeholder="如：Java 考试合格证" />

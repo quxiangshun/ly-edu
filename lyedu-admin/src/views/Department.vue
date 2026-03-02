@@ -50,7 +50,7 @@
     </el-card>
 
     <!-- 关联标签对话框 -->
-    <el-dialog v-model="courseDialogVisible" :title="`关联标签 - ${currentDept?.name || ''}`" width="500px">
+    <el-dialog v-model="courseDialogVisible" :title="`关联标签 - ${currentDept?.name || ''}`" width="500px" :close-on-click-modal="false">
       <div style="margin-bottom: 12px">
         <el-select
           v-model="tagSelectIds"
@@ -85,7 +85,7 @@
     </el-dialog>
 
     <!-- 新增/编辑对话框 -->
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px">
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px" :close-on-click-modal="false">
       <el-form :model="form" :rules="rules" ref="formRef" label-width="100px">
         <el-form-item label="部门名称" prop="name">
           <el-input v-model="form.name" placeholder="请输入部门名称" />

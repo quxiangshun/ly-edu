@@ -31,7 +31,7 @@
     </el-card>
 
     <!-- 新增/编辑对话框 -->
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="440px">
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="440px" :close-on-click-modal="false">
       <el-form :model="form" :rules="rules" ref="formRef" label-width="80px">
         <el-form-item label="标签名称" prop="name">
           <el-input v-model="form.name" placeholder="请输入标签名称" maxlength="50" show-word-limit />
@@ -47,7 +47,7 @@
     </el-dialog>
 
     <!-- 关联人员/机构/课程对话框（风格与公司架构一致：多选+添加+表格+移除） -->
-    <el-dialog v-model="entitiesDialogVisible" :title="`关联人员/机构/课程 - ${currentTag?.name || ''}`" width="640px">
+    <el-dialog v-model="entitiesDialogVisible" :title="`关联人员/机构/课程 - ${currentTag?.name || ''}`" width="640px" :close-on-click-modal="false">
       <el-tabs v-model="entitiesTab">
         <el-tab-pane label="人员" name="user">
           <div style="margin-bottom: 12px">

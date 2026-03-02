@@ -75,7 +75,7 @@
       />
     </el-card>
 
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="640px">
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="640px" :close-on-click-modal="false">
       <el-form :model="form" :rules="rules" ref="formRef" label-width="90px">
         <el-form-item label="题型" prop="type">
           <el-select v-model="form.type" placeholder="请选择题型" style="width: 100%">
@@ -494,9 +494,21 @@ async function parseFileForPreview(file: File): Promise<{ rows: string[][] } | {
       const lines = text.split(/\r?\n/).filter((l) => l.trim())
       if (lines.length < 2) return { error: '文件为空或仅有表头' }
       const rows = lines.slice(1).map((line) => {
-        const arr = parseCsvLine(line)
+        const arr = parseCsvLine(line).map((s) => (s != null ? String(s).trim() : ''))
+        if (arr.length > 7) {
+          const merged = [
+            arr[0],
+            arr[1],
+            arr.slice(2, -4).join(','),
+            arr[arr.length - 4],
+            arr[arr.length - 3],
+            arr[arr.length - 2],
+            arr[arr.length - 1]
+          ]
+          return merged
+        }
         while (arr.length < 7) arr.push('')
-        return arr.slice(0, 7).map((s) => (s != null ? String(s).trim() : ''))
+        return arr.slice(0, 7)
       }).filter((row) => row.some((c) => c !== ''))
       return { rows }
     }

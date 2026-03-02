@@ -34,7 +34,7 @@
       </el-table>
     </el-card>
 
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="520px">
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="520px" :close-on-click-modal="false">
       <el-form :model="form" :rules="formRules" ref="formRef" label-width="100px">
         <el-form-item label="模板名称" prop="name">
           <el-input v-model="form.name" placeholder="如：考试合格证模板" />

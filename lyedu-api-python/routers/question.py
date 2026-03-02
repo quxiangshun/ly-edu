@@ -171,7 +171,7 @@ def _rows_from_xlsx(content: bytes) -> List[Tuple[int, List[Any]]]:
 
 
 def _rows_from_csv(content: bytes) -> List[Tuple[int, List[str]]]:
-    """从 CSV 内容解析出 (行号, 7 列列表)。首行为表头，UTF-8 支持 BOM。"""
+    """从 CSV 内容解析出 (行号, 7 列列表)。首行为表头，UTF-8 支持 BOM。若某行列数多于 7（选项列含逗号被拆开），将中间列合并回选项列，保证参考答案/分值等对齐。"""
     try:
         text = content.decode("utf-8-sig")
     except Exception:
@@ -182,11 +182,18 @@ def _rows_from_csv(content: bytes) -> List[Tuple[int, List[str]]]:
         return []
     result = []
     for i, row in enumerate(rows[1:], start=2):
-        if not row or all((s or "").strip() == "" for s in row):
+        row = [(s or "").strip() for s in row]
+        if not row or all(s == "" for s in row):
             continue
+        if len(row) > 7:
+            merged = (
+                [row[0], row[1], ",".join(row[2:-4])]
+                + row[-4:]
+            )
+            row = merged
         while len(row) < 7:
             row.append("")
-        row = [(s or "").strip() for s in row[:7]]
+        row = row[:7]
         result.append((i, row))
     return result
 

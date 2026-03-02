@@ -88,7 +88,7 @@
     </el-card>
 
     <!-- 章节管理对话框 -->
-    <el-dialog v-model="chapterDialogVisible" :title="`章节管理 - ${currentCourse?.title || ''}`" width="640px">
+    <el-dialog v-model="chapterDialogVisible" :title="`章节管理 - ${currentCourse?.title || ''}`" width="640px" :close-on-click-modal="false">
       <el-button type="primary" size="small" @click="handleAddChapter" style="margin-bottom: 12px">新增章节</el-button>
       <el-table :data="chapterList" border stripe size="small" max-height="360">
         <el-table-column prop="id" label="ID" width="70" />
@@ -105,7 +105,7 @@
         <el-button @click="chapterDialogVisible = false">关闭</el-button>
       </template>
     </el-dialog>
-    <el-dialog v-model="chapterFormVisible" :title="chapterFormId ? '编辑章节' : '新增章节'" width="400px">
+    <el-dialog v-model="chapterFormVisible" :title="chapterFormId ? '编辑章节' : '新增章节'" width="400px" :close-on-click-modal="false">
       <el-form :model="chapterForm" label-width="80px">
         <el-form-item label="章节名称">
           <el-input v-model="chapterForm.title" placeholder="章节名称（1-64字）" maxlength="64" show-word-limit />
@@ -121,7 +121,7 @@
     </el-dialog>
 
     <!-- 附件管理对话框 -->
-    <el-dialog v-model="attachmentDialogVisible" :title="`附件管理 - ${currentCourse?.title || ''}`" width="720px">
+    <el-dialog v-model="attachmentDialogVisible" :title="`附件管理 - ${currentCourse?.title || ''}`" width="720px" :close-on-click-modal="false">
       <el-button type="primary" size="small" @click="openKnowledgeSelectForAttachment" style="margin-bottom: 12px">从知识库选择</el-button>
       <el-table :data="attachmentList" border stripe size="small" max-height="360">
         <el-table-column prop="id" label="ID" width="70" />
@@ -146,6 +146,7 @@
       :title="`评论 - ${commentDialogCourse?.title || ''}`"
       width="520px"
       class="comment-dialog"
+      :close-on-click-modal="false"
       destroy-on-close
     >
       <div class="comment-dialog-body" v-loading="commentDialogLoading">
@@ -175,7 +176,7 @@
     </el-dialog>
 
     <!-- 知识库文件选择对话框（多选，选择+上传均在此完成） -->
-    <el-dialog v-model="knowledgeSelectForAttachmentVisible" title="选择文件（可多选）" width="640px" @close="onKnowledgeSelectDialogClose">
+    <el-dialog v-model="knowledgeSelectForAttachmentVisible" title="选择文件（可多选）" width="640px" :close-on-click-modal="false" @close="onKnowledgeSelectDialogClose">
       <div class="knowledge-select-toolbar">
         <el-input v-model="knowledgeSelectKeyword" placeholder="搜索知识库" clearable style="width: 180px" @keyup.enter="loadKnowledgeForAttachment" />
         <el-button type="primary" @click="loadKnowledgeForAttachment">搜索</el-button>
@@ -222,7 +223,7 @@
     </el-dialog>
 
     <!-- 图片库选择/上传对话框 -->
-    <el-dialog v-model="imageSelectVisible" title="选择封面" width="600px" @close="imageSelectVisible = false">
+    <el-dialog v-model="imageSelectVisible" title="选择封面" width="600px" :close-on-click-modal="false" @close="imageSelectVisible = false">
       <div class="image-select-toolbar">
         <el-input v-model="imageKeyword" placeholder="搜索图片" clearable style="width: 180px" @keyup.enter="loadImageList" />
         <el-button type="primary" @click="loadImageList">搜索</el-button>
@@ -265,7 +266,7 @@
     </el-dialog>
 
     <!-- 新增/编辑对话框 -->
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="600px">
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="600px" :close-on-click-modal="false">
       <el-form :model="form" :rules="rules" ref="formRef" label-width="100px">
         <el-form-item label="课程名称" prop="title">
           <el-input v-model="form.title" placeholder="请输入课程名称" />

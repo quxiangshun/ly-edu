@@ -82,7 +82,7 @@
       />
     </el-card>
 
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="560px">
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="560px" :close-on-click-modal="false">
       <el-form :model="form" :rules="rules" ref="formRef" label-width="100px">
         <el-form-item label="标题" prop="title">
           <el-input v-model="form.title" placeholder="知识标题/名称" />

@@ -105,7 +105,7 @@
     </el-card>
 
     <!-- 新增/编辑对话框 -->
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="600px">
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="600px" :close-on-click-modal="false">
       <el-form :model="form" :rules="rules" ref="formRef" label-width="100px">
         <el-form-item label="用户名" prop="username">
           <el-input v-model="form.username" placeholder="请输入用户名" :disabled="isEdit" />
@@ -211,7 +211,7 @@
     </el-dialog>
 
     <!-- 重置密码对话框 -->
-    <el-dialog v-model="passwordDialogVisible" title="重置密码" width="400px">
+    <el-dialog v-model="passwordDialogVisible" title="重置密码" width="400px" :close-on-click-modal="false">
       <el-form :model="passwordForm" :rules="passwordRules" ref="passwordFormRef" label-width="100px">
         <el-form-item label="新密码" prop="password">
           <el-input v-model="passwordForm.password" type="password" placeholder="请输入新密码" show-password />

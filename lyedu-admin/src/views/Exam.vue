@@ -70,7 +70,7 @@
       />
     </el-card>
 
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="600px">
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="600px" :close-on-click-modal="false">
       <el-form :model="form" :rules="formRules" ref="formRef" label-width="100px">
         <el-form-item label="考试名称" prop="title">
           <el-input v-model="form.title" placeholder="考试名称" />
@@ -141,7 +141,7 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="recordsDialogVisible" :title="`成绩 - ${currentExam?.title || ''}`" width="720px">
+    <el-dialog v-model="recordsDialogVisible" :title="`成绩 - ${currentExam?.title || ''}`" width="720px" :close-on-click-modal="false">
       <el-table :data="recordList" border stripe size="small" max-height="360">
         <el-table-column prop="id" label="ID" width="70" />
         <el-table-column prop="userId" label="用户ID" width="90" />

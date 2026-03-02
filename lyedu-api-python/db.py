@@ -36,6 +36,22 @@ def cursor() -> Generator:
         conn.close()
 
 
+@contextmanager
+def transaction() -> Generator:
+    """在同一连接上执行多条语句，全部成功则 commit，任一异常则 rollback。yield 的 cursor 用于 execute。"""
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        yield cur
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        cur.close()
+        conn.close()
+
+
 def query_one(sql: str, args: Tuple = ()) -> Optional[dict]:
     with cursor() as cur:
         cur.execute(sql, args or ())

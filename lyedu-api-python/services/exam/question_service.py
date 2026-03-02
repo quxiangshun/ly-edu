@@ -88,6 +88,22 @@ def save(
         raise
 
 
+def save_with_cursor(
+    cur,
+    type_: str,
+    title: str,
+    options: Optional[str] = None,
+    answer: Optional[str] = None,
+    score: int = 10,
+    analysis: Optional[str] = None,
+    sort: int = 0,
+) -> int:
+    """在给定游标上插入试题，用于与试卷在同一事务中创建。返回新试题 id。"""
+    sql = "INSERT INTO ly_question (type, title, options, answer, score, analysis, sort) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+    cur.execute(sql, (type_, title, options, answer, score, analysis, sort))
+    return cur.lastrowid or 0
+
+
 def update(
     question_id: int,
     type_: str,

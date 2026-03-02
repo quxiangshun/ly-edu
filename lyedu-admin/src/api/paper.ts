@@ -12,9 +12,15 @@ export interface Paper {
 }
 
 export interface PaperQuestionItem {
-  questionId: number
+  questionId?: number
   score?: number
   sort?: number
+  /** 新建题目时使用，与试题管理字段一致 */
+  type?: string
+  title?: string
+  options?: string
+  answer?: string
+  analysis?: string
 }
 
 export interface PaperQuestionDto {

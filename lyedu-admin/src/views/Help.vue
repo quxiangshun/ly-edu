@@ -301,6 +301,7 @@
           </div>
         </template>
       <p>基于题库组卷，配置分值、及格分等信息，为考试提供试卷模板。</p>
+      <p><strong>添加题目</strong>：支持三种方式——<strong>选择已有题目</strong>（从题库中勾选）、<strong>上传试题</strong>（选择 .xlsx/.csv/.json 文件，预览后添加至试卷）、<strong>粘贴 JSON</strong>（粘贴试题数组后添加至试卷）。上传或粘贴的题目在保存试卷时与试卷<strong>在同一事务中一起创建</strong>，任一步失败则全部回滚；选择已有题目时，若试卷创建或更新失败，关联关系也不会生效（事务保证）。</p>
       </el-card>
 
       <el-card id="exam" class="help-card" shadow="hover">

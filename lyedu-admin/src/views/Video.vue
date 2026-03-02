@@ -108,7 +108,7 @@
     </el-card>
 
     <!-- 新增/编辑对话框 -->
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="800px" @opened="onDialogOpened">
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="800px" :close-on-click-modal="false" @opened="onDialogOpened">
       <el-form :model="form" :rules="rules" ref="formRef" label-width="100px">
         <el-form-item label="课程" prop="courseId">
           <el-select
@@ -206,7 +206,7 @@
     </el-dialog>
 
     <!-- 图片库选择/上传对话框 -->
-    <el-dialog v-model="imageSelectVisible" title="选择封面" width="600px" @close="imageSelectVisible = false">
+    <el-dialog v-model="imageSelectVisible" title="选择封面" width="600px" :close-on-click-modal="false" @close="imageSelectVisible = false">
       <div class="image-select-toolbar">
         <el-input v-model="imageKeyword" placeholder="搜索图片" clearable style="width: 180px" @keyup.enter="loadImageList" />
         <el-button type="primary" @click="loadImageList">搜索</el-button>

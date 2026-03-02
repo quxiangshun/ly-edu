@@ -125,6 +125,35 @@ def list_questions_by_paper_id(paper_id: int) -> List[dict]:
         raise
 
 
+def _resolve_question_id_and_score_sort(cur, item: dict, sort_index: int) -> Optional[tuple]:
+    """
+    解析题目项：若为已有题目（含 questionId）返回 (question_id, score, sort)；
+    若为新建题目（含 type, title）则先插入试题再返回 (new_id, score, sort)。
+    返回 None 表示该项无效跳过。
+    """
+    qid = item.get("questionId")
+    if qid is not None:
+        return (int(qid), item.get("score", 10), item.get("sort", sort_index))
+    # 新建试题：需含 type、title
+    type_ = (item.get("type") or "").strip()
+    title = (item.get("title") or "").strip()
+    if not type_ or not title:
+        return None
+    new_id = question_service.save_with_cursor(
+        cur,
+        type_=type_,
+        title=title,
+        options=item.get("options"),
+        answer=item.get("answer"),
+        score=item.get("score", 10),
+        analysis=item.get("analysis"),
+        sort=item.get("sort", 0),
+    )
+    if not new_id:
+        return None
+    return (new_id, item.get("score", 10), item.get("sort", sort_index))
+
+
 def save(
     title: str,
     total_score: int = 100,
@@ -133,18 +162,26 @@ def save(
     status: int = 1,
     questions: Optional[List[dict]] = None,
 ) -> int:
+    """创建试卷并关联题目，支持已有题目（questionId）与新建题目（type+title）。同一事务，任一步失败则全部回滚。"""
     try:
-        sql = "INSERT INTO ly_paper (title, total_score, pass_score, duration_minutes, status) VALUES (%s, %s, %s, %s, %s)"
-        pid = db.execute_insert(sql, (title, total_score, pass_score, duration_minutes, status))
-        if pid and questions:
-            for item in questions:
-                qid = item.get("questionId")
-                if qid is not None:
-                    db.execute(
-                        "INSERT INTO ly_paper_question (paper_id, question_id, score, sort) VALUES (%s, %s, %s, %s)",
-                        (pid, qid, item.get("score", 10), item.get("sort", 0)),
-                    )
-        return pid or 0
+        with db.transaction() as cur:
+            cur.execute(
+                "INSERT INTO ly_paper (title, total_score, pass_score, duration_minutes, status) VALUES (%s, %s, %s, %s, %s)",
+                (title, total_score, pass_score, duration_minutes, status),
+            )
+            pid = cur.lastrowid or 0
+            if not pid:
+                raise RuntimeError("insert paper failed")
+            if questions:
+                for sort_index, item in enumerate(questions):
+                    resolved = _resolve_question_id_and_score_sort(cur, item, sort_index)
+                    if resolved:
+                        qid, score, sort_val = resolved
+                        cur.execute(
+                            "INSERT INTO ly_paper_question (paper_id, question_id, score, sort) VALUES (%s, %s, %s, %s)",
+                            (pid, qid, score, sort_val),
+                        )
+            return pid
     except pymysql.err.MySQLError as e:
         if getattr(e, "args", (None,))[0] == 1146:
             return 0
@@ -160,21 +197,28 @@ def update(
     status: int = 1,
     questions: Optional[List[dict]] = None,
 ) -> bool:
+    """更新试卷及题目关联，支持已有题目与新建题目。同一事务，任一步失败则全部回滚（关联关系不会部分生效）。"""
     try:
-        sql = "UPDATE ly_paper SET title = %s, total_score = %s, pass_score = %s, duration_minutes = %s, status = %s WHERE id = %s AND deleted = 0"
-        n = db.execute(sql, (title, total_score, pass_score, duration_minutes, status, paper_id))
-        if n > 0:
-            redis_cache.delete("paper:title:%s" % paper_id)
-        db.execute("DELETE FROM ly_paper_question WHERE paper_id = %s", (paper_id,))
-        if questions:
-            for item in questions:
-                qid = item.get("questionId")
-                if qid is not None:
-                    db.execute(
-                        "INSERT INTO ly_paper_question (paper_id, question_id, score, sort) VALUES (%s, %s, %s, %s)",
-                        (paper_id, qid, item.get("score", 10), item.get("sort", 0)),
-                    )
-        return n > 0
+        with db.transaction() as cur:
+            cur.execute(
+                "UPDATE ly_paper SET title = %s, total_score = %s, pass_score = %s, duration_minutes = %s, status = %s WHERE id = %s AND deleted = 0",
+                (title, total_score, pass_score, duration_minutes, status, paper_id),
+            )
+            n = cur.rowcount
+            if n <= 0:
+                raise RuntimeError("paper not found or update failed")
+            cur.execute("DELETE FROM ly_paper_question WHERE paper_id = %s", (paper_id,))
+            if questions:
+                for sort_index, item in enumerate(questions):
+                    resolved = _resolve_question_id_and_score_sort(cur, item, sort_index)
+                    if resolved:
+                        qid, score, sort_val = resolved
+                        cur.execute(
+                            "INSERT INTO ly_paper_question (paper_id, question_id, score, sort) VALUES (%s, %s, %s, %s)",
+                            (paper_id, qid, score, sort_val),
+                        )
+        redis_cache.delete("paper:title:%s" % paper_id)
+        return True
     except pymysql.err.MySQLError as e:
         if getattr(e, "args", (None,))[0] == 1146:
             return False
