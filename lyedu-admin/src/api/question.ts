@@ -45,3 +45,15 @@ export const updateQuestion = (id: number, data: Partial<Question>) => {
 export const deleteQuestion = (id: number) => {
   return request.delete(`/question/${id}`)
 }
+
+/** 试题导入：上传 Excel/CSV/JSON 文件，返回成功数、失败数及错误信息 */
+export const importQuestionsByFile = (file: File) => {
+  const form = new FormData()
+  form.append('file', file)
+  return request.post<{ successCount: number; failCount: number; messages: string[] }>('/question/import', form)
+}
+
+/** 试题导入：直接提交 JSON 数组（粘贴在输入框），返回成功数、失败数及错误信息 */
+export const importQuestionsByJson = (data: object[]) => {
+  return request.post<{ successCount: number; failCount: number; messages: string[] }>('/question/import/json', data)
+}
