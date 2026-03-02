@@ -21,6 +21,7 @@
           <p>
             本页集中展示各个功能模块（菜单）的使用说明和主要业务逻辑。你可以通过<strong>右上角帮助图标</strong>或各页面的<strong>问号图标</strong>快速跳转到对应模块的说明位置。
           </p>
+          <p><strong>界面说明</strong>：所有编辑、表单类弹窗均<strong>不支持点击遮罩（弹窗外空白）关闭</strong>，需点击弹窗内的「取消/关闭」按钮或右上角关闭图标。</p>
           <p><strong>项目整体逻辑</strong></p>
           <ul>
             <li><strong>管理后台</strong>（本系统）：负责组织架构、用户、标签、课程、视频、考试、任务、证书、积分等配置与数据管理；课程/考试可见性依赖部门与标签（见「标签管理」）。</li>
@@ -291,6 +292,7 @@
         <li><strong>粘贴 JSON</strong>：在同一弹窗的「粘贴 JSON」标签下，输入框会预填五种题型的 JSON 数组模板，可直接编辑或追加。点击「导入 JSON 数据」即可提交；若清空后需还原，可点「恢复默认模板」。</li>
       </ul>
       <p>上传文件时：选择文件 → 查看预览 → 点击「提交」→ 确认「确定导入共 N 条试题吗？」后完成导入。</p>
+      <p><strong>CSV 解析</strong>：若 CSV 中「选项(JSON)」列含逗号被拆成多列，系统会自动将中间列合并回选项列，保证参考答案、分值等列对齐。</p>
       </el-card>
 
       <el-card id="paper" class="help-card" shadow="hover">
@@ -301,7 +303,7 @@
           </div>
         </template>
       <p>基于题库组卷，配置分值、及格分等信息，为考试提供试卷模板。</p>
-      <p><strong>添加题目</strong>：支持三种方式——<strong>选择已有题目</strong>（从题库中勾选）、<strong>上传试题</strong>（选择 .xlsx/.csv/.json 文件，预览后添加至试卷）、<strong>粘贴 JSON</strong>（粘贴试题数组后添加至试卷）。上传或粘贴的题目在保存试卷时与试卷<strong>在同一事务中一起创建</strong>，任一步失败则全部回滚；选择已有题目时，若试卷创建或更新失败，关联关系也不会生效（事务保证）。</p>
+      <p><strong>添加题目</strong>：支持三种方式——<strong>选择已有题目</strong>（从题库中勾选）、<strong>上传试题</strong>（选择 .xlsx/.csv/.json 文件，预览后添加至试卷）、<strong>粘贴 JSON</strong>（粘贴试题数组后添加至试卷）。上传试题、粘贴 JSON 弹窗内可先<strong>下载模板</strong>（Excel/CSV/JSON，与试题管理格式一致）。上传或粘贴的题目在保存试卷时与试卷<strong>在同一事务中一起创建</strong>，任一步失败则全部回滚；选择已有题目时，若试卷创建或更新失败，关联关系也不会生效（事务保证）。</p>
       </el-card>
 
       <el-card id="exam" class="help-card" shadow="hover">
